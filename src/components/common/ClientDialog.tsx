@@ -10,10 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { Client } from '@/lib/types';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -25,8 +24,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { verifyAddress, type VerifyAddressOutput } from '@/ai/flows/maps-based-address-verification';
-import { Loader2 } from 'lucide-react';
 
 const clientSchema = z.object({
   name: z.string().min(1, 'Client name is required'),
@@ -54,7 +51,6 @@ export function ClientDialog({
   onSave,
 }: ClientDialogProps) {
   const { toast } = useToast();
-  const [isVerifying, startVerificationTransition] = useTransition();
 
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),
@@ -89,37 +85,19 @@ export function ClientDialog({
     }
   }, [client, open, form]);
 
-  const handleVerifyAddress = () => {
-    const addressQuery = form.getValues('address_data.formatted_address');
-    if (!addressQuery) {
-      form.setError('address_data.formatted_address', { type: 'manual', message: 'Please enter an address to verify.' });
-      return;
-    }
-    startVerificationTransition(async () => {
-      try {
-        const result = await verifyAddress({ query: addressQuery });
-        form.setValue('address_data.formatted_address', result.formatted_address, { shouldValidate: true });
-        form.setValue('address_data.lat', result.lat);
-        form.setValue('address_data.lng', result.lng);
-        toast({
-          title: 'Address Verified',
-          description: result.formatted_address,
-        });
-      } catch (error) {
-        console.error('Address verification failed:', error);
-        form.setError('address_data.formatted_address', { type: 'manual', message: 'Could not verify address. Please check it and try again.' });
-        toast({
-          variant: 'destructive',
-          title: 'Verification Failed',
-          description: 'Could not verify the address.',
-        });
-      }
-    });
-  };
-
 
   const handleSubmit = (values: ClientFormValues) => {
-    onSave(values);
+    // Manually set lat/lng to 0 if they aren't provided, as verification is removed
+    const submissionValues = {
+        ...values,
+        address_data: {
+            ...values.address_data,
+            lat: values.address_data.lat || 0,
+            lng: values.address_data.lng || 0,
+        }
+    };
+
+    onSave(submissionValues);
     toast({
       title: client ? 'Client Updated' : 'Client Created',
       description: `Client "${values.name}" has been successfully saved.`,
@@ -162,15 +140,10 @@ export function ClientDialog({
                 <FormItem>
                   <FormLabel>Address</FormLabel>
                   <FormControl>
-                    <div className="flex gap-2">
-                       <Input
+                     <Input
                         {...field}
                         placeholder="e.g., 123 Main St, Miami, FL"
                       />
-                       <Button type="button" onClick={handleVerifyAddress} disabled={isVerifying} variant="outline">
-                        {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
-                      </Button>
-                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
