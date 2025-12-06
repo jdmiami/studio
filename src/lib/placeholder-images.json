@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "logo",
+      "description": "CocoSales AI logo",
+      "imageUrl": "https://images.unsplash.com/photo-1611652932014-6c9fb7eabef1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxjb2NvbnV0JTIwbG9nb3xlbnwwfHx8fDE3NjUwMzE3NTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "coconut logo"
+    },
+    {
+      "id": "user-avatar",
+      "description": "User avatar",
+      "imageUrl": "https://images.unsplash.com/photo-1590086782792-42dd2350140d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjUwMjYxNTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "product-green-coconut",
+      "description": "Green coconut",
+      "imageUrl": "https://images.unsplash.com/photo-1604500693013-92b5a2b51799?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxncmVlbiUyMGNvY29udXR8ZW58MHx8fHwxNzY1MDMxNzUzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "green coconut"
+    },
+    {
+      "id": "product-source-water",
+      "description": "Bottle of source water",
+      "imageUrl": "https://images.unsplash.com/photo-1664714628878-9d2aa898b9e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8d2F0ZXIlMjBib3R0bGV8ZW58MHx8fHwxNzY0OTQ3NzUwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "water bottle"
+    },
+    {
+      "id": "product-coconut-oil",
+      "description": "Jar of coconut oil",
+      "imageUrl": "https://images.unsplash.com/photo-1588413336019-dd5d3beddf55?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjb2NvbnV0JTIwb2lsfGVufDB8fHx8MTc2NTAxNzEyOXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "coconut oil"
+    }
+  ]
 }
