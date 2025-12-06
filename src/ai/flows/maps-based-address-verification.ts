@@ -16,10 +16,10 @@ const VerifyAddressInputSchema = z.object({
 export type VerifyAddressInput = z.infer<typeof VerifyAddressInputSchema>;
 
 const VerifyAddressOutputSchema = z.object({
-  name: z.string().describe('The name of the location.'),
-  address: z.string().describe('The formatted address of the location.'),
-  latitude: z.number().describe('The latitude of the location.'),
-  longitude: z.number().describe('The longitude of the location.'),
+  name: z.string().describe('The name of the location, if available.'),
+  formatted_address: z.string().describe('The full, formatted address of the location.'),
+  lat: z.number().describe('The latitude of the location.'),
+  lng: z.number().describe('The longitude of the location.'),
 });
 export type VerifyAddressOutput = z.infer<typeof VerifyAddressOutputSchema>;
 
@@ -29,28 +29,44 @@ export async function verifyAddress(input: VerifyAddressInput): Promise<VerifyAd
 
 const searchMaps = ai.defineTool({
   name: 'searchMaps',
-  description: 'Calls Google Places API, returns name/address/lat/lng.',
+  description: 'Calls Google Places API to find and verify an address. Returns name, formatted address, and latitude/longitude.',
   inputSchema: z.object({
-    query: z.string().describe('The search query for the address.'),
+    query: z.string().describe('The search query for the address, e.g., "1600 Amphitheatre Parkway, Mountain View, CA".'),
   }),
-  outputSchema: z.object({
-    name: z.string().describe('The name of the location.'),
-    address: z.string().describe('The formatted address of the location.'),
-    latitude: z.number().describe('The latitude of the location.'),
-    longitude: z.number().describe('The longitude of the location.'),
-  }),
+  outputSchema: VerifyAddressOutputSchema,
 },
 async (input) => {
-  // This is a placeholder implementation.
-  // Replace this with the actual Google Places API call.
-  // For demonstration purposes, returning dummy data.
-  console.log(`searching maps for ${input.query}`);
-  return {
-    name: `Result for ${input.query}`,
-    address: '123 Main St, Anytown, USA',
-    latitude: 34.0522,
-    longitude: -118.2437,
-  };
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey || apiKey === "YOUR_API_KEY") {
+    console.warn("Google Maps API key is not configured. Using mock data.");
+    return {
+      name: `Mock Location for ${input.query}`,
+      formatted_address: '123 Main St, Anytown, USA 12345',
+      lat: 34.0522,
+      lng: -118.2437,
+    };
+  }
+
+  const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(input.query)}&inputtype=textquery&fields=formatted_address,name,geometry&key=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.status === 'OK' && data.candidates && data.candidates.length > 0) {
+      const place = data.candidates[0];
+      return {
+        name: place.name,
+        formatted_address: place.formatted_address,
+        lat: place.geometry.location.lat,
+        lng: place.geometry.location.lng,
+      };
+    } else {
+      throw new Error(`Google Maps API returned status: ${data.status}`);
+    }
+  } catch (error) {
+    console.error('Error fetching data from Google Maps API:', error);
+    throw new Error('Failed to verify address with Google Maps.');
+  }
 });
 
 const verifyAddressPrompt = ai.definePrompt({
@@ -58,7 +74,7 @@ const verifyAddressPrompt = ai.definePrompt({
   tools: [searchMaps],
   input: {schema: VerifyAddressInputSchema},
   output: {schema: VerifyAddressOutputSchema},
-  prompt: `Use the searchMaps tool to verify the following address: {{{query}}}. Return the name, address, latitude, and longitude of the location.`, 
+  prompt: `Use the searchMaps tool to verify the following address: {{{query}}}. You must call the tool. Do not make up an address. Return the name, formatted_address, lat, and lng of the location.`, 
 });
 
 const verifyAddressFlow = ai.defineFlow(
@@ -69,6 +85,9 @@ const verifyAddressFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await verifyAddressPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("The AI failed to return a verified address.");
+    }
+    return output;
   }
 );

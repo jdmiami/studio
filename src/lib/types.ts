@@ -37,6 +37,8 @@ export interface Client {
   name: string;
   address_data: {
     formatted_address: string;
+    lat: number;
+    lng: number;
   };
   contact_phone: string;
   balance_due: number;

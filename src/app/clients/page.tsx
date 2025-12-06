@@ -25,9 +25,10 @@ export default function ClientsPage() {
   const { user, isUserLoading } = useUser();
   
   const clientsCollection = useMemoFirebase(() => {
-    if (!firestore || isUserLoading) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'clients');
-  }, [firestore, isUserLoading]);
+  }, [firestore, user]);
+
   const { data: clients, isLoading } = useCollection<Client>(clientsCollection);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -46,7 +47,7 @@ export default function ClientsPage() {
   };
 
   const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due' | 'pricing_overrides'>) => {
-    if (!clientsCollection) return;
+    if (!clientsCollection || !firestore) return;
 
     if (selectedClient) {
       // Edit existing client
@@ -62,9 +63,9 @@ export default function ClientsPage() {
     }
   };
   
-  const handleNavigate = (e: React.MouseEvent, address: string) => {
+  const handleNavigate = (e: React.MouseEvent, lat: number, lng: number) => {
     e.stopPropagation();
-    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
     window.open(googleMapsUrl, '_blank');
   };
   
@@ -85,7 +86,7 @@ export default function ClientsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {showLoading && <p>Loading clients...</p>}
         {!showLoading && clients && clients.length === 0 && (
-          <Card className="md:col-span-2 lg:col-span-3">
+          <Card className="md:col-span-2 lg:grid-cols-3">
             <CardContent className="pt-6 text-center text-muted-foreground">
               <p>No clients found.</p>
               <Button variant="link" onClick={handleAddClick}>Add your first client</Button>
@@ -123,7 +124,7 @@ export default function ClientsPage() {
               </div>
             </CardContent>
             <CardFooter className="gap-2">
-              <Button variant="outline" className="w-full" onClick={(e) => handleNavigate(e, client.address_data.formatted_address)}>
+              <Button variant="outline" className="w-full" onClick={(e) => handleNavigate(e, client.address_data.lat, client.address_data.lng)}>
                 Navigate
               </Button>
             </CardFooter>
