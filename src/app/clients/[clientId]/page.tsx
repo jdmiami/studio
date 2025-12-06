@@ -36,7 +36,7 @@ export default function ClientDetailsPage() {
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore || !clientId) return null;
     // Correctly query for transactions related to this client
-    return query(collection(firestore, 'transactions'), where('client_id', '==', clientId));
+    return query(collection(firestore, 'transactions'), where('clientId', '==', clientId));
   }, [firestore, clientId]);
 
   const { data: clientTransactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
