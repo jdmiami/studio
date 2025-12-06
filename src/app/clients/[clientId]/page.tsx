@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation';
 import { useState } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client, Transaction } from '@/lib/types';
-import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 
 export default function ClientDetailsPage() {
@@ -23,20 +23,21 @@ export default function ClientDetailsPage() {
   const clientId = params.clientId as string;
   const router = useRouter();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const clientRef = useMemoFirebase(() => {
-    if (!firestore || !clientId) return null;
+    if (!firestore || !clientId || isUserLoading) return null;
     return doc(firestore, 'clients', clientId);
-  }, [firestore, clientId]);
+  }, [firestore, clientId, isUserLoading]);
 
   const { data: client, isLoading: isClientLoading } = useDoc<Client>(clientRef);
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!firestore || !clientId) return null;
+    if (!firestore || !clientId || isUserLoading) return null;
     return query(collection(firestore, 'transactions'), where('clientId', '==', clientId));
-  }, [firestore, clientId]);
+  }, [firestore, clientId, isUserLoading]);
 
   const { data: clientTransactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
@@ -45,11 +46,13 @@ export default function ClientDetailsPage() {
     updateDocumentNonBlocking(clientRef, clientData);
   };
 
-  if (isClientLoading) {
+  const isLoading = isUserLoading || isClientLoading;
+
+  if (isLoading) {
     return <div className="p-8">Loading client details...</div>;
   }
   
-  if (!isClientLoading && !client) {
+  if (!client && !isLoading) {
     notFound();
   }
   
