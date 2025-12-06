@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   Truck,
   Users,
+  Building,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -29,6 +30,7 @@ import { VoiceCommandButton } from './VoiceCommandButton';
 import { Logo } from './Logo';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BottomNavBar } from './BottomNavBar';
+import { SheetTitle } from '../ui/sheet';
 
 const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
@@ -46,6 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/clients', label: 'Clients', icon: Users },
     { href: '/sales', label: 'Sales', icon: ShoppingCart },
     { href: '/restocks', label: 'Restocks', icon: Truck },
+    { href: '/providers', label: 'Providers', icon: Building },
   ];
 
   return (

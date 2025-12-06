@@ -13,7 +13,7 @@ import { products as initialProducts } from '@/lib/placeholder-data';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { ProductDialog } from '@/components/common/ProductDialog';
-import { Plus } from 'lucide-react';
+import { Edit, Plus } from 'lucide-react';
 import type { Product } from '@/lib/types';
 
 export default function InventoryPage() {
@@ -25,15 +25,20 @@ export default function InventoryPage() {
     setSelectedProduct(null);
     setIsDialogOpen(true);
   };
+  
+  const handleEditClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDialogOpen(true);
+  };
 
   const handleSaveProduct = (
     productData: Omit<Product, 'id' | 'current_stock'>
   ) => {
     if (selectedProduct) {
-      // Edit existing product - functionality to be fully added later
+      // Edit existing product
       setProducts(
         products.map((p) =>
-          p.id === selectedProduct.id ? { ...p, ...productData } : p
+          p.id === selectedProduct.id ? { ...p, ...productData, current_stock: p.current_stock } : p
         )
       );
     } else {
@@ -71,7 +76,12 @@ export default function InventoryPage() {
           {products.map((product) => (
             <Card key={product.id}>
               <CardHeader>
-                <CardTitle>{product.name}</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  {product.name}
+                  <Button variant="ghost" size="icon" onClick={() => handleEditClick(product)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </CardTitle>
                 <CardDescription>
                   Default Price: ${product.default_price.toFixed(2)}
                 </CardDescription>

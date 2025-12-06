@@ -1,7 +1,7 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { clients, transactions as allTransactions } from '@/lib/placeholder-data';
+import { useParams, useRouter } from 'next/navigation';
+import { clients as initialClients, transactions as allTransactions } from '@/lib/placeholder-data';
 import {
   Card,
   CardContent,
@@ -10,17 +10,24 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Edit, Mail, MapPin, Phone, Plus } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Phone, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { TransactionCard } from '@/components/common/TransactionCard';
 import { notFound } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { ClientDialog } from '@/components/common/ClientDialog';
+import type { Client } from '@/lib/types';
 
 export default function ClientDetailsPage() {
   const params = useParams();
   const clientId = params.clientId as string;
+  const router = useRouter();
 
-  const client = useMemo(() => clients.find((c) => c.id === clientId), [clientId]);
+  const [clients, setClients] = useState(initialClients);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const client = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId]);
+  
   const clientTransactions = useMemo(
     () => allTransactions.filter((t) => t.type === 'sale' && t.client_id === clientId),
     [clientId]
@@ -30,14 +37,21 @@ export default function ClientDetailsPage() {
     notFound();
   }
 
+  const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due' | 'pricing_overrides'>) => {
+    setClients(
+      clients.map((c) =>
+        c.id === client.id ? { ...c, ...clientData } : c
+      )
+    );
+  };
+
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="flex items-center gap-4">
-        <Link href="/clients">
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <h1 className="font-headline text-3xl font-semibold">{client.name}</h1>
         <div className="ml-auto flex items-center gap-2">
            <Link href="/sales">
@@ -46,7 +60,7 @@ export default function ClientDetailsPage() {
               New Sale
             </Button>
           </Link>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={() => setIsDialogOpen(true)}>
             <Edit className="h-4 w-4" />
           </Button>
         </div>
@@ -92,6 +106,13 @@ export default function ClientDetailsPage() {
             </Card>
         </div>
       </div>
+
+       <ClientDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        client={client}
+        onSave={handleSaveClient}
+      />
     </div>
   );
 }
