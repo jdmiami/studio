@@ -103,7 +103,7 @@ export default function ClientsPage() {
                 </Button>
               </CardTitle>
               <CardDescription>
-                Balance Due:{' '}
+                Balance:{' '}
                 <span
                   className={
                     client.balance_due > 0 ? 'text-accent' : 'text-primary'

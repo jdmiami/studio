@@ -95,7 +95,7 @@ service cloud.firestore {
      * @principle Enforces read access for operational needs and write access for administrative roles.
      */
     match /clients/{clientId} {
-      allow get: if isSignedIn();
+      allow read: if true;
       allow list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
