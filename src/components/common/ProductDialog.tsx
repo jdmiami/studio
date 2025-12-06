@@ -62,18 +62,24 @@ export function ProductDialog({
   });
 
   useEffect(() => {
-    if (product) {
-      form.reset(product);
-    } else {
+    if (open && product) {
+      form.reset({
+        name: product.name,
+        default_price: product.default_price,
+        default_cost: product.default_cost,
+        unit: product.unit,
+        image: product.image,
+      });
+    } else if (open && !product) {
       form.reset({
         name: '',
         default_price: 0,
         default_cost: 0,
         unit: 'unit',
-        image: 'https://picsum.photos/seed/newproduct/600/400',
+        image: `https://picsum.photos/seed/${Date.now()}/600/400`,
       });
     }
-  }, [product, form]);
+  }, [product, open, form]);
 
   const handleSubmit = (values: ProductFormValues) => {
     onSave(values);
