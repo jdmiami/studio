@@ -6,8 +6,6 @@ import {
   Boxes,
   Home,
   LogOut,
-  Package,
-  PanelLeft,
   Settings,
   ShoppingCart,
   Truck,
@@ -25,16 +23,18 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { VoiceCommandButton } from './VoiceCommandButton';
 import { Logo } from './Logo';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { BottomNavBar } from './BottomNavBar';
 
 const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
 
   if (pathname === '/login') {
     return <>{children}</>;
@@ -115,9 +115,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* Can add breadcrumbs or page title here */}
           </div>
         </header>
-        {children}
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
       </SidebarInset>
       <VoiceCommandButton />
+      {isMobile && <BottomNavBar menuItems={menuItems} />}
     </SidebarProvider>
   );
 }

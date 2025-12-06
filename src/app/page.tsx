@@ -1,8 +1,11 @@
+
+'use client';
+
 import { TransactionCard } from '@/components/common/TransactionCard';
 import { transactions } from '@/lib/placeholder-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUpRight, Plus } from 'lucide-react';
+import { Plus, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -26,11 +29,18 @@ export default function DashboardPage() {
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="space-y-4">
-              {transactions.map((transaction) => (
-                <TransactionCard key={transaction.id} transaction={transaction} />
-              ))}
-            </div>
+            {transactions.length > 0 ? (
+              <div className="space-y-4">
+                {transactions.map((transaction) => (
+                  <TransactionCard key={transaction.id} transaction={transaction} />
+                ))}
+              </div>
+            ) : (
+               <div className="p-6 pt-0 text-center text-muted-foreground">
+                <p>No transactions yet.</p>
+                <Link href="/sales"><Button variant="link">Create your first sale</Button></Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -42,9 +52,9 @@ export default function DashboardPage() {
             <span className="text-muted-foreground">$</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$45,231.89</div>
+            <div className="text-2xl font-bold">$0.00</div>
             <p className="text-xs text-muted-foreground">
-              +20.1% from last month
+              +0.0% from last month
             </p>
           </CardContent>
         </Card>
@@ -56,9 +66,9 @@ export default function DashboardPage() {
             <span className="text-muted-foreground">#</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+2350</div>
+            <div className="text-2xl font-bold">+0</div>
             <p className="text-xs text-muted-foreground">
-              +180.1% from last month
+              +0.0% from last month
             </p>
           </CardContent>
         </Card>
@@ -68,9 +78,9 @@ export default function DashboardPage() {
              <span className="text-muted-foreground">$</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$1,250.00</div>
+            <div className="text-2xl font-bold">$0.00</div>
             <p className="text-xs text-muted-foreground">
-              5 invoices awaiting payment
+              0 invoices awaiting payment
             </p>
           </CardContent>
         </Card>
@@ -84,35 +94,13 @@ export default function DashboardPage() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+57</div>
+            <div className="text-2xl font-bold">+0</div>
             <p className="text-xs text-muted-foreground">
-              +2 since last week
+              +0 since last week
             </p>
           </CardContent>
         </Card>
       </div>
     </div>
-  );
-}
-
-function UsersIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
   );
 }
