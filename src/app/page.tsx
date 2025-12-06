@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Client, Product, Transaction } from '@/lib/types';
 import { collection } from 'firebase/firestore';
 import { OnboardingGuide } from '@/components/common/OnboardingGuide';
 
 export default function DashboardPage() {
   const firestore = useFirestore();
+  const { isUserLoading } = useUser();
 
   const clientsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -31,7 +32,7 @@ export default function DashboardPage() {
   }, [firestore]);
   const { data: transactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsCollection);
 
-  const isLoading = isClientsLoading || isProductsLoading || isTransactionsLoading;
+  const isLoading = isUserLoading || isClientsLoading || isProductsLoading || isTransactionsLoading;
 
   const showOnboarding = !isLoading && clients?.length === 0 && products?.length === 0;
   
