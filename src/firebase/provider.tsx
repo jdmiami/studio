@@ -76,13 +76,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
       return;
     }
-
+  
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => { // Auth state determined
-        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
         if (!firebaseUser && pathname !== '/login') {
-            router.push('/login');
+            // If no user, sign in anonymously
+            signInAnonymously(auth).catch((error) => {
+                 console.error("Anonymous sign-in failed:", error);
+                 setUserAuthState({ user: null, isUserLoading: false, userError: error });
+            });
+        } else {
+             setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
         }
       },
       (error) => { // Auth listener error
@@ -91,7 +96,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     );
     return () => unsubscribe(); // Cleanup
-  }, [auth, pathname, router]); // Depends on the auth instance
+  }, [auth, pathname, router]);
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
