@@ -1,3 +1,4 @@
+
 export type Timestamp = {
   seconds: number;
   nanoseconds: number;
@@ -54,6 +55,7 @@ export interface Provider {
         lng: number;
     };
     contact_phone: string;
+    cost_overrides: Record<string, number>;
 }
 
 export type TransactionItem = {

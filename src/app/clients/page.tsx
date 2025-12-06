@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -46,7 +47,7 @@ export default function ClientsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due' | 'pricing_overrides'>) => {
+  const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due'>) => {
     if (!clientsCollection || !firestore) return;
 
     if (selectedClient) {
@@ -58,7 +59,6 @@ export default function ClientsPage() {
       addDocumentNonBlocking(clientsCollection, {
         ...clientData,
         balance_due: 0,
-        pricing_overrides: {},
       });
     }
   };

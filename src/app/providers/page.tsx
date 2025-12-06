@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -42,7 +43,7 @@ export default function ProvidersPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSaveProvider = (providerData: Omit<Provider, 'id'>) => {
+  const handleSaveProvider = (providerData: Omit<Provider, 'id' | 'cost_overrides'>) => {
      if (!providersCollection || !firestore) return;
 
     if (selectedProvider) {
@@ -51,7 +52,7 @@ export default function ProvidersPage() {
       updateDocumentNonBlocking(providerRef, providerData);
     } else {
       // Add new provider
-      addDocumentNonBlocking(providersCollection, providerData);
+      addDocumentNonBlocking(providersCollection, {...providerData, cost_overrides: {}});
     }
   };
   

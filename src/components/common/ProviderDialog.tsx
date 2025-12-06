@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -41,7 +42,7 @@ type ProviderDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   provider?: Provider | null;
-  onSave: (provider: ProviderFormValues) => void;
+  onSave: (provider: Omit<Provider, 'id' | 'cost_overrides'>) => void;
 };
 
 export function ProviderDialog({
@@ -66,7 +67,11 @@ export function ProviderDialog({
 
   useEffect(() => {
     if (open && provider) {
-      form.reset(provider);
+      form.reset({
+        name: provider.name,
+        contact_phone: provider.contact_phone,
+        address_data: provider.address_data,
+      });
     } else if (open && !provider) {
       form.reset({
         name: '',
@@ -89,7 +94,7 @@ export function ProviderDialog({
             lng: values.address_data.lng || 0,
         }
     };
-    onSave(submissionValues);
+    onSave(submissionValues as Omit<Provider, 'id' | 'cost_overrides'>);
     toast({
       title: provider ? 'Provider Updated' : 'Provider Created',
       description: `Provider "${values.name}" has been successfully saved.`,
