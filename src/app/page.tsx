@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Client, Product, Transaction } from '@/lib/types';
 import { collection } from 'firebase/firestore';
-import { OnboardingGuide } from '@/components/common/OnboardingGuide';
 
 export default function DashboardPage() {
   const firestore = useFirestore();
@@ -34,8 +33,6 @@ export default function DashboardPage() {
 
   const isLoading = isUserLoading || isClientsLoading || isProductsLoading || isTransactionsLoading;
 
-  const showOnboarding = !isLoading && clients?.length === 0 && products?.length === 0;
-  
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -48,9 +45,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      {showOnboarding ? (
-        <OnboardingGuide />
-      ) : (
         <>
           <div className="flex items-center">
             <h1 className="font-headline text-3xl font-semibold">Feed</h1>
@@ -143,7 +137,6 @@ export default function DashboardPage() {
             </Card>
           </div>
         </>
-      )}
     </div>
   );
 }

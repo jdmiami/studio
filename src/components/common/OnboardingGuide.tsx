@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Building, Users, Boxes, ShoppingCart } from 'lucide-react';
+import { ArrowRight, Building, Users, Boxes } from 'lucide-react';
 import Link from 'next/link';
 
 const onboardingSteps = [
@@ -36,24 +36,16 @@ const onboardingSteps = [
     href: '/clients',
     step: 3,
   },
-  {
-    icon: ShoppingCart,
-    title: 'Create Your First Sale',
-    description: "You're all set! Now you can create your first sale and generate an invoice.",
-    buttonText: 'Create a Sale',
-    href: '/sales',
-    step: 4,
-  },
 ];
 
 export function OnboardingGuide() {
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-card p-12 text-center shadow-lg">
-        <div className="mb-4">
+        <div className="mb-8">
             <h1 className="font-headline text-4xl font-bold text-primary">Welcome to CocoSales AI!</h1>
             <p className="mt-2 text-lg text-muted-foreground">Let's get your business set up in a few simple steps.</p>
         </div>
-        <div className="grid w-full max-w-4xl gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid w-full max-w-4xl gap-8 md:grid-cols-2 lg:grid-cols-3">
             {onboardingSteps.map((step, index) => (
             <div key={step.step} className="relative flex">
                 <Card className="flex flex-1 flex-col justify-between text-left transition-all hover:scale-105 hover:shadow-primary/20">

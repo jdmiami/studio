@@ -26,15 +26,11 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { VoiceCommandButton } from './VoiceCommandButton';
 import { Logo } from './Logo';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BottomNavBar } from './BottomNavBar';
-import { SheetTitle } from '../ui/sheet';
 import { useAuth, useUser } from '@/firebase';
-
-const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -42,7 +38,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
 
-  if (pathname === '/login') {
+  const isAuthPage = pathname === '/login' || pathname === '/onboarding';
+
+  if (isAuthPage) {
     return <>{children}</>;
   }
   
@@ -111,9 +109,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 p-2">
             <Avatar className="h-9 w-9">
               <AvatarImage
-                src={user?.photoURL || userAvatar?.imageUrl}
+                src={user?.photoURL || undefined}
                 alt="User Avatar"
-                data-ai-hint={userAvatar?.imageHint}
               />
               <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
             </Avatar>
