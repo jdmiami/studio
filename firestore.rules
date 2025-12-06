@@ -1,0 +1,136 @@
+/**
+ * @file firestore.rules
+ * @description Firestore security rules for the CocOs application.
+ *
+ * ## Core Philosophy
+ * This ruleset implements a Role-Based Access Control (RBAC) model. There are two primary roles inferred from the data structure:
+ * 1.  **Admin**: Users granted administrative privileges. They can manage core business data like products, clients, and transactions.
+ * 2.  **Standard User (e.g., Driver)**: Any authenticated user who is not an admin. They have read-only access to business data required for their operational tasks but can only write to their own user profile.
+ *
+ * Unauthenticated access is denied for all operations.
+ *
+ * ## Data Structure
+ * The database consists of several top-level collections for core entities: `users`, `products`, `clients`, and `transactions`.
+ * A special collection, `/roles_admin`, is used as a lookup table to grant admin privileges. The existence of a document at `/roles_admin/{userId}` signifies that the user is an admin.
+ *
+ * ## Key Security Decisions
+ * - **Admin Rights via Lookup**: Admin status is determined by a fast `exists()` check against the `/roles_admin` collection. This avoids slow and costly `get()` calls.
+ * - **Client-Side Immutability of Roles**: The `/roles_admin` collection is not writable by any client, preventing users from escalating their own privileges. It must be managed server-side or via the Firebase Console.
+ * - **Default Read Access**: Most core business data (`products`, `clients`, `transactions`) is readable by any authenticated user to support operational needs (e.g., a driver viewing a client's address or a product list).
+ * - **Strict Write Control**: All write operations (create, update, delete) on core business data are restricted to admins.
+ * - **User Data Privacy**: A user can only access and modify their own document within the `/users` collection. Listing all users is prohibited.
+ *
+ * ## Denormalization for Authorization
+ * The primary use of denormalization is the `/roles_admin/{userId}` collection. Instead of storing a `role` field on the `/users/{userId}` document (which would require a `get()` call in every rule), we use a separate collection. This allows for a single, performant `exists()` check in a helper function (`isAdmin()`) that can be reused across the entire ruleset.
+ *
+ * ## Structural Segregation
+ * The `/roles_admin` collection segregates sensitive authorization data from general user profile data in the `/users` collection. This separation enhances security by allowing us to apply much stricter rules (no client reads or writes) to the role assignments.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for concise and readable rules
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Admin status is granted if a document with the user's UID exists in the roles_admin collection.
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * @description Rules for user profile documents.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user profile document for the first time. `auth.uid` must match `userId`.
+     * @allow (get/update) An authenticated user reading or modifying their own profile.
+     * @deny (list) Any user attempting to list all user profiles in the database.
+     * @deny (delete) Any user, including the owner, trying to delete a user profile.
+     * @principle Restricts access to a user's own data tree and enforces self-creation.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for product and batch data. Products and their inventory batches are readable by any authenticated user but can only be managed by admins.
+     * @path /products/{productId} and its subcollections.
+     * @allow (get/list) Any signed-in user (e.g., a driver) reading product information.
+     * @allow (create/update/delete) An admin creating, updating, or removing a product.
+     * @deny (create/update/delete) A non-admin user trying to modify the product catalog.
+     * @principle Enforces read access for operational needs and write access for administrative roles.
+     */
+    match /products/{productId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+
+      match /batches/{batchId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isAdmin();
+        allow update: if isAdmin() && resource != null;
+        allow delete: if isAdmin() && resource != null;
+      }
+    }
+
+    /**
+     * @description Rules for client documents. Client data is readable by all signed-in users but can only be created or modified by admins.
+     * @path /clients/{clientId}
+     * @allow (get/list) Any signed-in user reading client information for deliveries or sales.
+     * @allow (create) An admin user creating a new client document.
+     * @deny (create) A non-admin user attempting to create a new client.
+     * @deny (update/delete) A non-admin user trying to modify or delete an existing client.
+     * @principle Enforces read access for operational needs and write access for administrative roles.
+     */
+    match /clients/{clientId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Rules for transaction documents. Transactions are readable by all authenticated users but can only be managed by admins.
+     * @path /transactions/{transactionId}
+     * @allow (get/list) Any signed-in user viewing transaction history.
+     * @allow (create/update/delete) An admin creating or modifying a transaction record.
+     * @deny (create/update/delete) A non-admin user attempting to alter transaction records.
+     * @principle Enforces read access for operational needs and write access for administrative roles.
+     */
+    match /transactions/{transactionId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Rules for the admin role collection. This collection is used as a lookup for authorization and MUST NOT be modifiable by any client.
+     * @path /roles_admin/{userId}
+     * @allow (none) No client-side operations are permitted.
+     * @deny (all) All read and write operations are explicitly denied to prevent privilege escalation or enumeration of admins.
+     * @principle Secures authorization data by making it immutable from the client-side. It should only be managed via the Firebase Console or a trusted backend server.
+     */
+    match /roles_admin/{userId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

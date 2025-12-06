@@ -1,0 +1,398 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the CocOs system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "uid": {
+          "type": "string",
+          "description": "Firebase user ID (UID)."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "User's role (admin or driver)."
+        },
+        "settings": {
+          "type": "string",
+          "description": "Settings object",
+          "format": "string"
+        }
+      },
+      "required": [
+        "id",
+        "uid",
+        "email",
+        "role",
+        "settings"
+      ]
+    },
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product available for sale.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Product entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name."
+        },
+        "defaultPrice": {
+          "type": "number",
+          "description": "Default price of the product (Level 1 Pricing Rule)."
+        },
+        "defaultCost": {
+          "type": "number",
+          "description": "Default cost of the product."
+        },
+        "currentStock": {
+          "type": "number",
+          "description": "Current stock level of the product."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measure for the product (e.g., unit, case, gallon)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "defaultPrice",
+        "defaultCost",
+        "currentStock",
+        "unit"
+      ]
+    },
+    "Batch": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Batch",
+      "type": "object",
+      "description": "Represents a batch of products in inventory.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Batch entity."
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference to Product. (Relationship: Product 1:N Batch)"
+        },
+        "providerId": {
+          "type": "string",
+          "description": "Reference to Provider. (Relationship: Provider 1:N Batch)"
+        },
+        "quantityRemaining": {
+          "type": "number",
+          "description": "Remaining quantity of the product in this batch."
+        },
+        "costPerUnit": {
+          "type": "number",
+          "description": "Cost per unit for this batch."
+        },
+        "receivedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the batch was received.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "productId",
+        "providerId",
+        "quantityRemaining",
+        "costPerUnit",
+        "receivedAt"
+      ]
+    },
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Represents a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Client entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Client's name."
+        },
+        "addressData": {
+          "type": "string",
+          "description": "Client's address data (Google Maps JSON)."
+        },
+        "contactPhone": {
+          "type": "string",
+          "description": "Client's contact phone number."
+        },
+        "balanceDue": {
+          "type": "number",
+          "description": "Client's outstanding balance."
+        },
+        "pricingOverrides": {
+          "type": "string",
+          "description": "Client-specific pricing overrides (Level 2 Pricing Rule)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "addressData",
+        "contactPhone",
+        "balanceDue",
+        "pricingOverrides"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a transaction (sale, restock, or waste).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transaction entity."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of transaction (sale, restock, or waste)."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to Client. (Relationship: Client 1:N Transaction). Nullable for restock/waste."
+        },
+        "providerId": {
+          "type": "string",
+          "description": "Reference to Provider. (Relationship: Provider 1:N Transaction). Nullable for sales/waste."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the transaction.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the transaction (draft, delivered, paid)."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount of the transaction."
+        },
+        "items": {
+          "type": "array",
+          "description": "Array of items included in the transaction.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "date",
+        "status",
+        "totalAmount",
+        "items"
+      ]
+    },
+    "Provider": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Provider",
+      "type": "object",
+      "description": "Represents a provider.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Provider entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Provider's name."
+        },
+        "contactPhone": {
+          "type": "string",
+          "description": "Provider's contact phone number."
+        },
+        "costOverrides": {
+          "type": "string",
+          "description": "Provider-specific cost overrides."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "contactPhone",
+        "costOverrides"
+      ]
+    },
+    "Item": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Item",
+      "type": "object",
+      "description": "Represents an item in a transaction.",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "Reference to Product. (Relationship: Product 1:N Item)"
+        },
+        "productName": {
+          "type": "string",
+          "description": "Name of the product."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the product in this item."
+        },
+        "appliedPrice": {
+          "type": "number",
+          "description": "Final resolved price for this item."
+        },
+        "pricingLevelUsed": {
+          "type": "number",
+          "description": "Pricing level used to calculate the price (1, 2, or 3)."
+        },
+        "batchIdsDeducted": {
+          "type": "array",
+          "description": "References to Batches deducted for this item. (Relationship: Batch N:N Item)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "productId",
+        "productName",
+        "quantity",
+        "appliedPrice",
+        "pricingLevelUsed",
+        "batchIdsDeducted"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. The 'userId' parameter is the Firebase user ID (UID).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Firebase user ID (UID)."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores product information. Each document represents a unique product.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "Unique identifier for the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}/batches/{batchId}",
+        "definition": {
+          "entityName": "Batch",
+          "schema": {
+            "$ref": "#/backend/entities/Batch"
+          },
+          "description": "Stores batch information for each product. Enables FIFO inventory management.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "Unique identifier for the product."
+            },
+            {
+              "name": "batchId",
+              "description": "Unique identifier for the batch."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Stores client information, including pricing overrides.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "Unique identifier for the client."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores transaction data (sales, restocks, waste).",
+          "params": [
+            {
+              "name": "transactionId",
+              "description": "Unique identifier for the transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Indicates admin roles. Existence of a document grants admin access.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Firebase user ID (UID)."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the CocOs application's core features, including user authentication, inventory management, client management, sales & invoicing, and AI integration. The structure emphasizes authorization independence and supports QAPs by denormalizing authorization context and segregating data based on access needs.\n\n**Authorization Independence:**\n\n*   No `get()` calls are required in security rules.\n*   Access control is determined solely by `request.auth.uid` and data within the document being accessed.\n\n**QAPs (Rules are not Filters):**\n\n*   Secure `list` operations are enabled through structural segregation.\n\n**Structure:**\n\n*   `/users/{userId}`: Stores user profiles, including role information (admin or driver).\n*   `/products/{productId}`: Stores product information, including default price and cost.\n*   `/products/{productId}/batches/{batchId}`: Stores batch information for each product, enabling FIFO inventory management.\n*   `/clients/{clientId}`: Stores client information, including pricing overrides.\n*   `/transactions/{transactionId}`: Stores transaction data (sales, restocks, waste).\n*   `/roles_admin/{userId}`: Indicates admin roles. Existence of a document grants admin access.\n\nThis structure enables simple, robust, and easily debuggable security rules that scales with the application."
+  }
+}
