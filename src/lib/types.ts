@@ -48,7 +48,11 @@ export interface Client {
 export interface Provider {
     id: string;
     name: string;
-    address: string;
+    address_data: {
+        formatted_address: string;
+        lat: number;
+        lng: number;
+    };
     contact_phone: string;
 }
 
