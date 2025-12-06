@@ -69,13 +69,17 @@ export type TransactionItem = {
 
 export interface Transaction {
   id: string;
+  invoice_number?: string;
   type: 'sale' | 'restock' | 'waste';
   client_id?: string | null;
   client_name?: string;
   provider_id?: string | null;
   provider_name?: string;
   date: Date | Timestamp;
-  status: 'draft' | 'delivered' | 'paid';
+  service_date?: Date | Timestamp;
+  payment_due_date?: Date | Timestamp;
+  status: 'draft' | 'delivered' | 'paid' | 'void';
   total_amount: number;
   items: TransactionItem[];
+  notes?: string;
 }

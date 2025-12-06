@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -23,9 +24,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Client, Product } from '@/lib/types';
-import { collection } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import type { Client, Product, Transaction, TransactionItem } from '@/lib/types';
+import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 type LineItem = {
   id: number;
@@ -37,6 +39,7 @@ type LineItem = {
 export default function SalesPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
   const { user, isUserLoading } = useUser();
 
   const clientsCollection = useMemoFirebase(() => {
@@ -53,6 +56,7 @@ export default function SalesPage() {
 
   const [clientId, setClientId] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: 1, productId: '', quantity: 1, price: 0 },
   ]);
@@ -65,19 +69,44 @@ export default function SalesPage() {
     setLineItems(lineItems.filter(item => item.id !== id));
   };
 
+  const handleClientChange = (selectedClientId: string) => {
+    setClientId(selectedClientId);
+    const client = clients?.find(c => c.id === selectedClientId);
+    if (!client || !products) return;
+
+    // Update prices based on client-specific pricing
+    setLineItems(lineItems.map(item => {
+        if (!item.productId) return item;
+        const product = products.find(p => p.id === item.productId);
+        if (!product) return item;
+
+        const clientPrice = client.pricing_overrides?.[item.productId];
+        return {
+            ...item,
+            price: clientPrice ?? product.default_price,
+        };
+    }));
+  };
+
   const handleItemChange = (id: number, field: keyof Omit<LineItem, 'id'>, value: string | number) => {
+    const client = clients?.find(c => c.id === clientId);
+
     setLineItems(lineItems.map(item => {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value };
         if (field === 'productId' && products) {
           const product = products.find(p => p.id === value);
-          updatedItem.price = product?.default_price || 0;
+          if (product) {
+              const clientPrice = client?.pricing_overrides?.[product.id];
+              updatedItem.price = clientPrice ?? product.default_price;
+          }
         }
         return updatedItem;
       }
       return item;
     }));
   };
+
 
   const subtotal = useMemo(() => {
     return lineItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
@@ -86,7 +115,8 @@ export default function SalesPage() {
   const tax = subtotal * 0.0; // Assuming 0% tax for now
   const total = subtotal + tax;
 
-  const handleCreateInvoice = () => {
+  const handleCreateInvoice = async () => {
+    if (!firestore) return;
     if (!clientId || lineItems.some(item => !item.productId || item.quantity <= 0)) {
        toast({
         variant: "destructive",
@@ -95,16 +125,73 @@ export default function SalesPage() {
       });
       return;
     }
-    
-    toast({
-      title: "Invoice Created",
-      description: `Successfully created invoice for ${clients?.find(c => c.id === clientId)?.name}. Total: $${total.toFixed(2)}`,
-    });
 
-    // Reset form
-    setClientId('');
-    setLineItems([{ id: 1, productId: '', quantity: 1, price: 0 }]);
-    setNotes('');
+    setIsSubmitting(true);
+    const selectedClient = clients?.find(c => c.id === clientId);
+    if (!selectedClient) {
+        toast({ variant: "destructive", title: "Client not found" });
+        setIsSubmitting(false);
+        return;
+    }
+
+    try {
+        const batch = writeBatch(firestore);
+
+        // 1. Create the sale transaction
+        const transactionRef = doc(collection(firestore, "transactions"));
+        
+        const invoiceItems: TransactionItem[] = lineItems.map(item => {
+            const product = products?.find(p => p.id === item.productId);
+            return {
+                product_id: item.productId,
+                product_name: product?.name || 'Unknown Product',
+                quantity: item.quantity,
+                applied_price: item.price,
+            }
+        });
+
+        const newTransaction: Omit<Transaction, 'id'> = {
+            type: 'sale',
+            client_id: selectedClient.id,
+            client_name: selectedClient.name,
+            date: new Date(),
+            status: 'draft',
+            total_amount: total,
+            items: invoiceItems,
+            notes: notes,
+        };
+        batch.set(transactionRef, newTransaction);
+
+        // 2. Update product stock and client balance
+        for (const item of lineItems) {
+            const productRef = doc(firestore, 'products', item.productId);
+            const product = products?.find(p => p.id === item.productId);
+            if (product) {
+                 const newStock = (product.current_stock || 0) - item.quantity;
+                 batch.update(productRef, { current_stock: newStock });
+            }
+        }
+
+        const clientRef = doc(firestore, 'clients', selectedClient.id);
+        const newBalance = selectedClient.balance_due + total;
+        batch.update(clientRef, { balance_due: newBalance });
+
+
+        await batch.commit();
+
+        toast({
+            title: "Invoice Created",
+            description: `Invoice for ${selectedClient.name} has been saved as a draft.`,
+        });
+
+        router.push('/invoices');
+
+    } catch (error) {
+        console.error("Error creating invoice: ", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not create the invoice." });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const showLoading = isUserLoading || isClientsLoading || isProductsLoading;
@@ -125,7 +212,7 @@ export default function SalesPage() {
             <CardContent className="grid gap-6">
               <div className="grid gap-3">
                 <Label htmlFor="client">Client</Label>
-                <Select value={clientId} onValueChange={setClientId} disabled={showLoading}>
+                <Select value={clientId} onValueChange={handleClientChange} disabled={showLoading}>
                   <SelectTrigger id="client" className="h-14 text-lg">
                     <SelectValue placeholder={showLoading ? "Loading clients..." : "Select a client"} />
                   </SelectTrigger>
@@ -207,7 +294,9 @@ export default function SalesPage() {
                     </div>
                 </CardContent>
                 <CardFooter>
-                     <Button className="h-14 w-full text-lg" onClick={handleCreateInvoice}>Create Invoice</Button>
+                     <Button className="h-14 w-full text-lg" onClick={handleCreateInvoice} disabled={isSubmitting || showLoading}>
+                        {isSubmitting ? 'Creating...' : 'Create Invoice'}
+                    </Button>
                 </CardFooter>
             </Card>
         </div>

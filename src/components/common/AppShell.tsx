@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -12,6 +13,7 @@ import {
   Truck,
   Users,
   Building,
+  FileText,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -46,9 +48,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   
   const menuItems = [
     { href: '/', label: 'Feed', icon: Home },
+    { href: '/invoices', label: 'Invoices', icon: FileText },
     { href: '/inventory', label: 'Inventory', icon: Boxes },
     { href: '/clients', label: 'Clients', icon: Users },
-    { href: '/sales', label: 'Sales', icon: ShoppingCart },
+    { href: '/sales', label: 'New Sale', icon: ShoppingCart },
     { href: '/restocks', label: 'Restocks', icon: Truck },
     { href: '/providers', label: 'Providers', icon: Building },
   ];
