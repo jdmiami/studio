@@ -103,6 +103,21 @@ service cloud.firestore {
     }
 
     /**
+     * @description Rules for provider documents. Provider data is readable by all signed-in users and can be managed by any authenticated user.
+     * @path /providers/{providerId}
+     * @allow (get/list) Any signed-in user reading provider information.
+     * @allow (create/update/delete) Any signed-in user managing provider data.
+     * @principle Allows any authenticated user to manage their own list of providers.
+     */
+    match /providers/{providerId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
      * @description Rules for transaction documents. Transactions are readable by all authenticated users but can only be managed by admins.
      * @path /transactions/{transactionId}
      * @allow (get/list) Any signed-in user viewing transaction history.
