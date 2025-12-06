@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client, Transaction } from '@/lib/types';
-import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 
 export default function ClientDetailsPage() {
@@ -35,7 +35,6 @@ export default function ClientDetailsPage() {
 
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore || !clientId) return null;
-    // Correctly query for transactions related to this client
     return query(collection(firestore, 'transactions'), where('clientId', '==', clientId));
   }, [firestore, clientId]);
 
@@ -43,11 +42,12 @@ export default function ClientDetailsPage() {
 
   const isLoading = isClientLoading || isTransactionsLoading;
 
-  if (isLoading) {
+  if (isClientLoading) {
     return <div className="p-8">Loading client details...</div>;
   }
   
-  if (!isLoading && !client) {
+  // Only call notFound if loading is finished and there's still no client
+  if (!isClientLoading && !client) {
     notFound();
   }
 
@@ -57,6 +57,7 @@ export default function ClientDetailsPage() {
   };
   
   if (!client) {
+      // This path should ideally not be taken if the above checks are correct, but it's a safe fallback.
       return <div className="p-8">Client not found.</div>;
   }
 
@@ -104,7 +105,8 @@ export default function ClientDetailsPage() {
                     <CardTitle>Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                     {clientTransactions && clientTransactions.length > 0 ? (
+                     {isTransactionsLoading ? <p className="p-6 text-muted-foreground">Loading transactions...</p> : 
+                     (clientTransactions && clientTransactions.length > 0 ? (
                         <div className="space-y-4">
                             {clientTransactions.map((transaction) => (
                             <TransactionCard key={transaction.id} transaction={transaction} />
@@ -115,7 +117,7 @@ export default function ClientDetailsPage() {
                             <p>No transactions for this client yet.</p>
                             <Link href="/sales"><Button variant="link">Create a sale</Button></Link>
                         </div>
-                        )}
+                        ))}
                 </CardContent>
             </Card>
         </div>
