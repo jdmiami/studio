@@ -11,11 +11,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/common/Logo';
-import { useAuth, initiateEmailSignIn, useUser, initiateGoogleSignIn } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  AuthError,
+} from 'firebase/auth';
+import { Loader2 } from 'lucide-react';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -53,6 +60,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && user) {
@@ -60,7 +68,35 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleAuthError = (error: AuthError) => {
+    let title = 'Login Failed';
+    let description = 'An unexpected error occurred. Please try again.';
+
+    switch (error.code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        title = 'Invalid Credentials';
+        description = 'The email or password you entered is incorrect.';
+        break;
+      case 'auth/popup-blocked':
+        title = 'Popup Blocked';
+        description = 'Your browser blocked the sign-in popup. Please allow popups for this site and try again.';
+        break;
+      case 'auth/cancelled-popup-request':
+        title = 'Login Canceled';
+        description = 'The sign-in process was canceled.';
+        break;
+    }
+    
+    toast({
+      variant: 'destructive',
+      title,
+      description,
+    });
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast({
@@ -70,11 +106,28 @@ export default function LoginPage() {
       });
       return;
     }
-    initiateEmailSignIn(auth, email, password);
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // Let the onAuthStateChanged listener handle navigation
+    } catch (error) {
+      handleAuthError(error as AuthError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleSignIn = () => {
-    initiateGoogleSignIn(auth);
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      // Let the onAuthStateChanged listener handle navigation
+    } catch (error) {
+      handleAuthError(error as AuthError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isUserLoading || user) {
@@ -99,9 +152,13 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <Button variant="outline" className="h-12 w-full text-base" onClick={handleGoogleSignIn}>
+            <Button variant="outline" className="h-12 w-full text-base" onClick={handleGoogleSignIn} disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
                 <GoogleIcon className="mr-2" />
-                Sign in with Google
+              )}
+              Sign in with Google
             </Button>
             <div className="flex items-center gap-4">
                 <Separator className="flex-1" />
@@ -119,6 +176,7 @@ export default function LoginPage() {
                     className="h-12 text-base"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -138,9 +196,11 @@ export default function LoginPage() {
                     className="h-12 text-base"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
-                <Button type="submit" className="h-12 w-full text-base">
+                <Button type="submit" className="h-12 w-full text-base" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Login
                 </Button>
             </form>
