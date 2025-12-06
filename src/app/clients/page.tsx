@@ -107,7 +107,7 @@ export default function ClientsPage() {
               {!showLoading && clients?.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    No clients found.
+                    No clients found. Add one to get started.
                   </TableCell>
                 </TableRow>
               )}
