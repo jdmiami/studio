@@ -16,6 +16,7 @@ import { Edit, Plus } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, useUser } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
+import Link from 'next/link';
 
 export default function InventoryPage() {
   const firestore = useFirestore();
@@ -117,9 +118,11 @@ export default function InventoryPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full">
-                  View Batches
-                </Button>
+                <Link href={`/inventory/${product.id}/batches`} className="w-full">
+                  <Button variant="outline" className="w-full">
+                    View Batches
+                  </Button>
+                </Link>
               </CardFooter>
             </Card>
           ))}

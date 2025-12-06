@@ -1,13 +1,11 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { clients as initialClients, transactions as allTransactions } from '@/lib/placeholder-data';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, MapPin, Phone, Plus } from 'lucide-react';
@@ -16,35 +14,55 @@ import { TransactionCard } from '@/components/common/TransactionCard';
 import { notFound } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
-import type { Client } from '@/lib/types';
+import type { Client, Transaction } from '@/lib/types';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 
 export default function ClientDetailsPage() {
   const params = useParams();
   const clientId = params.clientId as string;
   const router = useRouter();
+  const firestore = useFirestore();
 
-  const [clients, setClients] = useState(initialClients);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const client = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId]);
-  
-  const clientTransactions = useMemo(
-    () => allTransactions.filter((t) => t.type === 'sale' && t.client_id === clientId),
-    [clientId]
-  );
+  const clientRef = useMemoFirebase(() => {
+    if (!firestore || !clientId) return null;
+    return doc(firestore, 'clients', clientId);
+  }, [firestore, clientId]);
 
-  if (!client) {
+  const { data: client, isLoading: isClientLoading } = useDoc<Client>(clientRef);
+
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!firestore || !clientId) return null;
+    return collection(firestore, 'transactions'); // A more specific query could be used here
+  }, [firestore, clientId]);
+
+  const { data: allTransactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
+
+  const clientTransactions = useMemo(
+    () => allTransactions?.filter((t) => t.type === 'sale' && t.client_id === clientId) || [],
+    [allTransactions, clientId]
+  );
+  
+  const isLoading = isClientLoading || isTransactionsLoading;
+
+  if (isLoading) {
+    return <div className="p-8">Loading client details...</div>;
+  }
+  
+  if (!client && !isLoading) {
     notFound();
   }
 
-  const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due' | 'pricing_overrides'>) => {
-    setClients(
-      clients.map((c) =>
-        c.id === client.id ? { ...c, ...clientData } : c
-      )
-    );
+  const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due'>) => {
+    if (!clientRef) return;
+    updateDocumentNonBlocking(clientRef, clientData);
   };
-
+  
+  if (!client) {
+      return <div className="p-8">Client not found.</div>;
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
