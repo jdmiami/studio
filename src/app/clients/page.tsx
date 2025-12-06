@@ -31,17 +31,17 @@ import {
 export default function ClientsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  
-  const clientsCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, 'clients');
-  }, [firestore, user]);
-
-  const { data: clients, isLoading } = useCollection<Client>(clientsCollection);
+  const router = useRouter();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const router = useRouter();
+
+  const clientsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'clients');
+  }, [firestore]);
+
+  const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsCollection);
 
   const handleAddClick = () => {
     setSelectedClient(null);
@@ -57,11 +57,9 @@ export default function ClientsPage() {
     if (!clientsCollection || !firestore) return;
 
     if (selectedClient) {
-      // Edit existing client
       const clientRef = doc(firestore, 'clients', selectedClient.id);
       updateDocumentNonBlocking(clientRef, clientData);
     } else {
-      // Add new client
       addDocumentNonBlocking(clientsCollection, {
         ...clientData,
         balance_due: 0,
@@ -69,7 +67,7 @@ export default function ClientsPage() {
     }
   };
   
-  const showLoading = isLoading || isUserLoading;
+  const showLoading = isUserLoading || areClientsLoading;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -146,5 +144,3 @@ export default function ClientsPage() {
     </div>
   );
 }
-
-    

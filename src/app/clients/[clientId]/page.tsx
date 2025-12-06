@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -12,7 +13,7 @@ import { ArrowLeft, Edit, MapPin, Phone, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { TransactionCard } from '@/components/common/TransactionCard';
 import { notFound } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client, Transaction } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
@@ -27,11 +28,13 @@ export default function ClientDetailsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // STAGE 1: Wait for user to be authenticated before creating a query
   const clientRef = useMemoFirebase(() => {
     if (!firestore || !clientId) return null;
     return doc(firestore, 'clients', clientId);
   }, [firestore, clientId]);
-
+  
+  // STAGE 2: Start fetching data only after clientRef is created
   const { data: client, isLoading: isClientLoading } = useDoc<Client>(clientRef);
 
   const transactionsQuery = useMemoFirebase(() => {
@@ -46,19 +49,23 @@ export default function ClientDetailsPage() {
     updateDocumentNonBlocking(clientRef, clientData);
   };
   
+  // STAGE 3: Determine the final loading state and whether to show a 404
   const isLoading = isUserLoading || isClientLoading;
 
-  // We must wait for both user and client data to finish loading before rendering.
-  if (isLoading) {
-    return <div className="p-8">Loading client details...</div>;
-  }
-
-  // After loading is complete, if the client is still not found, then show the 404 page.
-  if (!client) {
+  // We must wait for ALL loading to be complete before deciding to show a 404 page.
+  if (!isLoading && !client) {
     notFound();
   }
 
+  if (isLoading) {
+    return (
+        <div className="flex flex-1 flex-col items-center justify-center p-8">
+            <p className="text-muted-foreground">Loading client details...</p>
+        </div>
+    );
+  }
 
+  // If we reach here, isLoading is false and client exists.
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="flex items-center gap-4">
@@ -130,5 +137,3 @@ export default function ClientDetailsPage() {
     </div>
   );
 }
-
-    
