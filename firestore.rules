@@ -72,47 +72,49 @@ service cloud.firestore {
     match /products/{productId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
 
       match /batches/{batchId} {
         allow get: if isSignedIn();
         allow list: if isSignedIn();
-        allow create: if isSignedIn();
-        allow update: if isSignedIn() && resource != null;
-        allow delete: if isSignedIn() && resource != null;
+        allow create: if isAdmin();
+        allow update: if isAdmin() && resource != null;
+        allow delete: if isAdmin() && resource != null;
       }
     }
 
     /**
-     * @description Rules for client documents. Client data is readable by all signed-in users but can only be created or modified by any signed-in user.
+     * @description Rules for client documents. Client data is readable by all signed-in users but can only be created or modified by admins.
      * @path /clients/{clientId}
      * @allow (get/list) Any signed-in user reading client information for deliveries or sales.
-     * @allow (create/update/delete) Any signed-in user creating, updating, or deleting a client document.
-     * @principle Enforces read access for operational needs and allows any authenticated user to manage clients.
+     * @allow (create/update/delete) An admin creating, updating, or deleting a client document.
+     * @deny (create/update/delete) A non-admin attempting to modify client data.
+     * @principle Enforces read access for operational needs and write access for administrative roles.
      */
     match /clients/{clientId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rules for provider documents. Provider data is readable by all signed-in users and can be managed by any authenticated user.
+     * @description Rules for provider documents. Provider data is readable by all signed-in users and can be managed by admins.
      * @path /providers/{providerId}
      * @allow (get/list) Any signed-in user reading provider information.
-     * @allow (create/update/delete) Any signed-in user managing provider data.
-     * @principle Allows any authenticated user to manage their own list of providers.
+     * @allow (create/update/delete) An admin managing provider data.
+     * @deny (create/update/delete) A non-admin attempting to modify provider data.
+     * @principle Allows read access for all and write access for admins.
      */
     match /providers/{providerId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
@@ -126,9 +128,9 @@ service cloud.firestore {
     match /transactions/{transactionId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
@@ -147,5 +149,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
