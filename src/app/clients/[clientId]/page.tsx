@@ -45,9 +45,10 @@ export default function ClientDetailsPage() {
     if (!clientRef) return;
     updateDocumentNonBlocking(clientRef, clientData);
   };
-
+  
   const isLoading = isUserLoading || isClientLoading;
 
+  // We must wait for both user and client data to finish loading before rendering.
   if (isLoading) {
     return <div className="p-8">Loading client details...</div>;
   }
@@ -56,6 +57,7 @@ export default function ClientDetailsPage() {
   if (!client) {
     notFound();
   }
+
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
