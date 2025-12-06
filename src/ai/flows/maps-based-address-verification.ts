@@ -38,13 +38,7 @@ const searchMaps = ai.defineTool({
 async (input) => {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY") {
-    console.warn("Google Maps API key is not configured. Using mock data.");
-    return {
-      name: `Mock Location for ${input.query}`,
-      formatted_address: '123 Main St, Anytown, USA 12345',
-      lat: 34.0522,
-      lng: -118.2437,
-    };
+    throw new Error("Google Maps API key is not configured. Please add it to your .env.local file.");
   }
 
   const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(input.query)}&inputtype=textquery&fields=formatted_address,name,geometry&key=${apiKey}`;
@@ -61,7 +55,7 @@ async (input) => {
         lng: place.geometry.location.lng,
       };
     } else {
-      throw new Error(`Google Maps API returned status: ${data.status}`);
+      throw new Error(`Google Maps API returned status: ${data.status}. This may be due to an invalid or restricted API key.`);
     }
   } catch (error) {
     console.error('Error fetching data from Google Maps API:', error);
