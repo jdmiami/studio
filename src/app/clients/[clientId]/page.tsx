@@ -12,7 +12,7 @@ import { ArrowLeft, Edit, MapPin, Phone, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { TransactionCard } from '@/components/common/TransactionCard';
 import { notFound } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client, Transaction } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
@@ -28,16 +28,16 @@ export default function ClientDetailsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const clientRef = useMemoFirebase(() => {
-    if (!firestore || !clientId || isUserLoading) return null;
+    if (!firestore || !clientId) return null;
     return doc(firestore, 'clients', clientId);
-  }, [firestore, clientId, isUserLoading]);
+  }, [firestore, clientId]);
 
   const { data: client, isLoading: isClientLoading } = useDoc<Client>(clientRef);
 
   const transactionsQuery = useMemoFirebase(() => {
-    if (!firestore || !clientId || isUserLoading) return null;
+    if (!firestore || !clientId) return null;
     return query(collection(firestore, 'transactions'), where('clientId', '==', clientId));
-  }, [firestore, clientId, isUserLoading]);
+  }, [firestore, clientId]);
 
   const { data: clientTransactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
@@ -51,13 +51,10 @@ export default function ClientDetailsPage() {
   if (isLoading) {
     return <div className="p-8">Loading client details...</div>;
   }
-  
-  if (!client && !isLoading) {
-    notFound();
-  }
-  
+
+  // After loading, if the client is still not found, then show the 404 page.
   if (!client) {
-      return <div className="p-8">Client not found.</div>;
+    notFound();
   }
 
   return (
