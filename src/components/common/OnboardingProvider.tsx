@@ -21,21 +21,21 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
 
   const clientsCollection = useMemoFirebase(() => {
-    if (!firestore || isUserLoading) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'clients');
-  }, [firestore, isUserLoading]);
+  }, [firestore, user]);
   const { data: clients, isLoading: isClientsLoading } = useCollection<Client>(clientsCollection);
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore || isUserLoading) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'products');
-  }, [firestore, isUserLoading]);
+  }, [firestore, user]);
   const { data: products, isLoading: isProductsLoading } = useCollection<Product>(productsCollection);
 
   const providersCollection = useMemoFirebase(() => {
-    if (!firestore || isUserLoading) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'providers');
-  }, [firestore, isUserLoading]);
+  }, [firestore, user]);
   const { data: providers, isLoading: isProvidersLoading } = useCollection<Provider>(providersCollection);
 
   const isLoading = isUserLoading || isClientsLoading || isProductsLoading || isProvidersLoading;
