@@ -33,7 +33,17 @@ export default function DashboardPage() {
 
   const isLoading = isClientsLoading || isProductsLoading || isTransactionsLoading;
 
-  const showOnboarding = !isLoading && (!clients || clients.length === 0) && (!products || products.length === 0);
+  const showOnboarding = !isLoading && clients?.length === 0 && products?.length === 0;
+  
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex h-full items-center justify-center">
+            <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -59,11 +69,7 @@ export default function DashboardPage() {
                 <CardTitle>Recent Transactions</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {isLoading ? (
-                    <div className="p-6 pt-0 text-center text-muted-foreground">
-                        <p>Loading transactions...</p>
-                    </div>
-                ) : transactions && transactions.length > 0 ? (
+                {transactions && transactions.length > 0 ? (
                   <div className="space-y-4">
                     {transactions.map((transaction) => (
                       <TransactionCard key={transaction.id} transaction={transaction} />
