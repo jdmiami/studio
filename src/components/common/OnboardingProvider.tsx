@@ -39,7 +39,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   }, [firestore, user]);
   const { data: providers, isLoading: isProvidersLoading } = useCollection<Provider>(providersCollection);
 
-  const isLoading = isUserLoading || isClientsLoading || isProductsLoading || isProvidersLoading;
+  const isLoading = isClientsLoading || isProductsLoading || isProvidersLoading;
   
   const isSetupComplete = !!(clients && products && providers && clients.length > 0 && products.length > 0 && providers.length > 0);
 
@@ -73,8 +73,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   }, [isLoading, isSetupComplete, user, isUserLoading, pathname, router]);
 
   const isAuthRelatedPage = pathname === '/login' || pathname === '/onboarding';
-  // Show a global loader only if we are not on an auth page and still loading critical data
-  if (isLoading && !isAuthRelatedPage) {
+  // Show a global loader only while we are confirming user auth state
+  if (isUserLoading && !isAuthRelatedPage) {
     return (
         <div className="flex h-screen items-center justify-center bg-background">
             <p className="text-muted-foreground">Loading application...</p>
