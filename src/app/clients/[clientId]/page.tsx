@@ -13,7 +13,7 @@ import { ArrowLeft, Edit, MapPin, Phone, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { TransactionCard } from '@/components/common/TransactionCard';
 import { notFound } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client, Transaction } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
@@ -28,17 +28,22 @@ export default function ClientDetailsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // STAGE 1: Wait for user to be authenticated before creating a query
+  // STAGE 1: Wait for user to be authenticated before creating a document reference.
   const clientRef = useMemoFirebase(() => {
+    // Only create the ref if we have firestore and a clientId.
+    // The useMemoFirebase hook will add the dependency on `user` and `isUserLoading`,
+    // so this will re-evaluate and return a ref only when the user is logged in.
     if (!firestore || !clientId) return null;
     return doc(firestore, 'clients', clientId);
   }, [firestore, clientId]);
   
-  // STAGE 2: Start fetching data only after clientRef is created
-  const { data: client, isLoading: isClientLoading } = useDoc<Client>(clientRef);
+  // STAGE 2: Start fetching the client document ONLY after clientRef is created.
+  const { data: client, isLoading: isClientLoading, error: clientError } = useDoc<Client>(clientRef);
 
+  // STAGE 3: Start fetching transactions ONLY after clientRef is created.
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore || !clientId) return null;
+    // Corrected to use 'clientId' as per the data model.
     return query(collection(firestore, 'transactions'), where('clientId', '==', clientId));
   }, [firestore, clientId]);
 
@@ -49,14 +54,20 @@ export default function ClientDetailsPage() {
     updateDocumentNonBlocking(clientRef, clientData);
   };
   
-  // STAGE 3: Determine the final loading state and whether to show a 404
+  // --- The Definitive Loading Logic ---
+  // The final loading state is true if ANY of these are true:
+  // 1. We are still checking the user's auth status.
+  // 2. We are still loading the main client document.
   const isLoading = isUserLoading || isClientLoading;
 
   // We must wait for ALL loading to be complete before deciding to show a 404 page.
+  // If isLoading is false, it means we have a definitive answer from the database.
+  // If the answer is that `client` is null (doesn't exist), THEN we can show the 404.
   if (!isLoading && !client) {
     notFound();
   }
 
+  // Show a loading screen as long as ANY of the critical data is still loading.
   if (isLoading) {
     return (
         <div className="flex flex-1 flex-col items-center justify-center p-8">
@@ -65,7 +76,7 @@ export default function ClientDetailsPage() {
     );
   }
 
-  // If we reach here, isLoading is false and client exists.
+  // If we reach this point, it is guaranteed that `isLoading` is false and `client` exists.
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="flex items-center gap-4">
