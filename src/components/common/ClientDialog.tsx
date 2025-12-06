@@ -13,13 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Client, Product } from '@/lib/types';
-import { useEffect } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -29,6 +30,8 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
+import { verifyAddress } from '@/ai/flows/maps-based-address-verification';
+import { Loader2 } from 'lucide-react';
 
 const clientSchema = z.object({
   name: z.string().min(1, 'Client name is required'),
@@ -62,6 +65,8 @@ export function ClientDialog({
   const { toast } = useToast();
   const firestore = useFirestore();
 
+  const [isVerifying, startTransition] = useTransition();
+
   const productsCollection = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'products');
@@ -88,15 +93,11 @@ export function ClientDialog({
   });
 
   useEffect(() => {
-    // This effect ensures the form is reset with the correct client data
-    // every time the dialog is opened or the client prop changes.
     if (open && products) {
         const overrides = products.map(p => {
             const existingOverride = client?.pricing_overrides?.[p.id];
             return {
                 productId: p.id,
-                name: p.name,
-                default_price: p.default_price,
                 price: existingOverride ?? p.default_price,
             };
         });
@@ -113,22 +114,45 @@ export function ClientDialog({
                 name: '',
                 contact_phone: '',
                 address_data: { formatted_address: '', lat: 0, lng: 0 },
-                pricing_overrides: overrides.map(o => ({ productId: o.productId, price: o.default_price})),
+                pricing_overrides: overrides.map(o => ({ ...o, price: products.find(p => p.id === o.productId)?.default_price ?? 0 })),
             });
         }
     }
   }, [client, open, products, form]);
 
 
+  const handleVerifyAddress = () => {
+    const addressQuery = form.getValues('address_data.formatted_address');
+    if (!addressQuery) {
+        form.setError('address_data.formatted_address', { type: 'manual', message: 'Please enter an address to verify.' });
+        return;
+    }
+
+    startTransition(async () => {
+        try {
+            const result = await verifyAddress({ query: addressQuery });
+            form.setValue('address_data.formatted_address', result.formatted_address, { shouldValidate: true });
+            form.setValue('address_data.lat', result.lat);
+            form.setValue('address_data.lng', result.lng);
+            toast({
+                title: 'Address Verified',
+                description: `Set to: ${result.formatted_address}`,
+            });
+        } catch (error) {
+            console.error(error);
+            let errorMessage = 'Failed to verify address. Please check the address and try again.';
+            if (error instanceof Error && error.message.includes('API key')) {
+              errorMessage = 'Address verification is not available. Please configure your Google Maps API key.'
+            }
+            form.setError('address_data.formatted_address', { type: 'manual', message: errorMessage });
+        }
+    });
+  }
+
+
   const handleSubmit = (values: ClientFormValues) => {
-    // Manually set lat/lng to 0 if they aren't provided, as verification is removed
     const submissionValues = {
         ...values,
-        address_data: {
-            ...values.address_data,
-            lat: values.address_data.lat || 0,
-            lng: values.address_data.lng || 0,
-        },
         pricing_overrides: values.pricing_overrides.reduce((acc, item) => {
             const product = products?.find(p => p.id === item.productId);
             // Only save the override if it's different from the default price
@@ -182,14 +206,22 @@ export function ClientDialog({
                   name="address_data.formatted_address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input
-                            {...field}
-                            placeholder="e.g., 123 Main St, Miami, FL"
-                          />
-                      </FormControl>
-                      <FormMessage />
+                        <FormLabel>Address</FormLabel>
+                        <div className="flex gap-2">
+                            <FormControl>
+                                <Input
+                                    {...field}
+                                    placeholder="e.g., 123 Main St, Miami, FL"
+                                />
+                            </FormControl>
+                            <Button type="button" variant="outline" onClick={handleVerifyAddress} disabled={isVerifying}>
+                                {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                            </Button>
+                        </div>
+                        <FormDescription>
+                            Use the verify button to confirm and geocode the address.
+                        </FormDescription>
+                        <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -220,7 +252,7 @@ export function ClientDialog({
                                     key={field.id}
                                     control={form.control}
                                     name={`pricing_overrides.${index}.price`}
-                                    render={({ field }) => (
+                                    render={({ field: formField }) => (
                                         <FormItem>
                                             <FormLabel className="text-sm">{product?.name}</FormLabel>
                                             <div className="flex items-center gap-2">
@@ -230,7 +262,7 @@ export function ClientDialog({
                                                 <FormControl>
                                                     <div className="relative flex-1">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                                                        <Input {...field} type="number" step="0.01" className="pl-7" />
+                                                        <Input {...formField} type="number" step="0.01" className="pl-7" />
                                                     </div>
                                                 </FormControl>
                                             </div>
@@ -245,7 +277,7 @@ export function ClientDialog({
               </div>
             </ScrollArea>
             <DialogFooter className="border-t pt-4">
-              <Button type="submit">Save Client</Button>
+              <Button type="submit" disabled={isVerifying}>Save Client</Button>
             </DialogFooter>
           </form>
         </Form>

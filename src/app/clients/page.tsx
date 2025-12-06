@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   collection,
   doc,
@@ -12,14 +12,21 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Phone, Edit, Plus } from 'lucide-react';
+import { Edit, Plus, Eye } from 'lucide-react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, useUser } from '@/firebase';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export default function ClientsPage() {
   const firestore = useFirestore();
@@ -41,8 +48,7 @@ export default function ClientsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleEditClick = (e: React.MouseEvent, client: Client) => {
-    e.stopPropagation();
+  const handleEditClick = (client: Client) => {
     setSelectedClient(client);
     setIsDialogOpen(true);
   };
@@ -63,12 +69,6 @@ export default function ClientsPage() {
     }
   };
   
-  const handleNavigate = (e: React.MouseEvent, lat: number, lng: number) => {
-    e.stopPropagation();
-    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-    window.open(googleMapsUrl, '_blank');
-  };
-  
   const showLoading = isLoading || isUserLoading;
 
   return (
@@ -83,54 +83,59 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {showLoading && <p>Loading clients...</p>}
-        {!showLoading && clients && clients.length === 0 && (
-          <Card className="md:col-span-2 lg:grid-cols-3">
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              <p>No clients found.</p>
-              <Button variant="link" onClick={handleAddClick}>Add your first client</Button>
-            </CardContent>
-          </Card>
-        )}
-        {clients && clients.map((client) => (
-          <Card key={client.id} className="cursor-pointer hover:bg-card/80" onClick={() => router.push(`/clients/${client.id}`)}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                {client.name}
-                <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, client)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </CardTitle>
-              <CardDescription>
-                Balance:{' '}
-                <span
-                  className={
-                    client.balance_due > 0 ? 'text-accent' : 'text-primary'
-                  }
-                >
-                  ${client.balance_due.toFixed(2)}
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>{client.address_data.formatted_address}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-4 w-4" />
-                <span>{client.contact_phone}</span>
-              </div>
-            </CardContent>
-            <CardFooter className="gap-2">
-              <Button variant="outline" className="w-full" onClick={(e) => handleNavigate(e, client.address_data.lat, client.address_data.lng)}>
-                Navigate
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+       <Card>
+        <CardHeader>
+          <CardTitle>All Clients</CardTitle>
+          <CardDescription>A list of all your clients.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead className="text-right">Balance Due</TableHead>
+                <TableHead className="w-[140px] text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {showLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    Loading clients...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!showLoading && clients?.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    No clients found.
+                  </TableCell>
+                </TableRow>
+              )}
+              {clients?.map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell>{client.contact_phone}</TableCell>
+                  <TableCell className={`text-right font-semibold ${client.balance_due > 0 ? 'text-accent' : ''}`}>
+                    ${client.balance_due.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="flex justify-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => router.push(`/clients/${client.id}`)}>
+                      <Eye className="h-4 w-4" />
+                      <span className="sr-only">View Client</span>
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => handleEditClick(client)}>
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Edit Client</span>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
       
       <ClientDialog
         open={isDialogOpen}
