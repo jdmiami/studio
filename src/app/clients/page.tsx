@@ -18,11 +18,16 @@ import { MapPin, Phone, Edit, Plus } from 'lucide-react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, useUser } from '@/firebase';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
-  const clientsCollection = useMemoFirebase(() => collection(firestore, 'clients'), [firestore]);
+  const { user, isUserLoading } = useUser();
+  
+  const clientsCollection = useMemoFirebase(() => {
+    if (!firestore || isUserLoading) return null;
+    return collection(firestore, 'clients');
+  }, [firestore, isUserLoading]);
   const { data: clients, isLoading } = useCollection<Client>(clientsCollection);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -41,6 +46,8 @@ export default function ClientsPage() {
   };
 
   const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due' | 'pricing_overrides'>) => {
+    if (!clientsCollection) return;
+
     if (selectedClient) {
       // Edit existing client
       const clientRef = doc(firestore, 'clients', selectedClient.id);
@@ -60,13 +67,15 @@ export default function ClientsPage() {
     const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
     window.open(googleMapsUrl, '_blank');
   };
+  
+  const showLoading = isLoading || isUserLoading;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="flex items-center">
         <h1 className="font-headline text-3xl font-semibold">Clients</h1>
         <div className="ml-auto flex items-center gap-2">
-          <Button onClick={handleAddClick}>
+          <Button onClick={handleAddClick} disabled={showLoading}>
             <Plus className="mr-2 h-4 w-4" />
             Add Client
           </Button>
@@ -74,8 +83,8 @@ export default function ClientsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading && <p>Loading clients...</p>}
-        {!isLoading && clients && clients.length === 0 && (
+        {showLoading && <p>Loading clients...</p>}
+        {!showLoading && clients && clients.length === 0 && (
           <Card className="md:col-span-2 lg:col-span-3">
             <CardContent className="pt-6 text-center text-muted-foreground">
               <p>No clients found.</p>
