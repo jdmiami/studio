@@ -82,12 +82,14 @@ export function ClientDialog({
     },
   });
   
-  const { fields, replace } = useFieldArray({
+  const { fields } = useFieldArray({
     control: form.control,
     name: "pricing_overrides",
   });
 
   useEffect(() => {
+    // This effect ensures the form is reset with the correct client data
+    // every time the dialog is opened or the client prop changes.
     if (open && products) {
         const overrides = products.map(p => {
             const existingOverride = client?.pricing_overrides?.[p.id];
@@ -111,7 +113,7 @@ export function ClientDialog({
                 name: '',
                 contact_phone: '',
                 address_data: { formatted_address: '', lat: 0, lng: 0 },
-                pricing_overrides: overrides.map(o => ({...o, price: o.default_price})),
+                pricing_overrides: overrides.map(o => ({ productId: o.productId, price: o.default_price})),
             });
         }
     }

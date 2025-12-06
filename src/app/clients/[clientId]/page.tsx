@@ -12,7 +12,7 @@ import { ArrowLeft, Edit, MapPin, Phone, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { TransactionCard } from '@/components/common/TransactionCard';
 import { notFound } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client, Transaction } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
@@ -40,24 +40,20 @@ export default function ClientDetailsPage() {
 
   const { data: clientTransactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
-  const isLoading = isClientLoading || isTransactionsLoading;
+  const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due'>) => {
+    if (!clientRef) return;
+    updateDocumentNonBlocking(clientRef, clientData);
+  };
 
   if (isClientLoading) {
     return <div className="p-8">Loading client details...</div>;
   }
   
-  // Only call notFound if loading is finished and there's still no client
   if (!isClientLoading && !client) {
     notFound();
   }
-
-  const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due'>) => {
-    if (!clientRef) return;
-    updateDocumentNonBlocking(clientRef, clientData);
-  };
   
   if (!client) {
-      // This path should ideally not be taken if the above checks are correct, but it's a safe fallback.
       return <div className="p-8">Client not found.</div>;
   }
 
