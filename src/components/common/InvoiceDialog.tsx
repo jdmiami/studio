@@ -107,7 +107,13 @@ export function InvoiceDialog({
         console.warn("Balance updates should use Firestore Transactions in a production app.");
     }
 
-    updateDocumentNonBlocking(invoiceRef, values);
+    const dataToUpdate = {
+      ...values,
+      service_date: values.service_date ?? null,
+      payment_due_date: values.payment_due_date ?? null,
+    };
+
+    updateDocumentNonBlocking(invoiceRef, dataToUpdate);
 
     toast({
       title: 'Invoice Updated',
