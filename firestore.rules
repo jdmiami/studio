@@ -86,13 +86,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for client documents. Client data is readable by all signed-in users but can only be created or modified by admins.
+     * @description Rules for client documents. Client data is readable by all signed-in users but can only be created or modified by any signed-in user.
      * @path /clients/{clientId}
      * @allow (get/list) Any signed-in user reading client information for deliveries or sales.
-     * @allow (create) An admin user creating a new client document.
-     * @deny (create) A non-admin user attempting to create a new client.
-     * @deny (update/delete) A non-admin user trying to modify or delete an existing client.
-     * @principle Enforces read access for operational needs and write access for administrative roles.
+     * @allow (create/update/delete) Any signed-in user creating, updating, or deleting a client document.
+     * @principle Enforces read access for operational needs and allows any authenticated user to manage clients.
      */
     match /clients/{clientId} {
       allow get: if isSignedIn();
@@ -149,3 +147,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

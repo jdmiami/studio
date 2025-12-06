@@ -132,30 +132,48 @@
           "type": "string",
           "description": "Client's name."
         },
-        "addressData": {
-          "type": "string",
-          "description": "Client's address data (Google Maps JSON)."
+        "address_data": {
+          "type": "object",
+          "description": "Client's address data from Google Maps.",
+          "properties": {
+            "formatted_address": {
+              "type": "string"
+            },
+            "lat": {
+              "type": "number"
+            },
+            "lng": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "formatted_address",
+            "lat",
+            "lng"
+          ]
         },
-        "contactPhone": {
+        "contact_phone": {
           "type": "string",
           "description": "Client's contact phone number."
         },
-        "balanceDue": {
+        "balance_due": {
           "type": "number",
           "description": "Client's outstanding balance."
         },
-        "pricingOverrides": {
-          "type": "string",
-          "description": "Client-specific pricing overrides (Level 2 Pricing Rule)."
+        "pricing_overrides": {
+          "type": "object",
+          "description": "Client-specific pricing overrides (Level 2 Pricing Rule). Maps product ID to price.",
+          "additionalProperties": {
+            "type": "number"
+          }
         }
       },
       "required": [
         "id",
         "name",
-        "addressData",
-        "contactPhone",
-        "balanceDue",
-        "pricingOverrides"
+        "address_data",
+        "contact_phone",
+        "balance_due"
       ]
     },
     "Transaction": {
@@ -397,3 +415,4 @@
     "reasoning": "The Firestore structure is designed to support the CocOs application's core features, including user authentication, inventory management, client management, sales & invoicing, and AI integration. The structure emphasizes authorization independence and supports QAPs by denormalizing authorization context and segregating data based on access needs.\n\n**Authorization Independence:**\n\n*   No `get()` calls are required in security rules.\n*   Access control is determined solely by `request.auth.uid` and data within the document being accessed.\n\n**QAPs (Rules are not Filters):**\n\n*   Secure `list` operations are enabled through structural segregation.\n\n**Structure:**\n\n*   `/users/{userId}`: Stores user profiles, including role information (admin or driver).\n*   `/products/{productId}`: Stores product information, including default price and cost.\n*   `/products/{productId}/batches/{batchId}`: Stores batch information for each product, enabling FIFO inventory management.\n*   `/clients/{clientId}`: Stores client information, including pricing overrides.\n*   `/transactions/{transactionId}`: Stores transaction data (sales, restocks, waste).\n*   `/roles_admin/{userId}`: Indicates admin roles. Existence of a document grants admin access.\n\nThis structure enables simple, robust, and easily debuggable security rules that scales with the application."
   }
 }
+    
