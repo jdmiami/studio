@@ -122,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {isUserLoading ? 'Loading...' : user ? (user.isAnonymous ? 'Anonymous' : user.email) : 'Not Signed In'}
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                {user && !user.isAnonymous ? 'Driver' : ''}
+                {user && !user.isAnonymous && user.email === 'cocoyou305@gmail.com' ? 'Admin' : 'Driver'}
               </span>
             </div>
           </div>

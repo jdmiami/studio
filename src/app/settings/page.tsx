@@ -13,17 +13,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useUser, useFirestore } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 export default function SettingsPage() {
     const { toast } = useToast();
+    const { user } = useUser();
+    const firestore = useFirestore();
+    
     const [companyName, setCompanyName] = useState("CocoSales AI");
     const [logoUrl, setLogoUrl] = useState("");
 
-    const handleSaveChanges = () => {
-        toast({
-            title: "Settings Saved",
-            description: "Your company settings have been updated.",
-        });
+    const handleSaveChanges = async () => {
+        if (!user) {
+            toast({
+                variant: 'destructive',
+                title: "Not Authenticated",
+                description: "You must be logged in to save settings.",
+            });
+            return;
+        }
+
+        try {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userDocRef, {
+                'settings.company_name': companyName,
+                'settings.logo_url': logoUrl,
+            });
+            toast({
+                title: "Settings Saved",
+                description: "Your company settings have been updated.",
+            });
+        } catch (error) {
+            console.error("Error updating settings: ", error);
+            toast({
+                variant: 'destructive',
+                title: "Error",
+                description: "Failed to save settings.",
+            });
+        }
     }
 
   return (
