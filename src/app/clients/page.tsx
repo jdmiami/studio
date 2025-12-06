@@ -100,7 +100,6 @@ export default function ClientsPage() {
               <Button variant="outline" className="w-full" onClick={() => handleNavigate(client.address_data.formatted_address)}>
                 Navigate
               </Button>
-              <Button className="w-full" disabled>View Details</Button>
             </CardFooter>
           </Card>
         ))}
