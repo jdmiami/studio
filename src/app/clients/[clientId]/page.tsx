@@ -52,7 +52,7 @@ export default function ClientDetailsPage() {
     return <div className="p-8">Loading client details...</div>;
   }
 
-  // After loading, if the client is still not found, then show the 404 page.
+  // After loading is complete, if the client is still not found, then show the 404 page.
   if (!client) {
     notFound();
   }
