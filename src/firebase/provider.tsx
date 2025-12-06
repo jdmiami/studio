@@ -157,10 +157,23 @@ export const useFirebaseApp = (): FirebaseApp => {
 
 type MemoFirebase <T> = T & {__memo?: boolean};
 
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
-  const memoized = useMemo(factory, deps);
+export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | null {
+  const { user, isUserLoading } = useUser();
+
+  const memoized = useMemo(() => {
+    // This is the critical guard: if the user is still loading or doesn't exist,
+    // we don't even run the factory function, returning null instead.
+    // This prevents a query from being created and passed to useCollection/useDoc.
+    if (isUserLoading || !user) {
+      return null;
+    }
+    return factory();
+  // We add user and isUserLoading to the dependency array to ensure this re-runs when auth state changes.
+  }, [...deps, user, isUserLoading]);
   
   if(typeof memoized !== 'object' || memoized === null) return memoized;
+
+  // We still tag the object so that useCollection/useDoc can verify it was created with this hook.
   (memoized as MemoFirebase<T>).__memo = true;
   
   return memoized;
