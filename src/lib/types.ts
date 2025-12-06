@@ -43,6 +43,13 @@ export interface Client {
   pricing_overrides: Record<string, number>;
 }
 
+export interface Provider {
+    id: string;
+    name: string;
+    address: string;
+    contact_phone: string;
+}
+
 export type TransactionItem = {
   product_id: string;
   product_name: string;

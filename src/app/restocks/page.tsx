@@ -19,18 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { products } from "@/lib/placeholder-data";
+import { products, providers } from "@/lib/placeholder-data";
 import { useToast } from "@/hooks/use-toast";
 
 export default function RestocksPage() {
   const { toast } = useToast();
-  const [provider, setProvider] = useState('');
-  const [product, setProduct] = useState('');
+  const [providerId, setProviderId] = useState('');
+  const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [cost, setCost] = useState('');
 
   const handleAddToInventory = () => {
-    if (!provider || !product || !quantity || !cost) {
+    if (!providerId || !productId || !quantity || !cost) {
       toast({
         variant: "destructive",
         title: "Missing Fields",
@@ -39,21 +39,17 @@ export default function RestocksPage() {
       return;
     }
 
-    console.log({
-      provider,
-      product,
-      quantity,
-      cost,
-    });
+    const selectedProvider = providers.find(p => p.id === providerId);
+    const selectedProduct = products.find(p => p.id === productId);
 
     toast({
       title: "Restock Added",
-      description: `${quantity} units of ${products.find(p => p.id === product)?.name} added to inventory from ${provider}.`,
+      description: `${quantity} units of ${selectedProduct?.name} added to inventory from ${selectedProvider?.name}.`,
     });
 
     // Reset form
-    setProvider('');
-    setProduct('');
+    setProviderId('');
+    setProductId('');
     setQuantity('');
     setCost('');
   };
@@ -73,19 +69,18 @@ export default function RestocksPage() {
         <CardContent className="grid gap-6">
             <div className="grid gap-3">
                 <Label htmlFor="provider">Provider</Label>
-                <Select value={provider} onValueChange={setProvider}>
+                <Select value={providerId} onValueChange={setProviderId}>
                   <SelectTrigger id="provider" className="h-14 text-lg">
                     <SelectValue placeholder="Select a provider" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="juan-farm">Juan's Farm</SelectItem>
-                    <SelectItem value="oviedo-coconuts">Oviedo Coconuts</SelectItem>
+                    {providers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
             </div>
              <div className="grid gap-3">
                 <Label htmlFor="product">Product</Label>
-                <Select value={product} onValueChange={setProduct}>
+                <Select value={productId} onValueChange={setProductId}>
                   <SelectTrigger id="product" className="h-14 text-lg">
                     <SelectValue placeholder="Select a product" />
                   </SelectTrigger>
