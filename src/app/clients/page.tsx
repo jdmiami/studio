@@ -1,6 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {
+  collection,
+  doc,
+} from 'firebase/firestore';
 import {
   Card,
   CardContent,
@@ -9,16 +13,18 @@ import {
   CardDescription,
   CardFooter,
 } from '@/components/ui/card';
-import { clients as initialClients } from '@/lib/placeholder-data';
 import { Button } from '@/components/ui/button';
 import { MapPin, Phone, Edit, Plus } from 'lucide-react';
-import Link from 'next/link';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client } from '@/lib/types';
 import { useRouter } from 'next/navigation';
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState(initialClients);
+  const firestore = useFirestore();
+  const clientsCollection = useMemoFirebase(() => collection(firestore, 'clients'), [firestore]);
+  const { data: clients, isLoading } = useCollection<Client>(clientsCollection);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const router = useRouter();
@@ -37,20 +43,15 @@ export default function ClientsPage() {
   const handleSaveClient = (clientData: Omit<Client, 'id' | 'balance_due' | 'pricing_overrides'>) => {
     if (selectedClient) {
       // Edit existing client
-      setClients(
-        clients.map((c) =>
-          c.id === selectedClient.id ? { ...c, ...clientData } : c
-        )
-      );
+      const clientRef = doc(firestore, 'clients', selectedClient.id);
+      updateDocumentNonBlocking(clientRef, clientData);
     } else {
       // Add new client
-      const newClient: Client = {
-        id: `client-${Date.now()}`,
+      addDocumentNonBlocking(clientsCollection, {
+        ...clientData,
         balance_due: 0,
         pricing_overrides: {},
-        ...clientData,
-      };
-      setClients([newClient, ...clients]);
+      });
     }
   };
   
@@ -73,7 +74,8 @@ export default function ClientsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {clients.length === 0 && (
+        {isLoading && <p>Loading clients...</p>}
+        {!isLoading && clients && clients.length === 0 && (
           <Card className="md:col-span-2 lg:col-span-3">
             <CardContent className="pt-6 text-center text-muted-foreground">
               <p>No clients found.</p>
@@ -81,7 +83,7 @@ export default function ClientsPage() {
             </CardContent>
           </Card>
         )}
-        {clients.map((client) => (
+        {clients && clients.map((client) => (
           <Card key={client.id} className="cursor-pointer hover:bg-card/80" onClick={() => router.push(`/clients/${client.id}`)}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
