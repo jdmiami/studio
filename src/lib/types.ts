@@ -63,18 +63,18 @@ export type TransactionItem = {
   product_name: string;
   quantity: number;
   applied_price: number;
-  pricing_level_used: 1 | 2 | 3;
-  batch_ids_deducted: string[];
+  pricing_level_used?: 1 | 2 | 3;
+  batch_ids_deducted?: string[];
 };
 
 export interface Transaction {
   id: string;
   type: 'sale' | 'restock' | 'waste';
   client_id?: string | null;
-  provider_id?: string | null;
   client_name?: string;
+  provider_id?: string | null;
   provider_name?: string;
-  date: Date;
+  date: Date | Timestamp;
   status: 'draft' | 'delivered' | 'paid';
   total_amount: number;
   items: TransactionItem[];

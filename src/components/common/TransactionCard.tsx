@@ -1,4 +1,4 @@
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Timestamp } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Truck, Trash2, User, Building } from 'lucide-react';
@@ -9,6 +9,15 @@ const typeDetails = {
   restock: { icon: Truck, color: 'text-blue-400' },
   waste: { icon: Trash2, color: 'text-orange-400' },
 };
+
+function formatDate(date: Date | Timestamp) {
+    if (date instanceof Date) {
+        return format(date, 'MMM d, yyyy');
+    }
+    // It's a Firestore Timestamp
+    return format(new Date(date.seconds * 1000), 'MMM d, yyyy');
+}
+
 
 export function TransactionCard({ transaction }: { transaction: Transaction }) {
   const { type, status, total_amount, date } = transaction;
@@ -47,7 +56,7 @@ export function TransactionCard({ transaction }: { transaction: Transaction }) {
 
       <div className="flex items-center justify-between">
         <div className="font-medium">{renderTitle()}</div>
-        <div className="text-sm text-muted-foreground">{format(date, 'MMM d, yyyy')}</div>
+        <div className="text-sm text-muted-foreground">{formatDate(date)}</div>
       </div>
       <div className="mt-2 flex items-end justify-between">
          <div className="text-sm text-muted-foreground">
