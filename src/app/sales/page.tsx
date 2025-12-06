@@ -22,8 +22,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Trash2 } from "lucide-react";
-import { clients, products } from "@/lib/placeholder-data";
 import { useToast } from '@/hooks/use-toast';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import type { Client, Product } from '@/lib/types';
+import { collection } from 'firebase/firestore';
 
 type LineItem = {
   id: number;
@@ -34,6 +36,21 @@ type LineItem = {
 
 export default function SalesPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
+
+  const clientsCollection = useMemoFirebase(() => {
+    if (!firestore || isUserLoading) return null;
+    return collection(firestore, 'clients');
+  }, [firestore, isUserLoading]);
+  const { data: clients, isLoading: isClientsLoading } = useCollection<Client>(clientsCollection);
+
+  const productsCollection = useMemoFirebase(() => {
+    if (!firestore || isUserLoading) return null;
+    return collection(firestore, 'products');
+  }, [firestore, isUserLoading]);
+  const { data: products, isLoading: isProductsLoading } = useCollection<Product>(productsCollection);
+
   const [clientId, setClientId] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -52,7 +69,7 @@ export default function SalesPage() {
     setLineItems(lineItems.map(item => {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value };
-        if (field === 'productId') {
+        if (field === 'productId' && products) {
           const product = products.find(p => p.id === value);
           updatedItem.price = product?.default_price || 0;
         }
@@ -81,7 +98,7 @@ export default function SalesPage() {
     
     toast({
       title: "Invoice Created",
-      description: `Successfully created invoice for ${clients.find(c => c.id === clientId)?.name}. Total: $${total.toFixed(2)}`,
+      description: `Successfully created invoice for ${clients?.find(c => c.id === clientId)?.name}. Total: $${total.toFixed(2)}`,
     });
 
     // Reset form
@@ -90,6 +107,7 @@ export default function SalesPage() {
     setNotes('');
   };
 
+  const showLoading = isUserLoading || isClientsLoading || isProductsLoading;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -107,12 +125,12 @@ export default function SalesPage() {
             <CardContent className="grid gap-6">
               <div className="grid gap-3">
                 <Label htmlFor="client">Client</Label>
-                <Select value={clientId} onValueChange={setClientId}>
+                <Select value={clientId} onValueChange={setClientId} disabled={showLoading}>
                   <SelectTrigger id="client" className="h-14 text-lg">
-                    <SelectValue placeholder="Select a client" />
+                    <SelectValue placeholder={showLoading ? "Loading clients..." : "Select a client"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {clients && clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -124,12 +142,16 @@ export default function SalesPage() {
                 {lineItems.map((item) => (
                   <div key={item.id} className="grid grid-cols-12 items-start gap-4">
                       <div className="col-span-5 grid gap-2">
-                           <Select value={item.productId} onValueChange={(value) => handleItemChange(item.id, 'productId', value)}>
+                           <Select 
+                              value={item.productId} 
+                              onValueChange={(value) => handleItemChange(item.id, 'productId', value)}
+                              disabled={showLoading}
+                            >
                             <SelectTrigger className="h-14 text-lg">
-                              <SelectValue placeholder="Select Product" />
+                              <SelectValue placeholder={showLoading ? "Loading..." : "Select Product"} />
                             </SelectTrigger>
                             <SelectContent>
-                              {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                              {products && products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                       </div>
