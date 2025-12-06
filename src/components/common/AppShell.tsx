@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   Boxes,
   Home,
+  LogIn,
   LogOut,
   Settings,
   ShoppingCart,
@@ -31,12 +32,15 @@ import { Logo } from './Logo';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BottomNavBar } from './BottomNavBar';
 import { SheetTitle } from '../ui/sheet';
+import { useAuth, useUser } from '@/firebase';
 
 const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
 
   if (pathname === '/login') {
     return <>{children}</>;
@@ -50,6 +54,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/restocks', label: 'Restocks', icon: Truck },
     { href: '/providers', label: 'Providers', icon: Building },
   ];
+
+  const handleLogout = () => {
+    auth.signOut();
+  };
 
   return (
     <SidebarProvider>
@@ -85,29 +93,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/login">
-                <SidebarMenuButton tooltip="Logout">
+              {user ? (
+                 <SidebarMenuButton tooltip="Logout" onClick={handleLogout}>
                   <LogOut />
                   <span>Logout</span>
                 </SidebarMenuButton>
-              </Link>
+              ) : (
+                <Link href="/login">
+                  <SidebarMenuButton tooltip="Login">
+                    <LogIn />
+                    <span>Login</span>
+                  </SidebarMenuButton>
+                </Link>
+              )}
             </SidebarMenuItem>
           </SidebarMenu>
           <div className="flex items-center gap-3 p-2">
             <Avatar className="h-9 w-9">
               <AvatarImage
-                src={userAvatar?.imageUrl}
+                src={user?.photoURL || userAvatar?.imageUrl}
                 alt="User Avatar"
                 data-ai-hint={userAvatar?.imageHint}
               />
-              <AvatarFallback>AD</AvatarFallback>
+              <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col overflow-hidden">
               <span className="truncate text-sm font-medium">
-                Admin Driver
+                {isUserLoading ? 'Loading...' : user ? (user.isAnonymous ? 'Anonymous' : user.email) : 'Not Signed In'}
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                admin@cocosales.ai
+                {user && !user.isAnonymous ? 'Driver' : ''}
               </span>
             </div>
           </div>
