@@ -162,10 +162,7 @@
         },
         "pricing_overrides": {
           "type": "object",
-          "description": "Client-specific pricing overrides (Level 2 Pricing Rule). Maps product ID to price.",
-          "additionalProperties": {
-            "type": "number"
-          }
+          "description": "Client-specific pricing overrides (Level 2 Pricing Rule). Maps product ID to price."
         }
       },
       "required": [
