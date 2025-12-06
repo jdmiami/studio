@@ -16,7 +16,7 @@ import { useMemo, useState } from 'react';
 import { ClientDialog } from '@/components/common/ClientDialog';
 import type { Client, Transaction } from '@/lib/types';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 
 export default function ClientDetailsPage() {
   const params = useParams();
@@ -35,16 +35,12 @@ export default function ClientDetailsPage() {
 
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore || !clientId) return null;
-    return collection(firestore, 'transactions'); // A more specific query could be used here
+    // Correctly query for transactions related to this client
+    return query(collection(firestore, 'transactions'), where('clientId', '==', clientId));
   }, [firestore, clientId]);
 
-  const { data: allTransactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
+  const { data: clientTransactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
-  const clientTransactions = useMemo(
-    () => allTransactions?.filter((t) => t.type === 'sale' && t.client_id === clientId) || [],
-    [allTransactions, clientId]
-  );
-  
   const isLoading = isClientLoading || isTransactionsLoading;
 
   if (isLoading) {
@@ -108,7 +104,7 @@ export default function ClientDetailsPage() {
                     <CardTitle>Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                     {clientTransactions.length > 0 ? (
+                     {clientTransactions && clientTransactions.length > 0 ? (
                         <div className="space-y-4">
                             {clientTransactions.map((transaction) => (
                             <TransactionCard key={transaction.id} transaction={transaction} />
