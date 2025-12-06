@@ -71,6 +71,11 @@ export function OnboardingGuide() {
             </div>
             ))}
       </div>
+       <div className="mt-8">
+          <Link href="/">
+              <Button variant="ghost">I'll do this later</Button>
+          </Link>
+        </div>
     </div>
   );
 }
