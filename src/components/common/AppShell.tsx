@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarMenu>
             {menuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
+                <Link href={item.href}>
                   <SidebarMenuButton
                     isActive={pathname === item.href}
                     tooltip={item.label}
@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/login" legacyBehavior passHref>
+              <Link href="/login">
                 <SidebarMenuButton tooltip="Logout">
                   <LogOut />
                   <span>Logout</span>
