@@ -38,6 +38,12 @@ const onboardingSteps = [
   },
 ];
 
+/**
+ * A guide component for new users to set up their business.
+ * Displays a series of steps to add providers, products, and clients.
+ *
+ * @returns The OnboardingGuide component.
+ */
 export function OnboardingGuide() {
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-card p-12 text-center shadow-lg">

@@ -15,6 +15,14 @@ type BottomNavBarProps = {
   menuItems: MenuItem[];
 };
 
+/**
+ * A responsive bottom navigation bar for mobile devices.
+ * Displays the first 4 menu items.
+ *
+ * @param props - The component props.
+ * @param props.menuItems - The list of menu items to display.
+ * @returns The BottomNavBar component.
+ */
 export function BottomNavBar({ menuItems }: BottomNavBarProps) {
   const pathname = usePathname();
 

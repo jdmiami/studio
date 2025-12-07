@@ -10,6 +10,12 @@ const typeDetails = {
   waste: { icon: Trash2, color: 'text-orange-400' },
 };
 
+/**
+ * Formats a date or Firestore Timestamp into a readable string.
+ *
+ * @param date - The date or timestamp to format.
+ * @returns The formatted date string.
+ */
 function formatDate(date: Date | Timestamp) {
     if (date instanceof Date) {
         return format(date, 'MMM d, yyyy');
@@ -19,6 +25,14 @@ function formatDate(date: Date | Timestamp) {
 }
 
 
+/**
+ * A component that displays the details of a transaction in a card format.
+ * Shows the transaction type, participants, date, items, status, and total amount.
+ *
+ * @param props - The component props.
+ * @param props.transaction - The transaction object to display.
+ * @returns The TransactionCard component.
+ */
 export function TransactionCard({ transaction }: { transaction: Transaction }) {
   const { type, status, total_amount, date } = transaction;
   const details = typeDetails[type];

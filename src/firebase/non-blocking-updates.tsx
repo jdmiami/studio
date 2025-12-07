@@ -15,6 +15,11 @@ import {FirestorePermissionError} from '@/firebase/errors';
 /**
  * Initiates a setDoc operation for a document reference.
  * Does NOT await the write operation internally.
+ * Catches any permission errors and emits them via the global error emitter.
+ *
+ * @param docRef - The document reference to set.
+ * @param data - The data to set.
+ * @param options - The set options (e.g., merge).
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options: SetOptions) {
   setDoc(docRef, data, options).catch(error => {
@@ -35,6 +40,11 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
  * Initiates an addDoc operation for a collection reference.
  * Does NOT await the write operation internally.
  * Returns the Promise for the new doc ref, but typically not awaited by caller.
+ * Catches any permission errors and emits them via the global error emitter.
+ *
+ * @param colRef - The collection reference to add to.
+ * @param data - The data to add.
+ * @returns A Promise that resolves to the new DocumentReference.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
   const promise = addDoc(colRef, data)
@@ -55,6 +65,10 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
 /**
  * Initiates an updateDoc operation for a document reference.
  * Does NOT await the write operation internally.
+ * Catches any permission errors and emits them via the global error emitter.
+ *
+ * @param docRef - The document reference to update.
+ * @param data - The data to update.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
   updateDoc(docRef, data)
@@ -74,6 +88,9 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
 /**
  * Initiates a deleteDoc operation for a document reference.
  * Does NOT await the write operation internally.
+ * Catches any permission errors and emits them via the global error emitter.
+ *
+ * @param docRef - The document reference to delete.
  */
 export function deleteDocumentNonBlocking(docRef: DocumentReference) {
   deleteDoc(docRef)

@@ -112,8 +112,14 @@ ${JSON.stringify(requestObject, null, 2)}`;
  * available in Firestore Security Rules.
  */
 export class FirestorePermissionError extends Error {
+  /** The structured request object that caused the error. */
   public readonly request: SecurityRuleRequest;
 
+  /**
+   * Constructs a new FirestorePermissionError.
+   *
+   * @param context - The context of the failed security rule check.
+   */
   constructor(context: SecurityRuleContext) {
     const requestObject = buildRequestObject(context);
     super(buildErrorMessage(requestObject));

@@ -1,5 +1,11 @@
 import Link from 'next/link';
 
+/**
+ * An SVG icon representing a coconut.
+ *
+ * @param props - The SVG props.
+ * @returns The SVG component.
+ */
 function CoconutIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -22,6 +28,12 @@ function CoconutIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/**
+ * The application logo component.
+ * Renders the coconut icon and the application name.
+ *
+ * @returns The Logo component.
+ */
 export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2" prefetch={false}>

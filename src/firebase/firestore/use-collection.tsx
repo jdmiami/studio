@@ -20,14 +20,21 @@ export type WithId<T> = T & { id: string };
  * @template T Type of the document data.
  */
 export interface UseCollectionResult<T> {
-  data: WithId<T>[] | null; // Document data with ID, or null.
-  isLoading: boolean;       // True if loading.
-  error: FirestoreError | Error | null; // Error object, or null.
+  /** Document data with ID, or null. */
+  data: WithId<T>[] | null;
+  /** True if loading. */
+  isLoading: boolean;
+  /** Error object, or null. */
+  error: FirestoreError | Error | null;
 }
 
 /* Internal implementation of Query:
   https://github.com/firebase/firebase-js-sdk/blob/c5f08a9bc5da0d2b0207802c972d53724ccef055/packages/firestore/src/lite-api/reference.ts#L143
 */
+/**
+ * Internal interface extending Query to access private properties.
+ * Used for extracting the query path for error reporting.
+ */
 export interface InternalQuery extends Query<DocumentData> {
   _query: {
     path: {
@@ -47,9 +54,9 @@ export interface InternalQuery extends Query<DocumentData> {
  * references
  *  
  * @template T Optional type for document data. Defaults to any.
- * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
- * The Firestore CollectionReference or Query. Waits if null/undefined.
+ * @param memoizedTargetRefOrQuery - The Firestore CollectionReference or Query. Waits if null/undefined.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
+ * @throws {Error} If the query is not properly memoized using `useMemoFirebase`.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,

@@ -45,6 +45,16 @@ type ProviderDialogProps = {
   onSave: (provider: Omit<Provider, 'id' | 'cost_overrides'>) => void;
 };
 
+/**
+ * A dialog component for adding or editing a provider.
+ *
+ * @param props - The component props.
+ * @param props.open - Whether the dialog is open.
+ * @param props.onOpenChange - Callback when the open state changes.
+ * @param props.provider - The provider to edit, or null for a new provider.
+ * @param props.onSave - Callback when the provider is saved.
+ * @returns The ProviderDialog component.
+ */
 export function ProviderDialog({
   open,
   onOpenChange,

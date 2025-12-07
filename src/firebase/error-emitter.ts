@@ -15,6 +15,8 @@ type Callback<T> = (data: T) => void;
 /**
  * A strongly-typed pub/sub event emitter.
  * It uses a generic type T that extends a record of event names to payload types.
+ *
+ * @returns An object with `on`, `off`, and `emit` methods for event handling.
  */
 function createEventEmitter<T extends Record<string, any>>() {
   // The events object stores arrays of callbacks, keyed by event name.
@@ -61,4 +63,7 @@ function createEventEmitter<T extends Record<string, any>>() {
 }
 
 // Create and export a singleton instance of the emitter, typed with our AppEvents interface.
+/**
+ * A global event emitter for application-wide events, such as permission errors.
+ */
 export const errorEmitter = createEventEmitter<AppEvents>();

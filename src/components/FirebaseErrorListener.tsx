@@ -7,6 +7,9 @@ import { FirestorePermissionError } from '@/firebase/errors';
 /**
  * An invisible component that listens for globally emitted 'permission-error' events.
  * It throws any received error to be caught by Next.js's global-error.tsx.
+ *
+ * @returns {null} This component does not render any visible UI.
+ * @throws {FirestorePermissionError} If a permission error is received.
  */
 export function FirebaseErrorListener() {
   // Use the specific error type for the state for type safety.

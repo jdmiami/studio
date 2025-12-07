@@ -13,6 +13,7 @@ import {z} from 'genkit';
 const VerifyAddressInputSchema = z.object({
   query: z.string().describe('The address query string to verify.'),
 });
+/** Input type for verifyAddress. */
 export type VerifyAddressInput = z.infer<typeof VerifyAddressInputSchema>;
 
 const VerifyAddressOutputSchema = z.object({
@@ -21,8 +22,15 @@ const VerifyAddressOutputSchema = z.object({
   lat: z.number().describe('The latitude of the location.'),
   lng: z.number().describe('The longitude of the location.'),
 });
+/** Output type for verifyAddress. */
 export type VerifyAddressOutput = z.infer<typeof VerifyAddressOutputSchema>;
 
+/**
+ * Verifies an address using the configured Genkit flow.
+ *
+ * @param input - The address verification input containing the query.
+ * @returns A promise resolving to the verified address details.
+ */
 export async function verifyAddress(input: VerifyAddressInput): Promise<VerifyAddressOutput> {
   return verifyAddressFlow(input);
 }

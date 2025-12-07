@@ -49,6 +49,12 @@ type InvoiceDialogProps = {
   invoice?: Transaction | null;
 };
 
+/**
+ * Helper function to convert Firestore Timestamps to JS Date objects.
+ *
+ * @param timestamp - The timestamp to convert (Date, Timestamp, or other).
+ * @returns The converted Date object or undefined.
+ */
 function convertTimestampToDate(timestamp: any): Date | undefined {
     if (!timestamp) return undefined;
     if (timestamp instanceof Date) return timestamp;
@@ -56,6 +62,16 @@ function convertTimestampToDate(timestamp: any): Date | undefined {
     return undefined;
 }
 
+/**
+ * A dialog component for editing an existing invoice.
+ * Allows updating the invoice number, status, service date, and payment due date.
+ *
+ * @param props - The component props.
+ * @param props.open - Whether the dialog is open.
+ * @param props.onOpenChange - Callback when the open state changes.
+ * @param props.invoice - The invoice transaction to edit.
+ * @returns The InvoiceDialog component.
+ */
 export function InvoiceDialog({
   open,
   onOpenChange,

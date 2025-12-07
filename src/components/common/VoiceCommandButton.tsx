@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button';
 import { VoiceCommandDialog } from './VoiceCommandDialog';
 import { cn } from '@/lib/utils';
 
+/**
+ * A floating action button that opens the voice command dialog.
+ * It is positioned at the bottom right of the screen.
+ *
+ * @returns The VoiceCommandButton component.
+ */
 export function VoiceCommandButton() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 

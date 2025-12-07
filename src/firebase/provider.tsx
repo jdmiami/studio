@@ -55,6 +55,13 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 /**
  * FirebaseProvider manages and provides Firebase services and user authentication state.
+ *
+ * @param props - The props for the provider.
+ * @param props.children - The child components that will have access to the Firebase context.
+ * @param props.firebaseApp - The initialized Firebase App instance.
+ * @param props.firestore - The initialized Firestore instance.
+ * @param props.auth - The initialized Auth instance.
+ * @returns A React component that provides Firebase context to its children.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -115,6 +122,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 /**
  * Hook to access core Firebase services and user authentication state.
  * Throws error if core services are not available or used outside provider.
+ *
+ * @returns {FirebaseServicesAndUser} An object containing Firebase services (app, firestore, auth) and user state.
+ * @throws {Error} If used outside of a FirebaseProvider or if services are unavailable.
  */
 export const useFirebase = (): FirebaseServicesAndUser => {
   const context = useContext(FirebaseContext);
@@ -137,19 +147,31 @@ export const useFirebase = (): FirebaseServicesAndUser => {
   };
 };
 
-/** Hook to access Firebase Auth instance. */
+/**
+ * Hook to access Firebase Auth instance.
+ *
+ * @returns {Auth} The Firebase Auth instance.
+ */
 export const useAuth = (): Auth => {
   const { auth } = useFirebase();
   return auth;
 };
 
-/** Hook to access Firestore instance. */
+/**
+ * Hook to access Firestore instance.
+ *
+ * @returns {Firestore} The Firestore instance.
+ */
 export const useFirestore = (): Firestore => {
   const { firestore } = useFirebase();
   return firestore;
 };
 
-/** Hook to access Firebase App instance. */
+/**
+ * Hook to access Firebase App instance.
+ *
+ * @returns {FirebaseApp} The Firebase App instance.
+ */
 export const useFirebaseApp = (): FirebaseApp => {
   const { firebaseApp } = useFirebase();
   return firebaseApp;
@@ -157,6 +179,15 @@ export const useFirebaseApp = (): FirebaseApp => {
 
 type MemoFirebase <T> = T & {__memo?: boolean};
 
+/**
+ * A hook that memoizes a value specifically for Firebase usage, taking user authentication state into account.
+ * It ensures that the factory function is only executed when the user is authenticated and not loading.
+ *
+ * @template T The type of the memoized value.
+ * @param factory - A factory function to create the value.
+ * @param deps - A list of dependencies for the memoization.
+ * @returns {T | null} The memoized value, or null if the user is loading or not authenticated.
+ */
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | null {
   const { user, isUserLoading } = useUser();
 
@@ -182,6 +213,7 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 /**
  * Hook specifically for accessing the authenticated user's state.
  * This provides the User object, loading status, and any auth errors.
+ *
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
 export const useUser = (): UserHookResult => { // Renamed from useAuthUser

@@ -23,6 +23,14 @@ type VoiceCommandDialogProps = {
 
 const placeholderCommand = "Create an invoice for Amara at Paraiso with 50 green coconuts for 6 dollars each.";
 
+/**
+ * A dialog component that accepts a text command (simulating voice input) to be processed by AI.
+ *
+ * @param props - The component props.
+ * @param props.open - Whether the dialog is open.
+ * @param props.onOpenChange - Callback when the open state changes.
+ * @returns The VoiceCommandDialog component.
+ */
 export function VoiceCommandDialog({
   open,
   onOpenChange,

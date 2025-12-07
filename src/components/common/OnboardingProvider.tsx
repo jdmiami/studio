@@ -9,12 +9,26 @@ import { usePathname, useRouter } from 'next/navigation';
 
 const OnboardingContext = createContext<{ isSetupComplete: boolean }>({ isSetupComplete: false });
 
+/**
+ * Hook to access the onboarding context.
+ *
+ * @returns The onboarding context value, including whether setup is complete.
+ */
 export function useOnboarding() {
   return useContext(OnboardingContext);
 }
 
 const ONBOARDING_SETUP_PATHS = ['/providers', '/clients', '/inventory', '/settings'];
 
+/**
+ * A provider component that manages the user's onboarding status.
+ * Checks if the user has completed the necessary setup steps (added providers, products, and clients).
+ * Redirects the user to the onboarding page or login page as appropriate.
+ *
+ * @param props - The component props.
+ * @param props.children - The child components.
+ * @returns The OnboardingProvider component.
+ */
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();

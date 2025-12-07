@@ -34,6 +34,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { BottomNavBar } from './BottomNavBar';
 import { useAuth, useUser } from '@/firebase';
 
+/**
+ * The main application shell component.
+ * It provides the sidebar navigation, header, and main content area.
+ * It also handles responsiveness for mobile devices using a bottom navigation bar.
+ *
+ * @param props - The component props.
+ * @param props.children - The content to be rendered within the shell.
+ * @returns The AppShell component.
+ */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();

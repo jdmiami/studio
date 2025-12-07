@@ -56,6 +56,17 @@ type ClientDialogProps = {
   onSave: (client: Omit<Client, 'id' | 'balance_due'>) => void;
 };
 
+/**
+ * A dialog component for adding or editing a client.
+ * Allows managing client details and setting custom pricing for products.
+ *
+ * @param props - The component props.
+ * @param props.open - Whether the dialog is open.
+ * @param props.onOpenChange - Callback when the open state changes.
+ * @param props.client - The client to edit, or null for a new client.
+ * @param props.onSave - Callback when the client is saved.
+ * @returns The ClientDialog component.
+ */
 export function ClientDialog({
   open,
   onOpenChange,

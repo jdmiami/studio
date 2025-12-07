@@ -22,6 +22,9 @@ const CreateInvoiceOutputSchema = z.object({
   invoiceId: z.string(),
 });
 
+/**
+ * Tool for searching Google Maps for location details.
+ */
 const SearchMapsToolSchema = ai.defineTool({
   name: 'searchMaps',
   description: 'Calls Google Places API, returns name/address/lat/lng.',
@@ -36,6 +39,9 @@ async (input) => {
   return { name: 'Sample Location', address: '123 Main St', lat: 34.0522, lng: -118.2437 };
 });
 
+/**
+ * Tool for creating a draft invoice in the UI state.
+ */
 const CreateInvoiceToolSchema = ai.defineTool({
   name: 'createInvoice',
   description: 'Updates React State (not database yet) to show a Draft invoice for user confirmation.',
@@ -54,13 +60,21 @@ async (input) => {
 const VoiceControlledInvoiceCreationInputSchema = z.object({
   voiceCommand: z.string().describe('The voice command given by the driver.'),
 });
+/** Input type for voice controlled invoice creation. */
 export type VoiceControlledInvoiceCreationInput = z.infer<typeof VoiceControlledInvoiceCreationInputSchema>;
 
 const VoiceControlledInvoiceCreationOutputSchema = z.object({
   invoiceStatus: z.string().describe('The status of the invoice creation process.'),
 });
+/** Output type for voice controlled invoice creation. */
 export type VoiceControlledInvoiceCreationOutput = z.infer<typeof VoiceControlledInvoiceCreationOutputSchema>;
 
+/**
+ * Initiates the voice-controlled invoice creation flow.
+ *
+ * @param input - The voice command input.
+ * @returns The result of the invoice creation process.
+ */
 export async function voiceControlledInvoiceCreation(input: VoiceControlledInvoiceCreationInput): Promise<VoiceControlledInvoiceCreationOutput> {
   return voiceControlledInvoiceCreationFlow(input);
 }

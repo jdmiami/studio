@@ -6,6 +6,14 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
+/**
+ * Initializes the Firebase application.
+ * If the app is already initialized, it returns the existing instance.
+ * It attempts to initialize using environment variables (Firebase App Hosting) first,
+ * and falls back to the `firebaseConfig` object if that fails.
+ *
+ * @returns An object containing the Firebase App, Auth, and Firestore instances.
+ */
 export function initializeFirebase() {
   if (!getApps().length) {
     // Important! initializeApp() is called without any arguments because Firebase App Hosting
@@ -32,6 +40,12 @@ export function initializeFirebase() {
   return getSdks(getApp());
 }
 
+/**
+ * Retrieves the Firebase SDK instances (Auth, Firestore) for a given Firebase App.
+ *
+ * @param firebaseApp - The initialized Firebase App instance.
+ * @returns An object containing the Firebase App, Auth, and Firestore instances.
+ */
 export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
