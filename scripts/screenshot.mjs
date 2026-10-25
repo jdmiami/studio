@@ -30,7 +30,8 @@ const problems = [];
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') problems.push(m.text()); });
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 
-await page.goto(`${base}/?shot=${shot}`, { waitUntil: 'load' });
+const camArg = args.find((a) => a.startsWith('--cam='))?.split('=')[1];
+await page.goto(`${base}/?shot=${shot}${camArg ? `&cam=${camArg}` : ''}`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__phluphReady === true, null, { timeout: 180000 });
 mkdirSync(dirname(out), { recursive: true });
 await page.screenshot({ path: out, timeout: 120000 });

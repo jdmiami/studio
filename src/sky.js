@@ -17,6 +17,7 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uSunColor;
   uniform vec3 uZenith;
   uniform vec3 uHorizon;
+  uniform vec3 uHorizonSun;
   uniform vec3 uCloudLit;
   uniform vec3 uCloudShade;
   varying vec3 vDir;
@@ -51,12 +52,13 @@ const fragmentShader = /* glsl */ `
     vec3 dir = normalize(vDir);
     float up = clamp(dir.y, -1.0, 1.0);
 
-    // Oversaturated candy gradient.
-    vec3 col = mix(uHorizon, uZenith, pow(clamp(up, 0.0, 1.0), 0.55));
-    col = mix(col, uHorizon * 1.1, smoothstep(0.0, -0.3, up)); // below horizon
-
+    // Sunset candy gradient: the horizon warms to peach toward the low sun.
     float sunDot = clamp(dot(dir, uSunDir), 0.0, 1.0);
-    col += uSunColor * (pow(sunDot, 600.0) * 6.0 + pow(sunDot, 12.0) * 0.45);
+    vec3 horizon = mix(uHorizon, uHorizonSun, pow(sunDot, 3.0));
+    vec3 col = mix(horizon, uZenith, pow(clamp(up, 0.0, 1.0), 0.5));
+    col = mix(col, horizon * 1.05, smoothstep(0.0, -0.3, up)); // below horizon
+
+    col += uSunColor * (pow(sunDot, 1400.0) * 8.0 + pow(sunDot, 40.0) * 0.35 + pow(sunDot, 6.0) * 0.06);
 
     // Volumetric clouds in a slab from y = 60 to 110.
     if (dir.y > 0.02) {
@@ -98,10 +100,11 @@ export function createSky() {
       uTime: sharedFurUniforms.uTime,
       uSunDir: sharedFurUniforms.uSunDir,
       uSunColor: sharedFurUniforms.uSunColor,
-      uZenith: { value: new THREE.Color('#5b6cff') },
-      uHorizon: { value: new THREE.Color('#ffb3e6') },
-      uCloudLit: { value: new THREE.Color('#fff4fb') },
-      uCloudShade: { value: new THREE.Color('#c48cff') },
+      uZenith: { value: new THREE.Color('#5a3df0') },
+      uHorizon: { value: new THREE.Color('#ff9fd6') },
+      uHorizonSun: { value: new THREE.Color('#ffb070') },
+      uCloudLit: { value: new THREE.Color('#ffe9f4') },
+      uCloudShade: { value: new THREE.Color('#9a6bff') },
     },
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 48, 24), material);

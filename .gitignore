@@ -2,3 +2,4 @@ node_modules/
 dist/
 screenshots/
 .DS_Store
+.superstack/

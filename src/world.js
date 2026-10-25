@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createFur, paint } from './fur.js';
+import { createFur, paint, sharedFurUniforms } from './fur.js';
 
 const TUFT_PALETTE = ['#7dffcf', '#ff7ac8', '#c79bff', '#ffb38a', '#fff27a', '#79d8ff'];
 
@@ -36,7 +36,12 @@ function puffyTuft() {
   return g;
 }
 
+// The Dew pond sits in a basin at the front-right of the island.
+const POND = { x: 4.5, z: 4.5, radius: 1.9 };
+const inPond = (x, z) => Math.hypot(x - POND.x, z - POND.z) < POND.radius;
+
 function islandHeight(x, z) {
+  if (inPond(x, z)) return -1;
   const r = Math.hypot(x, z);
   const falloff = Math.max(0, 1 - r / 8.5);
   const bumps = Math.sin(x * 0.7) * Math.cos(z * 0.6) * 0.8 + Math.sin(x * 0.23 + z * 0.41) * 1.1;
@@ -66,7 +71,10 @@ function buildTufts(random) {
   }
   const merged = mergeGeometries(pieces);
   return {
-    mesh: createFur(merged, { shells: 36, length: 0.3, density: 34, gravity: 0.22, tipTint: '#ffffff', rim: 1.2 }),
+    mesh: createFur(merged, {
+      shells: 36, length: 0.32, density: 34, gravity: 0.22, curl: 0.25, clump: 0.45,
+      tipTint: '#fff4e6', rim: 1.1, glitter: 0.15,
+    }),
     tops,
   };
 }
@@ -91,9 +99,10 @@ function buildTree(position, random) {
   });
 
   const group = new THREE.Group();
-  group.add(createFur(trunk, { shells: 16, length: 0.08, density: 40, gravity: 0.05 }));
+  group.add(createFur(trunk, { shells: 16, length: 0.08, density: 40, gravity: 0.05, curl: 0.05, clump: 0.2 }));
   group.add(createFur(mergeGeometries(blobs), {
-    shells: 30, length: 0.38, density: 22, gravity: 0.35, tipTint: '#fff6fd', rim: 1.3,
+    shells: 32, length: 0.42, density: 22, gravity: 0.35, curl: 0.35, clump: 0.55,
+    tipTint: '#fff6fd', rim: 1.3, glitter: 0.3,
   }));
   group.position.copy(position);
   return group;
@@ -126,7 +135,8 @@ function buildFluffalo(random) {
 
   const group = new THREE.Group();
   group.add(createFur(mergeGeometries(parts), {
-    shells: 32, length: 0.3, density: 34, gravity: 0.3, tipTint: '#ffffff', rim: 1.4,
+    shells: 36, length: 0.34, density: 34, gravity: 0.3, curl: 0.45, clump: 0.6,
+    tipTint: '#ffffff', rim: 1.4, glitter: 0.5, iridescence: 0.55,
   }));
 
   // Glossy button eyes and a nose: the only hard surfaces, like a real plush toy.
@@ -162,7 +172,8 @@ function buildComb(random) {
     withSeed(piece, random());
   }
   return createFur(mergeGeometries(pieces), {
-    shells: 18, length: 0.06, density: 70, gravity: 0.02, tipTint: '#fffbe0', rim: 1.6,
+    shells: 18, length: 0.06, density: 70, gravity: 0.02, curl: 0, clump: 0.1,
+    tipTint: '#fffbe0', rim: 1.6, sheen: 1.6, glitter: 1, iridescence: 0.9,
   });
 }
 
@@ -181,8 +192,164 @@ function buildCloudSea(random) {
     puffs.push(withSeed(s, random()));
   }
   return createFur(mergeGeometries(puffs), {
-    shells: 28, length: 0.7, density: 5, gravity: 0.05, tipTint: '#fff6e8', rim: 1.8,
+    shells: 28, length: 0.7, density: 5, gravity: 0.05, curl: 0.3, clump: 0.5,
+    tipTint: '#fff6e8', rim: 1.8, sheen: 0.6,
   });
+}
+
+// Glossy candy-syrup water: rippled normals, fresnel sky reflection, and an HDR sun glint.
+function buildPond() {
+  const radius = POND.radius + 0.1;
+  const geometry = new THREE.CircleGeometry(radius, 64);
+  geometry.rotateX(-Math.PI / 2);
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    uniforms: {
+      uRadius: { value: radius },
+      uTime: sharedFurUniforms.uTime,
+      uSunDir: sharedFurUniforms.uSunDir,
+      uSunColor: sharedFurUniforms.uSunColor,
+      uDeep: { value: new THREE.Color('#06607e') },
+      uShallow: { value: new THREE.Color('#46e6d4') },
+      uZenith: { value: new THREE.Color('#5a3df0') },
+      uHorizon: { value: new THREE.Color('#ffb0c8') },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vWorld;
+      varying vec2 vLocal;
+      void main() {
+        vLocal = position.xz;
+        vec4 w = modelMatrix * vec4(position, 1.0);
+        vWorld = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTime;
+      uniform vec3 uSunDir;
+      uniform vec3 uSunColor;
+      uniform vec3 uDeep;
+      uniform vec3 uShallow;
+      uniform vec3 uZenith;
+      uniform vec3 uHorizon;
+      uniform float uRadius;
+      varying vec3 vWorld;
+      varying vec2 vLocal;
+      void main() {
+        vec2 p = vLocal;
+        float t = uTime;
+        vec2 slope = vec2(
+          cos(p.x * 4.0 + t * 1.3) * 0.5 + cos((p.x + p.y) * 7.0 - t * 1.9) * 0.3 + cos(length(p) * 9.0 - t * 2.4) * p.x,
+          cos(p.y * 4.6 - t * 1.1) * 0.5 + cos((p.y - p.x) * 6.0 + t * 1.7) * 0.3 + cos(length(p) * 9.0 - t * 2.4) * p.y
+        ) * 0.06;
+        vec3 n = normalize(vec3(-slope.x, 1.0, -slope.y));
+        vec3 v = normalize(cameraPosition - vWorld);
+        vec3 r = reflect(-v, n);
+        float fresnel = 0.08 + 0.92 * pow(1.0 - max(dot(n, v), 0.0), 4.0);
+        vec3 skyRefl = mix(uHorizon, uZenith, pow(clamp(r.y, 0.0, 1.0), 0.6));
+        float glint = pow(max(dot(r, normalize(uSunDir)), 0.0), 300.0) * 25.0;
+        float radial = length(p) / uRadius;
+        vec3 body = mix(uDeep, uShallow, smoothstep(0.2, 0.95, radial));
+        vec3 col = mix(body, skyRefl, fresnel * 0.8) + uSunColor * glint;
+        // Soft foamy shoreline that breathes with the ripples, fading into the fluff.
+        float foam = smoothstep(0.78, 0.95, radial) * (0.6 + 0.4 * sin(radial * 40.0 - t * 2.0));
+        col = mix(col, vec3(1.0, 0.93, 0.97), foam * 0.7);
+        float alpha = 1.0 - smoothstep(0.93, 1.0, radial);
+        gl_FragColor = vec4(col, alpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }
+    `,
+  });
+  const pond = new THREE.Mesh(geometry, material);
+  pond.position.set(POND.x, -0.3, POND.z);
+  return pond;
+}
+
+// Floating islets far away for scale; the aerial haze tints them into the sunset.
+function buildIslets(random) {
+  const pieces = [];
+  for (let i = 0; i < 6; i++) {
+    const a = random() * Math.PI * 2;
+    const r = 38 + random() * 30;
+    const cx = Math.cos(a) * r;
+    const cz = Math.sin(a) * r;
+    const cy = -3 + random() * 9;
+    const color = TUFT_PALETTE[Math.floor(random() * TUFT_PALETTE.length)];
+    const count = 6 + Math.floor(random() * 8);
+    for (let k = 0; k < count; k++) {
+      const g = puffyTuft();
+      const s = 1.2 + random() * 1.4;
+      g.scale(s, s, s);
+      g.translate(cx + (random() - 0.5) * 5, cy + (random() - 0.5) * 1.5, cz + (random() - 0.5) * 5);
+      paint(g, k % 3 === 0 ? '#e08cff' : color);
+      pieces.push(withSeed(g, random()));
+    }
+  }
+  return createFur(mergeGeometries(pieces), {
+    shells: 18, length: 0.45, density: 14, gravity: 0.2, curl: 0.3, clump: 0.5, tipTint: '#fff4e6',
+  });
+}
+
+function dandelionTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(64, 64);
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 1.4;
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(a) * 52, Math.sin(a) * 52);
+    ctx.stroke();
+  }
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 60);
+  glow.addColorStop(0, 'rgba(255,255,255,0.9)');
+  glow.addColorStop(0.25, 'rgba(255,240,250,0.35)');
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(-64, -64, 128, 128);
+  return new THREE.CanvasTexture(canvas);
+}
+
+// Dandelion seed puffs drifting on the breeze.
+function buildSeeds(random, count = 70) {
+  const base = [];
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    base.push({
+      x: (random() - 0.5) * 30,
+      y: random() * 10,
+      z: (random() - 0.5) * 30,
+      phase: random() * Math.PI * 2,
+      speed: 0.3 + random() * 0.5,
+    });
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({
+    size: 0.55,
+    map: dandelionTexture(),
+    color: new THREE.Color('#fff3fb').multiplyScalar(1.6),
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false;
+  points.userData.update = (time) => {
+    base.forEach((s, i) => {
+      // Drift downwind and wrap around so the breeze never runs dry.
+      const x = ((s.x + time * s.speed + 15) % 30 + 30) % 30 - 15;
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = s.y + Math.sin(time * 0.7 + s.phase) * 0.6;
+      positions[i * 3 + 2] = s.z + Math.cos(time * 0.5 + s.phase) * 0.8;
+    });
+    geometry.getAttribute('position').needsUpdate = true;
+  };
+  return points;
 }
 
 function softDotTexture() {
@@ -245,6 +412,10 @@ export function buildWorld(scene) {
   scene.add(comb);
 
   scene.add(buildCloudSea(random));
+  scene.add(buildPond());
+  scene.add(buildIslets(random));
+  const seeds = buildSeeds(random);
+  scene.add(seeds);
   const motes = buildGlowMotes(random);
   scene.add(motes);
 
@@ -261,6 +432,7 @@ export function buildWorld(scene) {
       comb.rotation.y = time * 0.8;
       motes.rotation.y = time * 0.03;
       motes.position.y = Math.sin(time * 0.4) * 0.3;
+      seeds.userData.update(time);
     },
   };
 }

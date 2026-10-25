@@ -1,6 +1,9 @@
-// Shell-fur material: every fluffy object is drawn as `shells` stacked copies of its
-// geometry, each pushed out along the normal. Fragments outside a strand are discarded,
-// so stacked shells read as millions of soft fibers.
+// "Living Plush" shell fur. Every fluffy object is drawn as `shells` stacked copies of
+// its geometry pushed out along a combed direction; fragments outside a strand are
+// discarded, so the stack reads as millions of soft fibers.
+//
+// Per strand: clumping, two-tone hand-dyed color with jitter, Kajiya-Kay anisotropic
+// sheen, optional glitter fibers and iridescence, backlit translucency, and aerial haze.
 import * as THREE from 'three';
 
 const vertexShader = /* glsl */ `
@@ -9,13 +12,15 @@ const vertexShader = /* glsl */ `
   uniform float uShells;
   uniform vec3 uWind;
   uniform float uGravity;
+  uniform float uCurl;
 
   attribute vec3 color;
   attribute float aSeed;
 
   varying vec3 vBase;
+  varying vec3 vWorld;
   varying vec3 vNormalW;
-  varying vec3 vViewDir;
+  varying vec3 vTangentW;
   varying vec3 vColor;
   varying float vLayer;
   varying float vSeed;
@@ -25,15 +30,25 @@ const vertexShader = /* glsl */ `
     vec4 world = modelMatrix * vec4(position, 1.0);
     vec3 n = normalize(mat3(modelMatrix) * normal);
 
-    // Wind and gravity bend the tips more than the roots.
+    // Comb direction: wind gusts and gravity bend the tips more than the roots.
     float bend = layer * layer;
     float gust = sin(uTime * 1.7 + world.x * 0.35 + world.z * 0.25 + aSeed * 6.28) * 0.5 + 0.5;
     vec3 sway = uWind * (0.4 + gust) + vec3(0.0, -uGravity, 0.0);
-    world.xyz += n * uLength * layer + sway * bend * uLength;
+
+    // Curl: tips twist around the normal, phase varies slowly across the surface.
+    vec3 t1 = normalize(cross(n, abs(n.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+    vec3 t2 = cross(n, t1);
+    float phase = dot(position, vec3(3.1, 2.3, 2.7)) + aSeed * 9.0 + layer * 5.0;
+    vec3 curl = (t1 * cos(phase) + t2 * sin(phase)) * uCurl * pow(layer, 1.5);
+
+    vec3 offset = n * uLength * layer + (sway * bend + curl) * uLength;
+    world.xyz += offset;
 
     vBase = position;
+    vWorld = world.xyz;
     vNormalW = n;
-    vViewDir = normalize(cameraPosition - world.xyz);
+    // Strand tangent follows the combed direction (used for the anisotropic sheen).
+    vTangentW = normalize(n + (sway + curl) * 1.5);
     vColor = color;
     vLayer = layer;
     vSeed = aSeed;
@@ -42,17 +57,25 @@ const vertexShader = /* glsl */ `
 `;
 
 const fragmentShader = /* glsl */ `
+  uniform float uTime;
   uniform float uDensity;
+  uniform float uClump;
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;
   uniform vec3 uSkyColor;
   uniform vec3 uGroundColor;
   uniform vec3 uTipTint;
   uniform float uRim;
+  uniform float uSheen;
+  uniform float uGlitter;
+  uniform float uIridescence;
+  uniform vec3 uFogColor;
+  uniform float uFogDensity;
 
   varying vec3 vBase;
+  varying vec3 vWorld;
   varying vec3 vNormalW;
-  varying vec3 vViewDir;
+  varying vec3 vTangentW;
   varying vec3 vColor;
   varying float vLayer;
   varying float vSeed;
@@ -62,34 +85,93 @@ const fragmentShader = /* glsl */ `
     p *= 17.0;
     return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
   }
+  vec3 hash3(vec3 p) {
+    return vec3(hash(p + 3.1), hash(p + 7.7), hash(p + 11.3));
+  }
+
+  // Small hue rotation in YIQ space for per-strand dye variation.
+  vec3 hueShift(vec3 c, float a) {
+    const mat3 toYIQ = mat3(0.299, 0.596, 0.211, 0.587, -0.274, -0.523, 0.114, -0.322, 0.312);
+    const mat3 toRGB = mat3(1.0, 1.0, 1.0, 0.956, -0.272, -1.106, 0.621, -0.647, 1.703);
+    vec3 yiq = toYIQ * c;
+    float h = atan(yiq.z, yiq.y) + a;
+    float chroma = length(yiq.yz);
+    return toRGB * vec3(yiq.x, chroma * cos(h), chroma * sin(h));
+  }
+
+  // Kajiya-Kay strand highlight.
+  float strandSpec(vec3 t, vec3 h, float exponent) {
+    float th = dot(t, h);
+    return pow(sqrt(max(0.0, 1.0 - th * th)), exponent);
+  }
 
   void main() {
     vec3 cellPos = vBase * uDensity;
+
+    // Clumping: tips lean toward the center of a larger clump cell, so strands gather into
+    // soft locks instead of a uniform pin-cushion.
+    vec3 clumpPos = cellPos / 3.5;
+    vec3 clumpCenter = floor(clumpPos) + 0.5 + (hash3(floor(clumpPos) + 19.0) - 0.5) * 0.6;
+    cellPos += (clumpCenter - clumpPos) * 3.5 * uClump * vLayer;
+
     vec3 cell = floor(cellPos);
     float strand = hash(cell + vSeed * 13.0);
-    // Jitter each strand inside its cell so the fur never shows a grid.
-    vec3 jitter = vec3(hash(cell + 3.1), hash(cell + 7.7), hash(cell + 11.3)) - 0.5;
-    vec3 local = fract(cellPos) - 0.5 - jitter * 0.45;
+    vec3 local = fract(cellPos) - 0.5 - (hash3(cell) - 0.5) * 0.45;
 
-    // Strands taper toward the tip; short strands stop at lower shells.
     float radius = (1.0 - vLayer) * 0.55;
     if (vLayer > 0.0 && (length(local) > radius || strand < vLayer * 0.92)) discard;
 
     vec3 n = normalize(vNormalW);
-    vec3 v = normalize(vViewDir);
+    vec3 v = normalize(cameraPosition - vWorld);
+    vec3 l = normalize(uSunDir);
+    vec3 t = normalize(vTangentW);
 
-    // Wrapped diffuse keeps fluff soft; light leaks through thin tips.
-    float wrap = clamp((dot(n, uSunDir) + 0.6) / 1.6, 0.0, 1.0);
-    float sky = n.y * 0.5 + 0.5;
-    vec3 ambient = mix(uGroundColor, uSkyColor, sky);
-    float occlusion = mix(0.35, 1.0, pow(vLayer, 0.7));
-    float translucency = pow(clamp(dot(-v, uSunDir), 0.0, 1.0), 4.0) * vLayer;
-    float rim = pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 3.0) * uRim * vLayer;
+    // Hand-dyed yarn: saturated deep roots, pale sunlit tips, per-strand hue/value jitter.
+    vec3 dyed = hueShift(vColor, (strand - 0.5) * 0.35) * (0.85 + hash(cell + 5.0) * 0.3);
+    float luma = dot(dyed, vec3(0.2126, 0.7152, 0.0722));
+    vec3 root = mix(vec3(luma), dyed, 1.35) * 0.55; // deeper and more saturated, same hue
+    vec3 tip = mix(dyed, uTipTint, 0.3) * 1.08;
+    vec3 base = mix(root, tip, smoothstep(0.0, 1.0, vLayer));
 
-    vec3 base = mix(vColor * 0.65, mix(vColor, uTipTint, 0.25), vLayer);
-    vec3 col = base * (ambient * 0.55 + uSunColor * wrap * 0.9) * occlusion;
-    col += uSunColor * base * translucency * 1.2;
+    // Iridescent fleece: thin-film-like hue shift by viewing angle on the tips.
+    float ndv = clamp(dot(n, v), 0.0, 1.0);
+    vec3 film = 0.5 + 0.5 * cos(6.2831 * (ndv * 1.4 + strand * 0.3 + vec3(0.0, 0.33, 0.67)));
+    base = mix(base, base * 0.5 + film * 0.7, uIridescence * vLayer * 0.6);
+
+    // Lighting: wrapped diffuse, sky/ground ambient, root occlusion.
+    float wrap = clamp((dot(n, l) + 0.5) / 1.5, 0.0, 1.0);
+    vec3 ambient = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
+    float occlusion = mix(0.25, 1.0, pow(vLayer, 0.6));
+    vec3 col = base * (ambient * 0.6 + uSunColor * wrap) * occlusion;
+
+    // Silky sheen sliding along the fibers: white primary lobe, dye-tinted secondary lobe.
+    vec3 h = normalize(l + v);
+    vec3 t1 = normalize(t + n * 0.25);
+    vec3 t2 = normalize(t - n * 0.35);
+    float spec1 = strandSpec(t1, h, 90.0) * 0.55;
+    float spec2 = strandSpec(t2, h, 18.0) * 0.35;
+    float sheenMask = smoothstep(-0.2, 0.4, dot(n, l)) * vLayer;
+    col += (uSunColor * spec1 + dyed * uSunColor * spec2) * uSheen * sheenMask;
+
+    // Backlit glow: light leaks through thin tips when the sun is behind the fluff.
+    float back = pow(clamp(dot(-v, l), 0.0, 1.0), 3.0);
+    col += uSunColor * mix(dyed, uTipTint, 0.5) * back * pow(vLayer, 1.5) * 0.75;
+
+    // Rim light on fiber edges.
+    float rim = pow(1.0 - ndv, 3.0) * uRim * vLayer;
     col += mix(uSkyColor, uTipTint, 0.5) * rim;
+
+    // Glitter fibers: a few strands twinkle in HDR so bloom turns them into sparkles.
+    if (uGlitter > 0.0 && vLayer > 0.55 && hash(cell + 42.0) > 1.0 - uGlitter * 0.05) {
+      float twinkle = pow(max(0.0, sin(uTime * 3.0 + strand * 40.0 + dot(v, vec3(13.0, 7.0, 5.0)) * 6.0)), 10.0);
+      col += vec3(1.0, 0.85, 0.95) * twinkle * 5.0;
+    }
+
+    // Aerial perspective: distance melts into the sunset haze, warmer toward the sun.
+    float dist = length(vWorld - cameraPosition);
+    float fog = 1.0 - exp(-max(dist - 18.0, 0.0) * uFogDensity); // haze starts past the island
+    vec3 haze = mix(uFogColor, uSunColor * 0.9, pow(clamp(dot(-v, l), 0.0, 1.0), 4.0) * 0.6);
+    col = mix(col, haze, fog);
 
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
@@ -97,13 +179,17 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
+// Lighting shared by every fur material (and the sky): golden hour, sun low behind the island.
 export const sharedFurUniforms = {
   uTime: { value: 0 },
-  uSunDir: { value: new THREE.Vector3(0.45, 0.7, 0.35).normalize() },
-  uSunColor: { value: new THREE.Color('#fff1d6') },
-  uSkyColor: { value: new THREE.Color('#a9c8ff') },
-  uGroundColor: { value: new THREE.Color('#ff9ad5') },
+  // Off to the left of the default view so rays cross the frame and the hero gets a side rim.
+  uSunDir: { value: new THREE.Vector3(-0.95, 0.16, -0.18).normalize() },
+  uSunColor: { value: new THREE.Color('#ffc58f').multiplyScalar(1.5) },
+  uSkyColor: { value: new THREE.Color('#9fb2ff') },
+  uGroundColor: { value: new THREE.Color('#ff8fc8') },
   uWind: { value: new THREE.Vector3(0.18, 0, 0.08) },
+  uFogColor: { value: new THREE.Color('#ffb1d8') },
+  uFogDensity: { value: 0.008 },
 };
 
 /**
@@ -115,16 +201,20 @@ export function createFur(geometry, {
   length = 0.18,
   density = 36,
   gravity = 0.25,
+  curl = 0.15,
+  clump = 0.35,
   tipTint = '#ffffff',
   rim = 0.9,
+  sheen = 1,
+  glitter = 0,
+  iridescence = 0,
   seed = Math.random(),
 } = {}) {
+  const count = geometry.getAttribute('position').count;
   if (!geometry.getAttribute('color')) {
-    const count = geometry.getAttribute('position').count;
     geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * 3).fill(1), 3));
   }
   if (!geometry.getAttribute('aSeed')) {
-    const count = geometry.getAttribute('position').count;
     geometry.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(count).fill(seed), 1));
   }
 
@@ -137,8 +227,13 @@ export function createFur(geometry, {
       uShells: { value: shells },
       uDensity: { value: density },
       uGravity: { value: gravity },
+      uCurl: { value: curl },
+      uClump: { value: clump },
       uTipTint: { value: new THREE.Color(tipTint) },
       uRim: { value: rim },
+      uSheen: { value: sheen },
+      uGlitter: { value: glitter },
+      uIridescence: { value: iridescence },
     },
   });
 
