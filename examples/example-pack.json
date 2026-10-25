@@ -1,0 +1,19 @@
+{
+  "name": "Ruby Pack",
+  "namespace": "rubypack",
+  "minecraft": "1.21.8",
+  "description": "Ruby blocks and gems for 1.21.8",
+  "icon": "#c0392b",
+  "blocks": [
+    { "id": "ruby_block", "color": "#c0392b" },
+    { "id": "ruby_ore", "color": "#7f1d1d" }
+  ],
+  "items": [
+    { "id": "ruby", "color": "#e74c3c" }
+  ],
+  "lang": {
+    "block.rubypack.ruby_block": "Ruby Block",
+    "block.rubypack.ruby_ore": "Ruby Ore",
+    "item.rubypack.ruby": "Ruby"
+  }
+}
