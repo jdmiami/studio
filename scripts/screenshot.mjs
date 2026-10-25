@@ -31,7 +31,9 @@ page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') 
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 
 const camArg = args.find((a) => a.startsWith('--cam='))?.split('=')[1];
-await page.goto(`${base}/?shot=${shot}${camArg ? `&cam=${camArg}` : ''}`, { waitUntil: 'load' });
+// --query=lowfx=1&foo=bar appends extra URL flags (handy for bisecting effects).
+const extra = args.find((a) => a.startsWith('--query='))?.slice('--query='.length);
+await page.goto(`${base}/?shot=${shot}${camArg ? `&cam=${camArg}` : ''}${extra ? `&${extra}` : ''}`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__phluphReady === true, null, { timeout: 180000 });
 mkdirSync(dirname(out), { recursive: true });
 await page.screenshot({ path: out, timeout: 120000 });

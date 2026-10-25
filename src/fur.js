@@ -69,6 +69,7 @@ const fragmentShader = /* glsl */ `
   uniform float uSheen;
   uniform float uGlitter;
   uniform float uIridescence;
+  uniform vec3 uFlow;
   uniform vec3 uFogColor;
   uniform float uFogDensity;
 
@@ -106,7 +107,8 @@ const fragmentShader = /* glsl */ `
   }
 
   void main() {
-    vec3 cellPos = vBase * uDensity;
+    // uFlow scrolls the strand pattern over time (cotton-wool waterfall).
+    vec3 cellPos = (vBase + uFlow * uTime) * uDensity;
 
     // Clumping: tips lean toward the center of a larger clump cell, so strands gather into
     // soft locks instead of a uniform pin-cushion.
@@ -127,9 +129,9 @@ const fragmentShader = /* glsl */ `
     vec3 t = normalize(vTangentW);
 
     // Hand-dyed yarn: saturated deep roots, pale sunlit tips, per-strand hue/value jitter.
-    vec3 dyed = hueShift(vColor, (strand - 0.5) * 0.35) * (0.85 + hash(cell + 5.0) * 0.3);
+    vec3 dyed = hueShift(vColor, (strand - 0.5) * 0.15) * (0.9 + hash(cell + 5.0) * 0.2);
     float luma = dot(dyed, vec3(0.2126, 0.7152, 0.0722));
-    vec3 root = mix(vec3(luma), dyed, 1.35) * 0.55; // deeper and more saturated, same hue
+    vec3 root = mix(vec3(luma), dyed, 1.15) * 0.86; // slightly deeper roots, same soft hue
     vec3 tip = mix(dyed, uTipTint, 0.3) * 1.08;
     vec3 base = mix(root, tip, smoothstep(0.0, 1.0, vLayer));
 
@@ -141,8 +143,8 @@ const fragmentShader = /* glsl */ `
     // Lighting: wrapped diffuse, sky/ground ambient, root occlusion.
     float wrap = clamp((dot(n, l) + 0.5) / 1.5, 0.0, 1.0);
     vec3 ambient = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
-    float occlusion = mix(0.25, 1.0, pow(vLayer, 0.6));
-    vec3 col = base * (ambient * 0.6 + uSunColor * wrap) * occlusion;
+    float occlusion = mix(0.5, 1.0, pow(vLayer, 0.6));
+    vec3 col = base * (ambient * 0.78 + uSunColor * wrap) * occlusion;
 
     // Silky sheen sliding along the fibers: white primary lobe, dye-tinted secondary lobe.
     vec3 h = normalize(l + v);
@@ -184,12 +186,13 @@ export const sharedFurUniforms = {
   uTime: { value: 0 },
   // Off to the left of the default view so rays cross the frame and the hero gets a side rim.
   uSunDir: { value: new THREE.Vector3(-0.95, 0.16, -0.18).normalize() },
-  uSunColor: { value: new THREE.Color('#ffc58f').multiplyScalar(1.5) },
-  uSkyColor: { value: new THREE.Color('#9fb2ff') },
-  uGroundColor: { value: new THREE.Color('#ff8fc8') },
+  // Pastel golden hour: warm cream sun, powder-blue sky fill, blush ground bounce.
+  uSunColor: { value: new THREE.Color('#ffeedd').multiplyScalar(1.15) },
+  uSkyColor: { value: new THREE.Color('#cdd7f4') },
+  uGroundColor: { value: new THREE.Color('#efdfe4') },
   uWind: { value: new THREE.Vector3(0.18, 0, 0.08) },
-  uFogColor: { value: new THREE.Color('#ffb1d8') },
-  uFogDensity: { value: 0.008 },
+  uFogColor: { value: new THREE.Color('#f2e8ec') },
+  uFogDensity: { value: 0.0045 },
 };
 
 /**
@@ -208,6 +211,7 @@ export function createFur(geometry, {
   sheen = 1,
   glitter = 0,
   iridescence = 0,
+  flow = [0, 0, 0],
   seed = Math.random(),
 } = {}) {
   const count = geometry.getAttribute('position').count;
@@ -234,6 +238,7 @@ export function createFur(geometry, {
       uSheen: { value: sheen },
       uGlitter: { value: glitter },
       uIridescence: { value: iridescence },
+      uFlow: { value: new THREE.Vector3(...flow) },
     },
   });
 

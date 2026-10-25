@@ -2,20 +2,22 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { sharedFurUniforms } from './fur.js';
 import { createSky } from './sky.js';
-import { buildWorld } from './world.js';
+import { buildWorld } from './world/index.js';
 import { createPost } from './post.js';
 
 // ?shot=<seconds> freezes time at that value and disables auto-rotation, for screenshots.
-// ?lowfx=1 skips god rays and tilt-shift for weaker GPUs.
+// ?lowfx=1 skips god rays and tilt-shift for weaker GPUs. ?bloom=<strength> overrides bloom.
 const params = new URLSearchParams(location.search);
 const shotTime = params.has('shot') ? Number(params.get('shot') || 4) : null;
 const lowfx = params.has('lowfx');
+const bloomStrength = params.has('bloom') ? Number(params.get('bloom')) : undefined;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+// Khronos PBR Neutral keeps pastel hues true; ACES greyed bright front-lit pastels into a milky wash.
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 0.85;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -38,7 +40,7 @@ controls.maxDistance = 60;
 const sky = createSky();
 scene.add(sky);
 const world = buildWorld(scene);
-const post = createPost(renderer, scene, camera, { lowfx });
+const post = createPost(renderer, scene, camera, { lowfx, bloomStrength });
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;

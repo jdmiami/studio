@@ -37,7 +37,8 @@ const godRaysShader = {
       for (int i = 0; i < SAMPLES; i++) {
         uv -= delta;
         vec3 s = texture2D(tDiffuse, clamp(uv, 0.0, 1.0)).rgb;
-        float bright = max(dot(s, vec3(0.2126, 0.7152, 0.0722)) - 1.15, 0.0);
+        // High threshold: only the emissive sun disc casts rays, not the bright pastel sky.
+        float bright = max(dot(s, vec3(0.2126, 0.7152, 0.0722)) - 1.8, 0.0);
         shafts += bright * decay;
         decay *= 0.955;
       }
@@ -86,18 +87,21 @@ const gradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     uTime: { value: 0 },
-    uSaturation: { value: 1.4 },
-    uShadowTint: { value: new THREE.Color('#5a2a9a') },
-    uHighlightTint: { value: new THREE.Color('#ffd9b0') },
-    uVignette: { value: 0.38 },
-    uAberration: { value: 0.0007 },
-    uGrain: { value: 0.035 },
+    // Pastel grade: natural saturation, faint lavender shadows, gentle warm highlights.
+    uSaturation: { value: 0.92 }, // Neutral tone mapping keeps hues true, so ease off for soft pastels
+    uContrast: { value: 1.08 },
+    uShadowTint: { value: new THREE.Color('#8a7ab0') },
+    uHighlightTint: { value: new THREE.Color('#fff2e2') },
+    uVignette: { value: 0.25 },
+    uAberration: { value: 0.0002 },
+    uGrain: { value: 0.025 },
   },
   vertexShader: fullscreenVertex,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uTime;
     uniform float uSaturation;
+    uniform float uContrast;
     uniform vec3 uShadowTint;
     uniform vec3 uHighlightTint;
     uniform float uVignette;
@@ -115,11 +119,14 @@ const gradeShader = {
         texture2D(tDiffuse, vUv - shift).b
       );
 
+      // Log-space contrast around linear mid-grey: depth without crushing the pastels.
+      c = 0.18 * pow(max(c, 0.0) / 0.18, vec3(uContrast));
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = mix(vec3(luma), c, uSaturation);
       float shadow = 1.0 - smoothstep(0.0, 0.45, luma);
       float highlight = smoothstep(0.55, 1.2, luma);
-      c += uShadowTint * 0.1 * shadow;
+      // Tint shadows lavender by multiplying (never lifting blacks into a milky veil).
+      c *= mix(vec3(1.0), uShadowTint * 1.6, shadow * 0.3);
       c = mix(c, c * uHighlightTint * 1.1, highlight * 0.35);
 
       c *= 1.0 - uVignette * smoothstep(0.12, 0.6, edge * 2.0);
@@ -129,14 +136,15 @@ const gradeShader = {
   `,
 };
 
-export function createPost(renderer, scene, camera, { lowfx = false } = {}) {
+export function createPost(renderer, scene, camera, { lowfx = false, bloomStrength = 0.35 } = {}) {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
 
   const godRays = new ShaderPass(godRaysShader);
   if (!lowfx) composer.addPass(godRays);
 
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.65, 0.9);
+  // Threshold above lit pastel surfaces so only glints, glitter, motes and the sun bloom.
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), bloomStrength, 0.6, 1.3);
   composer.addPass(bloom);
 
   const tiltH = new ShaderPass(tiltShiftShader(new THREE.Vector2(1, 0)));
@@ -173,7 +181,7 @@ export function createPost(renderer, scene, camera, { lowfx = false } = {}) {
       const facing = THREE.MathUtils.smoothstep(forward.dot(toSun), 0.0, 0.5);
       const onScreen = 1 - THREE.MathUtils.smoothstep(Math.max(Math.abs(sunNdc.x), Math.abs(sunNdc.y)), 1.0, 1.6);
       godRays.uniforms.uSun.value.set(sunNdc.x * 0.5 + 0.5, sunNdc.y * 0.5 + 0.5);
-      godRays.uniforms.uIntensity.value = 1.0 * facing * onScreen;
+      godRays.uniforms.uIntensity.value = 0.7 * facing * onScreen;
       godRays.uniforms.uColor.value.copy(sunColor);
       grade.uniforms.uTime.value = time;
       composer.render();

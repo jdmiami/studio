@@ -20,6 +20,7 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uHorizonSun;
   uniform vec3 uCloudLit;
   uniform vec3 uCloudShade;
+  uniform float uVolumetric;
   varying vec3 vDir;
 
   float hash(vec3 p) {
@@ -58,10 +59,11 @@ const fragmentShader = /* glsl */ `
     vec3 col = mix(horizon, uZenith, pow(clamp(up, 0.0, 1.0), 0.5));
     col = mix(col, horizon * 1.05, smoothstep(0.0, -0.3, up)); // below horizon
 
-    col += uSunColor * (pow(sunDot, 1400.0) * 8.0 + pow(sunDot, 40.0) * 0.35 + pow(sunDot, 6.0) * 0.06);
+    // Soft glow around the felt sun (the disc itself is geometry).
+    col += uSunColor * (pow(sunDot, 40.0) * 0.25 + pow(sunDot, 6.0) * 0.05);
 
-    // Volumetric clouds in a slab from y = 60 to 110.
-    if (dir.y > 0.02) {
+    // Volumetric clouds in a slab from y = 60 to 110 (off when felt clouds are used).
+    if (uVolumetric > 0.5 && dir.y > 0.02) {
       float tStart = (60.0 - cameraPosition.y) / dir.y;
       float tEnd = (110.0 - cameraPosition.y) / dir.y;
       float stepLen = (tEnd - tStart) / 36.0;
@@ -100,11 +102,13 @@ export function createSky() {
       uTime: sharedFurUniforms.uTime,
       uSunDir: sharedFurUniforms.uSunDir,
       uSunColor: sharedFurUniforms.uSunColor,
-      uZenith: { value: new THREE.Color('#5a3df0') },
-      uHorizon: { value: new THREE.Color('#ff9fd6') },
-      uHorizonSun: { value: new THREE.Color('#ffb070') },
+      // Pastel sky: powder zenith, blush horizon, cream toward the sun.
+      uZenith: { value: new THREE.Color('#c9d3ef') },
+      uHorizon: { value: new THREE.Color('#f6e7ec') },
+      uHorizonSun: { value: new THREE.Color('#fbefe2') },
       uCloudLit: { value: new THREE.Color('#ffe9f4') },
       uCloudShade: { value: new THREE.Color('#9a6bff') },
+      uVolumetric: { value: 0 }, // felt cutout clouds replace the volumetric layer
     },
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 48, 24), material);
