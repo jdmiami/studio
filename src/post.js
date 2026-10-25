@@ -136,12 +136,14 @@ const gradeShader = {
   `,
 };
 
-export function createPost(renderer, scene, camera, { lowfx = false, bloomStrength = 0.35 } = {}) {
+export function createPost(renderer, scene, camera, {
+  lowfx = false, bloomStrength = 0.35, godRays: useGodRays = true, tiltShift: useTiltShift = true,
+} = {}) {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
 
   const godRays = new ShaderPass(godRaysShader);
-  if (!lowfx) composer.addPass(godRays);
+  if (!lowfx && useGodRays) composer.addPass(godRays);
 
   // Threshold above lit surfaces so only glints, glitter, motes and the sun bloom.
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), bloomStrength, 0.6, 1.3);
@@ -149,7 +151,7 @@ export function createPost(renderer, scene, camera, { lowfx = false, bloomStreng
 
   const tiltH = new ShaderPass(tiltShiftShader(new THREE.Vector2(1, 0)));
   const tiltV = new ShaderPass(tiltShiftShader(new THREE.Vector2(0, 1)));
-  if (!lowfx) {
+  if (!lowfx && useTiltShift) {
     composer.addPass(tiltH);
     composer.addPass(tiltV);
   }

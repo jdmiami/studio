@@ -8,7 +8,7 @@ import { PALETTE, pick, withSeed } from './util.js';
 
 const STRANDS_PER_TASSEL = 9;
 
-export function buildTasselTrees(positions, random) {
+export function buildTasselTrees(positions, random, { canopy = PALETTE.canopy } = {}) {
   const group = new THREE.Group();
   const trunks = [];
   const crowns = [];
@@ -23,7 +23,7 @@ export function buildTasselTrees(positions, random) {
 
   for (const base of positions) {
     const height = 2.4 + random() * 0.8;
-    const crownColor = new THREE.Color(pick(random, PALETTE.canopy));
+    const crownColor = new THREE.Color(pick(random, canopy));
 
     const trunk = new THREE.CylinderGeometry(0.18, 0.3, height, 18, 16);
     trunk.translate(base.x, base.y + height / 2, base.z);
