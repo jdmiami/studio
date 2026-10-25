@@ -20,12 +20,12 @@ export function buildComb(random) {
   handle.translate(0, 1.35, 0);
   pieces.push(handle);
   for (const piece of pieces) {
-    paint(piece, '#f4dfa8');
+    paint(piece, '#c9a24a');
     withSeed(piece, random());
   }
   return createFur(mergeGeometries(pieces), {
     shells: 18, length: 0.06, density: 70, gravity: 0.02, curl: 0, clump: 0.1,
-    tipTint: '#fffbe9', rim: 1.4, sheen: 1.4, glitter: 0.6, iridescence: 0.5,
+    tipTint: '#f2dd9c', rim: 1.2, sheen: 1.4, glitter: 0.3, iridescence: 0,
   });
 }
 

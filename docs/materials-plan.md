@@ -9,20 +9,24 @@ Decisions from the art direction Q&A (2026-10-25):
 | Ground | Mixed by biome (below) |
 | Clouds | Felt cutout layers, stop-motion stage-set style |
 | Accents | Velvet flowers and fruit, knitted hills and rocks, creature outfits, cotton-wool waterfall |
-| Palette | Light pastels close to real wool dyes; color only as small accents |
+| Palette | Real-world colors (revised from an initial pastel pass) |
 
 ## Palette
 
-Soft, light, natural wool dyes. Saturation lives in a few accents (velvet blooms, scarf
-stripes); everything else is chalky pastel with warm light.
+Revised 2026-10-25: real-world colors, not pastels. Grass is green, the sky is blue, clouds are
+white, trunks are brown; flowers carry the bright accents.
 
 | Family | Colors |
 |---|---|
-| Felt meadow | blush `#f2c9d4`, sage `#cfe3d4`, lavender `#d9d0f0`, peach `#f6dcc0`, butter `#f3e9c6`, powder blue `#c9dcef`, oatmeal `#efe6dc` |
-| Knit stripes | cream `#f4e8da`, blue `#c9d9ec`, rose `#efc3cf`, sage `#cfe2cf` |
-| Velvet accents | dusty rose `#d98fa6`, apricot `#f0b48c`, plum `#a98bc9`, sage stem `#9db89c` |
-| Wool trunks | oatmeal `#d9c3a8` |
-| Sky | powder `#b9c6ee` zenith, blush `#f7dbe4` horizon, cream `#ffe6cc` toward the sun |
+| Felt meadow (grass) | `#7fb85a`, `#8cc063`, `#76b052`, `#93c56a`, `#86bb5d` |
+| Earth (cliff sides) | `#9a7652` |
+| Shag grass | `#79b04e`, `#8fc25e`, `#6fa646`, `#9ccb6b` |
+| Knitted hills | green stripes `#6fa84a`, `#86bc5e`, `#5f9a40`, `#97c96d` |
+| Velvet flowers | red `#d64545`, yellow `#f2c230`, purple `#8a5cc2`, pink `#e86fa0`, orange `#f58a3c` |
+| Willows | brown wool trunks `#8a6644`, green crowns and tassels |
+| Rocks | greys `#9e9c97`, `#aaa69e`, `#918f8b` |
+| Sky | zenith `#4f8fdc`, horizon `#bcd9f2`, warm white toward the sun |
+| Water | deep `#2f7fb8`, shallow `#7cc6d6` |
 
 ## Materials (one shader, four modes: `src/textile.js`)
 
@@ -34,7 +38,7 @@ stripes); everything else is chalky pastel with warm light.
 | Yarn wrap | Yarn coiled around a form | Helical stripes with grooves and ply twist |
 
 Shell fur (`src/fur.js`) stays for shag, pom-pom crowns, creature fleece, and cotton wool, with
-pastel roots and a new flow option for the waterfall.
+softer roots and a new flow option for the waterfall.
 
 ## Biomes on the island
 
@@ -43,18 +47,18 @@ pastel roots and a new flow option for the waterfall.
 | Felt patchwork meadow (center, back-right) | Felt Tufts, each a stitched patch | Tassel willows, the Fluffalo, the Comb |
 | Velvet flower beds (front-right) | Blush and peach felt | Velvet tulips, berries, mushrooms; the Dew pond and the cotton-wool waterfall |
 | Knitted hills (back-left) | Sage felt | Striped knitted mounds with pom-pom tops, knitted rocks |
-| Shag wild zone (front-left) | Long pastel shag Tufts | Swaying pile |
+| Shag wild zone (front-left) | Long green shag grass | Swaying pile |
 
 ## Sky and clouds
 
-- Pastel gradient sky; the volumetric clouds are switched off in favor of felt.
+- Blue gradient sky; the volumetric clouds are switched off in favor of felt.
 - Felt cutout clouds in rings of flat, bevelled cloud shapes around and below the island, for stage-set parallax.
 - A felt sun disc with a stitched rim, bright enough to drive the god rays.
 
 ## Grade
 
-Khronos PBR Neutral tone mapping (ACES greyed bright front-lit pastels into a milky wash),
-saturation 0.92, gentle log contrast, lavender shadow tint by multiplication, bloom only above
+Khronos PBR Neutral tone mapping (ACES greyed bright front-lit colors into a milky wash),
+saturation 1.0, gentle log contrast, cool shadow tint by multiplication, bloom only above
 lit surfaces, light grain.
 
 ## Status
@@ -69,4 +73,5 @@ lit surfaces, light grain.
 | Felt cutout clouds and felt sun | Done (`src/world/clouds.js`) |
 | Cotton-wool waterfall | Built (`src/world/water.js`), but reads as a mound from current views; needs a longer visible drop and a better camera |
 | Fluffalo knitted scarf | Built (`src/world/creatures.js`), mostly hidden by fleece; needs to sit outside the fur |
+| Solid terrain | Fixed: columns used to skip "buried" Tufts, which left the island hollow where the ground steps down. Felt Tufts are now one instanced draw (one 1,764-vertex cushion) instead of a 1.39M-vertex merged mesh |
 | Real-GPU frame-rate check | Not done: no GPU in the build container |

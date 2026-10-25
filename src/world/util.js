@@ -2,19 +2,21 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-// Light pastels close to real wool dyes (see docs/materials-plan.md).
+// Real-world colors in textile form: grass-green felt, earth-brown cliffs, green knit and
+// shag, brown wool trunks, true flower colors, white clouds (see docs/materials-plan.md).
 export const PALETTE = {
-  felt: ['#f2c9d4', '#cfe3d4', '#d9d0f0', '#f6dcc0', '#f3e9c6', '#c9dcef', '#efe6dc'],
-  flowerBed: ['#f2c9d4', '#f6dcc0', '#f7d6dc', '#f3e9c6'],
-  hillFelt: ['#cfe3d4', '#d8e8d0', '#e4eedc'],
-  shag: ['#f7d4e2', '#e2d8f5', '#f9e3d3', '#d7e9f2'],
-  cliff: '#e3d7e6',
-  knitStripes: ['#f4e8da', '#c9d9ec', '#efc3cf', '#cfe2cf'],
-  velvet: ['#d98fa6', '#f0b48c', '#a98bc9', '#e7a1b8'],
-  velvetStem: '#9db89c',
-  wool: '#d9c3a8',
-  canopy: ['#cfe1c6', '#f0cbd6', '#d8cdee', '#f6d6bf'],
-  cloud: ['#fff8f2', '#fbe6ec', '#ece6f7', '#e6eef8'],
+  felt: ['#7fb85a', '#8cc063', '#76b052', '#93c56a', '#86bb5d'],
+  flowerBed: ['#86bd5e', '#7bb455', '#8fc265'],
+  hillFelt: ['#74ad4f', '#7fb758'],
+  shag: ['#79b04e', '#8fc25e', '#6fa646', '#9ccb6b'],
+  cliff: '#9a7652',
+  knitStripes: ['#6fa84a', '#86bc5e', '#5f9a40', '#97c96d'],
+  velvet: ['#d64545', '#f2c230', '#8a5cc2', '#e86fa0', '#f58a3c'],
+  velvetStem: '#4f8a3a',
+  wool: '#8a6644',
+  canopy: ['#5f9e3f', '#73ad4a', '#56963a', '#82b852'],
+  cloud: ['#ffffff', '#f6f9fc', '#f1f5fa'],
+  rock: ['#9e9c97', '#aaa69e', '#918f8b'],
 };
 
 // Deterministic pseudo-random so screenshots are repeatable.
@@ -41,9 +43,13 @@ export function withLocal(geometry) {
   return geometry;
 }
 
-/** A rounded cube bulged partway toward a sphere, so it reads as a pillow, not a block. */
-export function puffyTuft(bulge = 0.35, size = 0.92, radius = 0.34) {
-  const g = new RoundedBoxGeometry(size, size, size, 4, radius);
+/**
+ * A rounded cube bulged partway toward a sphere, so it reads as a pillow, not a block.
+ * Keep `segments` low: every Tuft in the world is one of these, and segments 4 costs
+ * about 2,500 vertices each.
+ */
+export function puffyTuft(bulge = 0.35, size = 0.92, radius = 0.34, segments = 2) {
+  const g = new RoundedBoxGeometry(size, size, size, segments, radius);
   if (bulge > 0) {
     const pos = g.getAttribute('position');
     const v = new THREE.Vector3();

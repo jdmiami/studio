@@ -17,6 +17,8 @@ export function buildWorld(scene) {
   const random = rng(20261025);
   const { group: terrain, tops, topAt } = buildTerrain(random);
   scene.add(terrain);
+  // Debug: ?only=terrain renders the island grid alone.
+  if (new URLSearchParams(location.search).get('only') === 'terrain') return { update() {} };
 
   // Tassel willows stand in the meadow and among the knitted hills.
   scene.add(buildTasselTrees([[3, -5], [6, -2], [-1, -6], [-4, -1]].map(([x, z]) => topAt(x, z)), random));

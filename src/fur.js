@@ -186,12 +186,12 @@ export const sharedFurUniforms = {
   uTime: { value: 0 },
   // Off to the left of the default view so rays cross the frame and the hero gets a side rim.
   uSunDir: { value: new THREE.Vector3(-0.95, 0.16, -0.18).normalize() },
-  // Pastel golden hour: warm cream sun, powder-blue sky fill, blush ground bounce.
-  uSunColor: { value: new THREE.Color('#ffeedd').multiplyScalar(1.15) },
-  uSkyColor: { value: new THREE.Color('#cdd7f4') },
-  uGroundColor: { value: new THREE.Color('#efdfe4') },
+  // Natural daylight: warm white sun, blue sky fill, green bounce from the grass.
+  uSunColor: { value: new THREE.Color('#fff4e5').multiplyScalar(1.2) },
+  uSkyColor: { value: new THREE.Color('#a9c8ec') },
+  uGroundColor: { value: new THREE.Color('#9cbf7e') },
   uWind: { value: new THREE.Vector3(0.18, 0, 0.08) },
-  uFogColor: { value: new THREE.Color('#f2e8ec') },
+  uFogColor: { value: new THREE.Color('#cfe2f3') },
   uFogDensity: { value: 0.0045 },
 };
 

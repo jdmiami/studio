@@ -102,10 +102,10 @@ export function createSky() {
       uTime: sharedFurUniforms.uTime,
       uSunDir: sharedFurUniforms.uSunDir,
       uSunColor: sharedFurUniforms.uSunColor,
-      // Pastel sky: powder zenith, blush horizon, cream toward the sun.
-      uZenith: { value: new THREE.Color('#c9d3ef') },
-      uHorizon: { value: new THREE.Color('#f6e7ec') },
-      uHorizonSun: { value: new THREE.Color('#fbefe2') },
+      // Clear blue sky: deep blue zenith, pale blue horizon, warm white toward the sun.
+      uZenith: { value: new THREE.Color('#4f8fdc') },
+      uHorizon: { value: new THREE.Color('#bcd9f2') },
+      uHorizonSun: { value: new THREE.Color('#fff1d8') },
       uCloudLit: { value: new THREE.Color('#ffe9f4') },
       uCloudShade: { value: new THREE.Color('#9a6bff') },
       uVolumetric: { value: 0 }, // felt cutout clouds replace the volumetric layer

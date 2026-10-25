@@ -1,10 +1,10 @@
 // Island terrain: a grid of Tufts whose material depends on the biome.
-// Felt biomes (meadow, flowers, hills) get stitched felt patches with a fine fuzz;
-// the shag zone gets long swaying pile.
+// Felt biomes (meadow, flowers, hills) are stitched felt cushions; the shag zone gets long
+// swaying pile.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createFur, paint } from '../fur.js';
-import { createTextile } from '../textile.js';
+import { createTextile, prepareTextileGeometry } from '../textile.js';
 import { PALETTE, ISLAND_RADIUS, biomeAt, islandHeight, pick, puffyTuft, withLocal, withSeed } from './util.js';
 
 const BIOME_COLORS = {
@@ -15,11 +15,11 @@ const BIOME_COLORS = {
 
 // A felt cushion: rounded and slightly pillowy, so each Tuft reads as a stitched patch.
 function feltTuft() {
-  return withLocal(puffyTuft(0.22, 0.96, 0.26));
+  return withLocal(puffyTuft(0.22, 0.96, 0.26, 3));
 }
 
 export function buildTerrain(random) {
-  const felt = [];
+  const felt = []; // { x, y, z, color }
   const shag = [];
   const tops = [];
 
@@ -31,9 +31,9 @@ export function buildTerrain(random) {
       const height = islandHeight(x, z);
       const topColor = biome === 'shag' ? pick(random, PALETTE.shag) : pick(random, BIOME_COLORS[biome]);
 
+      // Columns are solid. (Skipping "buried" Tufts left the island hollow: wherever the
+      // ground steps down, the open side of a raised Tuft showed the empty interior.)
       for (let y = -2; y <= height; y++) {
-        // Only the island's outer shell is visible, so skip buried Tufts.
-        if (y < height && r < 7.5 && y > -2) continue;
         const isTop = y === height;
         if (isTop && biome === 'shag') {
           const g = puffyTuft();
@@ -41,10 +41,7 @@ export function buildTerrain(random) {
           paint(g, topColor);
           shag.push(withSeed(g, random()));
         } else {
-          const g = feltTuft();
-          g.translate(x, y, z);
-          paint(g, isTop ? topColor : PALETTE.cliff);
-          felt.push(withSeed(g, random()));
+          felt.push({ x, y, z, color: isTop ? topColor : PALETTE.cliff });
         }
       }
       tops.push({ x, z, y: height + 0.5, biome });
@@ -52,16 +49,27 @@ export function buildTerrain(random) {
   }
 
   const group = new THREE.Group();
-  const feltGeometry = mergeGeometries(felt);
-  // Smooth matte felt; the shader's rim fuzz keeps silhouettes soft without grainy shells.
-  group.add(new THREE.Mesh(feltGeometry, createTextile('felt', { stitch: 1, fuzz: 0.4 })));
+
+  // Every felt Tuft is an instance of one cushion, colored per instance. The cushion's local
+  // coordinates (aLocal) are shared, so the stitches land in the same place on each one.
+  const cushion = prepareTextileGeometry(feltTuft());
+  const feltMesh = new THREE.InstancedMesh(cushion, createTextile('felt', { stitch: 1, fuzz: 0.4 }), felt.length);
+  const m = new THREE.Matrix4();
+  const c = new THREE.Color();
+  felt.forEach((t, i) => {
+    feltMesh.setMatrixAt(i, m.makeTranslation(t.x, t.y, t.z));
+    feltMesh.setColorAt(i, c.set(t.color));
+  });
+  feltMesh.frustumCulled = false;
+  group.add(feltMesh);
+
   group.add(createFur(mergeGeometries(shag), {
     shells: 32, length: 0.5, density: 16, gravity: 0.45, curl: 0.35, clump: 0.5,
-    tipTint: '#fffaf6', rim: 1.0, sheen: 0.7,
+    tipTint: '#cfe8a8', rim: 0.8, sheen: 0.6,
   }));
 
   const topAt = (x, z) => {
-    const t = tops.find((c) => c.x === x && c.z === z);
+    const t = tops.find((cell) => cell.x === x && cell.z === z);
     return new THREE.Vector3(x, t ? t.y : 0.5, z);
   };
   return { group, tops, topAt };

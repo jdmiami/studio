@@ -24,7 +24,7 @@ export function buildKnitHills(hills, rocks, random) {
 
     const pom = new THREE.SphereGeometry(0.45, 24, 16);
     pom.translate(hill.x, hill.y + hill.height + 0.15, hill.z);
-    paint(pom, '#fbf3ea');
+    paint(pom, '#f5f1ea');
     poms.push(withSeed(pom, random()));
   }
   if (poms.length) {
@@ -40,7 +40,7 @@ export function buildKnitHills(hills, rocks, random) {
     g.scale(1.2, 0.7, 1);
     g.rotateY(random() * Math.PI);
     g.translate(rock.x, rock.y + rock.size * 0.35, rock.z);
-    paint(g, ['#ddd6e4', '#e6e0d8', '#d4dce4'][Math.floor(random() * 3)]);
+    paint(g, PALETTE.rock[Math.floor(random() * PALETTE.rock.length)]);
     rockGeoms.push(prepareTextileGeometry(g));
   }
   if (rockGeoms.length) {

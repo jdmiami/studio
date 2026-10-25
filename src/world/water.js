@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createFur, paint, sharedFurUniforms } from '../fur.js';
 import { POND, withSeed } from './util.js';
 
-// Glossy pastel water: rippled normals, fresnel sky reflection, sun glint, foamy shoreline.
+// Glossy blue water: rippled normals, fresnel sky reflection, sun glint, foamy shoreline.
 export function buildPond() {
   const radius = POND.radius + 0.1;
   const geometry = new THREE.CircleGeometry(radius, 64);
@@ -15,10 +15,10 @@ export function buildPond() {
       uSunDir: sharedFurUniforms.uSunDir,
       uSunColor: sharedFurUniforms.uSunColor,
       uRadius: { value: radius },
-      uDeep: { value: new THREE.Color('#7fc3cc') },
-      uShallow: { value: new THREE.Color('#cdeee8') },
-      uZenith: { value: new THREE.Color('#b9c6ee') },
-      uHorizon: { value: new THREE.Color('#f7dbe4') },
+      uDeep: { value: new THREE.Color('#2f7fb8') },
+      uShallow: { value: new THREE.Color('#7cc6d6') },
+      uZenith: { value: new THREE.Color('#4f8fdc') },
+      uHorizon: { value: new THREE.Color('#bcd9f2') },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorld;
@@ -109,7 +109,7 @@ export function buildWaterfall(random) {
     new THREE.Vector3(8.8, -14, 8.8),
   ]);
   const tube = new THREE.TubeGeometry(curve, 80, 0.5, 14, false);
-  paint(tube, '#fdf6f8');
+  paint(tube, '#ffffff');
   withSeed(tube, random());
 
   const group = new THREE.Group();

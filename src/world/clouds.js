@@ -95,8 +95,8 @@ function buildFeltSun() {
     return prepareTextileGeometry(g);
   };
   const group = new THREE.Group();
-  const sun = new THREE.Mesh(disc(5.5, '#fff1d2'), createTextile('felt', { emissive: 3.0, fuzz: 0.6 }));
-  const halo = new THREE.Mesh(disc(9, '#ffe0cc'), createTextile('felt', { emissive: 0.5, fuzz: 0.5 }));
+  const sun = new THREE.Mesh(disc(5.5, '#fff6dc'), createTextile('felt', { emissive: 3.0, fuzz: 0.6 }));
+  const halo = new THREE.Mesh(disc(9, '#fff1d6'), createTextile('felt', { emissive: 0.5, fuzz: 0.5 }));
   halo.position.z = -1.5;
   group.add(sun, halo);
   group.position.copy(sharedFurUniforms.uSunDir.value).multiplyScalar(150);

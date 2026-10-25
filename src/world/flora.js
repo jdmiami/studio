@@ -59,11 +59,11 @@ export function buildFlora(spots, random) {
       const stemHeight = 0.28 + random() * 0.15;
       const stem = new THREE.CylinderGeometry(0.07, 0.09, stemHeight, 12, 2);
       stem.translate(ox, y + stemHeight / 2, oz);
-      feltParts.push(painted(stem, '#f7efe4'));
+      feltParts.push(painted(stem, '#f3ece0'));
       const cap = new THREE.SphereGeometry(capRadius, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
       cap.scale(1, 0.6, 1);
       cap.translate(ox, y + stemHeight - 0.02, oz);
-      caps.push(painted(cap, pick(random, ['#f0b48c', '#d98fa6', '#e7a1b8'])));
+      caps.push(painted(cap, pick(random, ['#d6453a', '#c93b30', '#b8862f'])));
       for (let i = 0; i < 5; i++) {
         const a = random() * Math.PI * 2;
         const rr = random() * capRadius * 0.7;
@@ -71,7 +71,7 @@ export function buildFlora(spots, random) {
         spot2.scale(1, 0.35, 1);
         const lift = Math.sqrt(Math.max(0, 1 - (rr / capRadius) ** 2)) * capRadius * 0.6;
         spot2.translate(ox + Math.cos(a) * rr, y + stemHeight - 0.02 + lift, oz + Math.sin(a) * rr);
-        feltParts.push(painted(spot2, '#fffaf2'));
+        feltParts.push(painted(spot2, '#ffffff'));
       }
     }
   }
@@ -81,9 +81,9 @@ export function buildFlora(spots, random) {
     mergeGeometries(geoms),
     createTextile('velvet', { sheen, side: THREE.DoubleSide }),
   );
-  if (blooms.length) group.add(velvet(blooms, '#fff0f4'));
-  if (stems.length) group.add(velvet(stems, '#eef7e8'));
-  if (caps.length) group.add(velvet(caps, '#fff3ea'));
+  if (blooms.length) group.add(velvet(blooms, '#fff6f0'));
+  if (stems.length) group.add(velvet(stems, '#dff0cf'));
+  if (caps.length) group.add(velvet(caps, '#ffe9e2'));
   if (feltParts.length) group.add(new THREE.Mesh(mergeGeometries(feltParts), createTextile('felt', { fuzz: 0.4 })));
   return group;
 }

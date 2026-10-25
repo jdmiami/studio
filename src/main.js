@@ -15,7 +15,7 @@ const bloomStrength = params.has('bloom') ? Number(params.get('bloom')) : undefi
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-// Khronos PBR Neutral keeps pastel hues true; ACES greyed bright front-lit pastels into a milky wash.
+// Khronos PBR Neutral keeps hues true; ACES greyed bright front-lit colors into a milky wash.
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 0.85;
 document.body.appendChild(renderer.domElement);

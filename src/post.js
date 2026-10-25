@@ -37,7 +37,7 @@ const godRaysShader = {
       for (int i = 0; i < SAMPLES; i++) {
         uv -= delta;
         vec3 s = texture2D(tDiffuse, clamp(uv, 0.0, 1.0)).rgb;
-        // High threshold: only the emissive sun disc casts rays, not the bright pastel sky.
+        // High threshold: only the emissive sun disc casts rays, not the bright sky.
         float bright = max(dot(s, vec3(0.2126, 0.7152, 0.0722)) - 1.8, 0.0);
         shafts += bright * decay;
         decay *= 0.955;
@@ -87,11 +87,11 @@ const gradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     uTime: { value: 0 },
-    // Pastel grade: natural saturation, faint lavender shadows, gentle warm highlights.
-    uSaturation: { value: 0.92 }, // Neutral tone mapping keeps hues true, so ease off for soft pastels
+    // Natural grade: true saturation, faintly cool shadows, gentle warm highlights.
+    uSaturation: { value: 1.0 },
     uContrast: { value: 1.08 },
-    uShadowTint: { value: new THREE.Color('#8a7ab0') },
-    uHighlightTint: { value: new THREE.Color('#fff2e2') },
+    uShadowTint: { value: new THREE.Color('#7088a6') },
+    uHighlightTint: { value: new THREE.Color('#fff6ea') },
     uVignette: { value: 0.25 },
     uAberration: { value: 0.0002 },
     uGrain: { value: 0.025 },
@@ -119,13 +119,13 @@ const gradeShader = {
         texture2D(tDiffuse, vUv - shift).b
       );
 
-      // Log-space contrast around linear mid-grey: depth without crushing the pastels.
+      // Log-space contrast around linear mid-grey: depth without crushing light colors.
       c = 0.18 * pow(max(c, 0.0) / 0.18, vec3(uContrast));
       float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = mix(vec3(luma), c, uSaturation);
       float shadow = 1.0 - smoothstep(0.0, 0.45, luma);
       float highlight = smoothstep(0.55, 1.2, luma);
-      // Tint shadows lavender by multiplying (never lifting blacks into a milky veil).
+      // Tint shadows cool by multiplying (never lifting blacks into a milky veil).
       c *= mix(vec3(1.0), uShadowTint * 1.6, shadow * 0.3);
       c = mix(c, c * uHighlightTint * 1.1, highlight * 0.35);
 
@@ -143,7 +143,7 @@ export function createPost(renderer, scene, camera, { lowfx = false, bloomStreng
   const godRays = new ShaderPass(godRaysShader);
   if (!lowfx) composer.addPass(godRays);
 
-  // Threshold above lit pastel surfaces so only glints, glitter, motes and the sun bloom.
+  // Threshold above lit surfaces so only glints, glitter, motes and the sun bloom.
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), bloomStrength, 0.6, 1.3);
   composer.addPass(bloom);
 

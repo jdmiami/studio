@@ -1,4 +1,4 @@
-// The Fluffalo: pastel fleece, button eyes, and a striped knitted scarf.
+// The Fluffalo: cream fleece, button eyes, and a striped knitted scarf.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -15,30 +15,30 @@ export function buildFluffalo(random) {
   const body = new THREE.SphereGeometry(1, 32, 24);
   body.scale(1.35, 1.0, 1.0);
   body.translate(0, 1.25, 0);
-  add(body, '#fbf3ea');
+  add(body, '#f4efe6');
   const head = new THREE.SphereGeometry(0.62, 28, 20);
   head.translate(1.35, 1.5, 0);
-  add(head, '#f7e6ea');
+  add(head, '#efe6da');
   for (const [x, z] of [[0.7, 0.5], [0.7, -0.5], [-0.7, 0.5], [-0.7, -0.5]]) {
     const leg = new THREE.CylinderGeometry(0.2, 0.22, 0.7, 12, 3);
     leg.translate(x, 0.35, z);
-    add(leg, '#e6dcf2');
+    add(leg, '#6b5646');
   }
   for (const side of [1, -1]) {
     const horn = new THREE.SphereGeometry(0.2, 16, 12);
     horn.scale(1, 1.6, 1);
     horn.translate(1.45, 2.1, side * 0.42);
-    add(horn, '#f6e7bf');
+    add(horn, '#d9c49a');
   }
 
   const group = new THREE.Group();
   group.add(createFur(mergeGeometries(parts), {
     shells: 36, length: 0.34, density: 34, gravity: 0.3, curl: 0.45, clump: 0.6,
-    tipTint: '#ffffff', rim: 1.3, glitter: 0.15, iridescence: 0.15,
+    tipTint: '#ffffff', rim: 1.3, glitter: 0.15, iridescence: 0,
   }));
 
   // Knitted scarf around the neck, with two striped tails.
-  const scarfStripes = ['#efc3cf', '#f4e8da', '#efc3cf', '#c9d9ec'];
+  const scarfStripes = ['#c8302f', '#f5f1ea', '#c8302f', '#f5f1ea'];
   const ring = prepareTextileGeometry(new THREE.TorusGeometry(0.52, 0.17, 18, 56));
   const scarf = new THREE.Mesh(ring, createTextile('knit', { knit: [44, 7], stripes: scarfStripes, fuzz: 0.5 }));
   scarf.rotation.y = Math.PI / 2;
@@ -61,7 +61,7 @@ export function buildFluffalo(random) {
     group.add(eye);
   }
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), new THREE.MeshPhysicalMaterial({
-    color: '#e79ab2', roughness: 0.2, clearcoat: 1,
+    color: '#3a2a2a', roughness: 0.2, clearcoat: 1,
   }));
   nose.position.set(1.98, 1.42, 0);
   group.add(nose);

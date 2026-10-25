@@ -63,7 +63,7 @@ export function buildTasselTrees(positions, random) {
 
   group.add(new THREE.Mesh(mergeGeometries(trunks), createTextile('yarn', { wraps: 34, fuzz: 0.3 })));
   group.add(createFur(mergeGeometries(crowns), {
-    shells: 26, length: 0.28, density: 26, gravity: 0.3, curl: 0.35, clump: 0.5, tipTint: '#fffaf5', rim: 1.1,
+    shells: 26, length: 0.28, density: 26, gravity: 0.3, curl: 0.35, clump: 0.5, tipTint: '#c6e3a0', rim: 0.9,
   }));
 
   // One strand: a thin plied cylinder modeled from y = 0 down to y = -1 so the shader can sway it.
