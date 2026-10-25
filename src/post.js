@@ -137,7 +137,7 @@ const gradeShader = {
 };
 
 export function createPost(renderer, scene, camera, {
-  lowfx = false, bloomStrength = 0.35, godRays: useGodRays = true, tiltShift: useTiltShift = true,
+  lowfx = false, bloomStrength = 0.35, godRays: useGodRays = true, tiltShift: useTiltShift = true, saturation = 1.0,
 } = {}) {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
@@ -157,6 +157,7 @@ export function createPost(renderer, scene, camera, {
   }
 
   const grade = new ShaderPass(gradeShader);
+  grade.uniforms.uSaturation.value = saturation;
   composer.addPass(grade);
   composer.addPass(new OutputPass());
 

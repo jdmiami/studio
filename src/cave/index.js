@@ -14,34 +14,35 @@ export function buildCave(scene) {
   const at = (x, z, dy = 0) => new THREE.Vector3(x, level.heightAt(x, z) + dy, z);
 
   scene.add(buildDoor(random));
-  scene.add(buildCubeTree(at(-2, -9), random));
-  scene.add(buildWillows([at(2, -11.5), at(5, -12)], random));
-  scene.add(buildBroomTree(at(4.2, -3.5), random));
-  scene.add(buildKnitShrub(at(5, -6.5), random));
-  const fence = buildFence(-9, -4, level.heightAt(3, -6));
-  fence.position.x = 2.62;
+  scene.add(buildCubeTree(at(-8, -9), random));
+  scene.add(buildWillows([at(-6, -10.2), at(4.6, -11)], random, 0.7));
+  scene.add(buildBroomTree(at(1.8, -9.1), random));
+  scene.add(buildKnitShrub(at(0.3, -7.6), random));
+  const fence = buildFence(-2.2, 0.4, level.heightAt(-1, -6));
+  fence.rotation.y = Math.PI / 2; // runs across the view along the terrace edge
+  fence.position.z = -6.25;
   scene.add(fence);
   scene.add(buildMushrooms(
-    [[2.2, -6], [2.4, -5.4], [-1.6, -4], [3, -10], [4, -9.5], [-2.3, -8.4], [1.8, -13], [5.2, -9], [-1.4, -1.5]]
+    [[0.3, -9.2], [-0.3, -5.4], [2.6, -10.7], [-8.4, -9.3], [-7.8, -10.1], [-6.2, -7.6], [-1.6, -13.4], [3.6, -13]]
       .map(([x, z]) => at(x, z)),
     random,
   ));
-  scene.add(buildStones([[1.6, -3.2], [2.1, -9], [-1.4, -12], [3.2, -6.5], [-1.7, -6]].map(([x, z]) => at(x, z)), random));
-  scene.add(buildScaffold(at(-6, -6)));
+  scene.add(buildStones([[-6.8, -7.4], [-6.1, -7.2], [-6.3, -8.2], [-7.4, -10], [-2.6, -12.4]].map(([x, z]) => at(x, z)), random));
+  scene.add(buildScaffold(at(-11.5, -13)));
 
   const dog = buildFluffDog(random);
-  const dogBase = at(0.6, -7.5);
+  const dogBase = at(-3.7, -10.6);
   dog.position.copy(dogBase);
-  dog.rotation.y = -1.2; // faces the player, turned slightly toward the path
+  dog.rotation.y = -2.0; // three-quarter view, looking toward the player
   scene.add(dog);
 
-  const critterSpots = [[1.6, -5.6], [0.2, -4.6], [2.0, -7.8]].map(([x, z]) => at(x, z));
+  const critterSpots = [[-2.2, -9.6], [-3.8, -7.9], [-1.5, -12]].map(([x, z]) => at(x, z));
   const critters = buildCritters(critterSpots, random);
   scene.add(critters);
 
   scene.add(buildLightShafts([
-    { x: -4.5, y: 9, z: -9.5, width: 3.4, length: 11, twist: 0.4 },
-    { x: 0, y: 9, z: -13, width: 2.4, length: 10, twist: 0.9 },
+    { x: -11, y: 7, z: -8, width: 3.4, length: 9, twist: 0.4 },
+    { x: 0, y: 8, z: -13, width: 2.4, length: 9, twist: 0.9 },
   ]));
 
   // Lights only affect the glossy button eyes and the compass; textiles and fur light themselves.
@@ -59,7 +60,7 @@ export function buildCave(scene) {
     heightAt: level.heightAt,
     columns: level.columns,
     interactables,
-    spawn: { position: new THREE.Vector3(0.2, 0, -2.5), yaw: 0, pitch: -0.04 },
+    spawn: { position: new THREE.Vector3(-5.5, 0, -1.5), yaw: 0, pitch: -0.1 },
     stats: { blocks: level.blockCount, caps: level.capCount },
     update(time) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03;

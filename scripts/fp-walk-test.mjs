@@ -1,6 +1,6 @@
-// Drives the first-person controls in headless Chromium: holds W and checks the player moved
-// forward (toward -Z) while staying on the ground, then walks into the right-hand terrace wall
-// and checks collision stopped them. Usage: npm run dev, then node scripts/fp-walk-test.mjs
+// Drives the first-person controls in headless Chromium: holds W and checks the player walked
+// forward (toward -Z) down the steps and is standing on a block surface, then strafes into the
+// right-hand terrace and checks collision stopped them. Usage: npm run dev, then node scripts/fp-walk-test.mjs
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
@@ -20,10 +20,12 @@ const hold = async (key, ms) => { await page.keyboard.down(key); await page.wait
 const start = await pos();
 await hold('KeyW', 12000);
 const afterW = await pos();
-await hold('KeyD', 20000); // strafe right into the terrace (x >= 3 is 1 block up from the floor... then 2)
+await hold('KeyD', 20000); // strafe right across the floor into the right terrace (1 block up)
 const afterD = await pos();
 console.log(JSON.stringify({ start, afterW, afterD }, null, 1));
-const ok = afterW.z < start.z - 0.3 && Math.abs(afterW.y - start.y) < 0.01 && afterD.x < 3.6;
-console.log(ok ? 'PASS: moved forward on the ground; terrace wall stopped the strafe' : 'FAIL');
+// Block tops are whole or half units, so a grounded player stands on a multiple of 0.5.
+const onSurface = (p) => Math.abs(p.y * 2 - Math.round(p.y * 2)) < 0.01;
+const ok = afterW.z < start.z - 0.3 && afterW.y <= start.y + 0.01 && onSurface(afterW) && afterD.x < 1;
+console.log(ok ? 'PASS: walked forward onto a block surface; the terrace stopped the strafe' : 'FAIL');
 await browser.close();
 process.exit(ok ? 0 : 1);

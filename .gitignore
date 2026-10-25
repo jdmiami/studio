@@ -4,3 +4,4 @@ screenshots/
 .DS_Store
 .superstack/
 .img2threejs/
+__pycache__/

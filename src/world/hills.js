@@ -22,6 +22,7 @@ export function buildKnitHills(hills, rocks, random) {
     mesh.position.set(hill.x, hill.y - 0.15, hill.z);
     group.add(mesh);
 
+    if (hill.pom === 0) continue; // no pom-pom on this hill
     const pom = new THREE.SphereGeometry(0.45, 24, 16);
     pom.translate(hill.x, hill.y + hill.height + 0.15, hill.z);
     paint(pom, '#f5f1ea');

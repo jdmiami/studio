@@ -60,7 +60,7 @@ export function createHud({ columns, interactables, shot }) {
       <div class="hud-quest">INVESTIGATE THE GREAT CAVE DOOR (0/1)</div>
       <div class="hud-timer">⏱ 15:00</div>
     </div>
-    <div class="hud-panel hud-minimap"><canvas width="128" height="128"></canvas></div>
+    <div class="hud-panel hud-minimap"><canvas width="108" height="108"></canvas></div>
     <div class="hud-prompts"></div>
     <div class="hud-toast"></div>
     <div class="hud-start">Click to look around<br>WASD to move · Shift to run · Space to jump · E to interact</div>
@@ -86,20 +86,48 @@ export function createHud({ columns, interactables, shot }) {
     start.style.display = document.pointerLockElement ? 'none' : '';
   });
 
-  // Static minimap terrain, drawn once from the level grid.
-  const terrain = document.createElement('canvas');
-  terrain.width = terrain.height = 128;
-  const tctx = terrain.getContext('2d');
-  const cell = 128 / 17;
-  const toMap = (x, z) => [(x + 8.5) * cell, (z + 13.5) * cell * 0.82];
+  // Minimap: a pixel map centered on the player, north up; unexplored rock reads as near-black.
+  const MAP = 108;
+  const CELL = 6;
+  const cellColor = new Map();
+  const shade = (hex, k) => {
+    const n = parseInt(hex.slice(1), 16);
+    const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  };
   for (const [k, col] of columns) {
     const [x, z] = k.split(',').map(Number);
-    const [px, py] = toMap(x, z);
-    tctx.fillStyle = col.kind === 'water' || col.kind === 'stream' ? '#6f9fd9'
-      : col.kind === 'floor' ? '#e7cfc2'
-        : col.top >= 7 ? '#5a4a43'
-          : col.top >= 1 ? '#8fb877' : '#c7a497';
-    tctx.fillRect(px, py, cell + 0.5, cell * 0.82 + 0.5);
+    const jitter = 0.85 + (((x * 73856093) ^ (z * 19349663)) >>> 0) % 100 / 330;
+    const base = col.kind === 'water' || col.kind === 'stream' ? '#2f5fae'
+      : col.top >= 7 ? '#141315'
+        : col.kind === 'floor' || col.kind === 'step' ? '#7a6250'
+          : '#3d7430';
+    cellColor.set(k, shade(base, jitter));
+  }
+  function drawMinimap(position, yaw) {
+    mctx.fillStyle = '#0e0d0f';
+    mctx.fillRect(0, 0, MAP, MAP);
+    const cx = Math.round(position.x);
+    const cz = Math.round(position.z);
+    const half = Math.ceil(MAP / CELL / 2);
+    const ox = MAP / 2 - (position.x - cx) * CELL;
+    const oz = MAP / 2 - (position.z - cz) * CELL;
+    for (let dz = -half; dz <= half; dz++) {
+      for (let dx = -half; dx <= half; dx++) {
+        const color = cellColor.get(`${cx + dx},${cz + dz}`);
+        if (!color || dx * dx + dz * dz > 42) continue; // unexplored beyond a few cells
+        mctx.fillStyle = color;
+        mctx.fillRect(ox + (dx - 0.5) * CELL, oz + (dz - 0.5) * CELL, CELL, CELL);
+      }
+    }
+    mctx.save();
+    mctx.translate(MAP / 2, MAP / 2);
+    mctx.rotate(-yaw);
+    mctx.fillStyle = '#5ff0d0';
+    mctx.beginPath();
+    mctx.moveTo(0, -5); mctx.lineTo(3.5, 4); mctx.lineTo(-3.5, 4);
+    mctx.fill();
+    mctx.restore();
   }
 
   const doorTarget = interactables.find((i) => i.id === 'door').position;
@@ -163,19 +191,7 @@ export function createHud({ columns, interactables, shot }) {
       const t = Math.max(0, timeLeft);
       timerEl.textContent = `⏱ ${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
-      if (frame % 6 === 1) {
-        mctx.clearRect(0, 0, 128, 128);
-        mctx.drawImage(terrain, 0, 0);
-        const [px, py] = toMap(position.x, position.z);
-        mctx.save();
-        mctx.translate(px, py);
-        mctx.rotate(-yaw);
-        mctx.fillStyle = '#ffffff';
-        mctx.beginPath();
-        mctx.moveTo(0, -6); mctx.lineTo(4, 4); mctx.lineTo(-4, 4);
-        mctx.fill();
-        mctx.restore();
-      }
+      if (frame % 6 === 1) drawMinimap(position, yaw);
 
       let near = null;
       for (const it of interactables) {

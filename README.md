@@ -35,11 +35,17 @@ the island grid alone (for debugging). The screenshot script passes
 extra flags with `--query=lowfx=1&bloom=0`. The script uses software WebGL (SwiftShader), so it works without
 a GPU but takes about 30 seconds per frame.
 
+## Matching the reference
+
+The cave's opening frame is tuned with a scored loop: `scripts/loop/iterate.sh` renders it,
+scores it against `docs/reference/cave-door.jpg`, and logs the result to `docs/loop/history.json`.
+See `docs/loop/README.md` for the score, the rules, and the results (0.552 to 0.678 over 21 rounds).
+
 ## Test
 
 With the dev server running, `npm run test:walk` drives the first-person controls in headless
-Chromium: it holds W and checks the player moved forward on the ground, then strafes into the
-right-hand terrace and checks collision stopped them.
+Chromium: it holds W and checks the player walked forward down the steps onto a block surface,
+then strafes into the right-hand terrace and checks collision stopped them.
 
 ## Build
 
@@ -57,6 +63,7 @@ npm run build      # static site in dist/
 - `src/cave/`: the first-person level: `level.js` (block grid, grass and foam caps, collision heights), `props.js` (door, trees, shrub, fence, mushrooms, dog, critters, scaffold, light shafts), `index.js` (placement and interactions)
 - `src/fp/`: first-person systems: `controls.js` (mouse look, movement, gravity, step-up collision), `hands.js` (gloved hands, fluff stone, radar compass), `hud.js` (hearts, level, stamina ring, compass strip, quest tracker, timer, minimap, prompts)
 - `src/main.js`: renderer, scene selection, and URL flags
+- `scripts/loop/`: the reference-matching loop (`iterate.sh` one round, `score.py` the score, `diff.py` the per-region error grid)
 
 Design docs: `docs/fp-reference-analysis.md` (the first-person reference broken down with the
 img2threejs image-analysis protocol), `docs/materials-plan.md` (the textile world), and

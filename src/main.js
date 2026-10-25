@@ -98,7 +98,7 @@ function startCave() {
   const timerStart = 15 * 60 - 3; // matches the reference frame's 14:57
   return {
     camera,
-    postOptions: { godRays: false, tiltShift: false },
+    postOptions: { godRays: false, tiltShift: false, saturation: 0.9 }, // the reference's muted chalky colors
     update(time, dt) {
       controls.update(dt);
       hands.update(controls.walkPhase, controls.speed);

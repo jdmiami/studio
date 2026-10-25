@@ -7,7 +7,7 @@ import { createTextile, prepareTextileGeometry } from '../textile.js';
 import { withSeed } from '../world/util.js';
 
 const SKIN = '#e9b99c';
-const GLOVE_STRIPES = ['#2f6a46', '#e9dfc8', '#2f6a46', '#3f7d55'];
+const GLOVE_STRIPES = ['#2d5f40', '#2d5f40', '#e3d8c0', '#2d5f40'];
 
 function radarTexture() {
   const size = 256;
@@ -76,24 +76,30 @@ function buildHand(side) {
   return hand;
 }
 
+// Hands enter from the lower corners, forearms angled inward, sized and placed so the stone and
+// the compass sit where they do in docs/reference/cave-door.jpg.
+const HAND_SCALE = 1.45;
+
 export function createHands(camera, random) {
   const root = new THREE.Group();
   camera.add(root);
 
   const left = buildHand(-1);
-  left.position.set(-0.24, -0.3, -0.38);
-  left.rotation.set(-0.12, 0.4, 0.3); // forearm runs nearly level, angled inward
+  left.scale.setScalar(HAND_SCALE);
+  left.position.set(-0.39, -0.27, -0.14);
+  left.rotation.set(-0.05, -0.55, -0.35);
   root.add(left);
   const stone = withSeed(paint(new THREE.SphereGeometry(0.07, 20, 16), '#ead0c8'), random());
-  stone.scale(0.9, 0.72, 0.8);
-  stone.translate(0, 0.07, -0.3);
+  stone.scale(0.62, 0.5, 0.55);
+  stone.translate(0.045, 0.03, -0.3);
   left.add(createFur(stone, {
     shells: 18, length: 0.025, density: 300, gravity: 0, curl: 0.2, clump: 0.3, tipTint: '#fff4f0', rim: 1,
   }));
 
   const right = buildHand(1);
-  right.position.set(0.27, -0.31, -0.38);
-  right.rotation.set(-0.12, -0.4, -0.3);
+  right.scale.setScalar(HAND_SCALE);
+  right.position.set(0.62, -0.265, -0.15);
+  right.rotation.set(-0.05, 0.6, 0.3);
   root.add(right);
   const compass = new THREE.Group();
   const body = new THREE.Mesh(
@@ -120,9 +126,9 @@ export function createHands(camera, random) {
   );
   lug.position.y = 0.095;
   compass.add(lug);
-  compass.position.set(0, 0.09, -0.3);
-  compass.rotation.set(-0.55, 0, 0); // face tilted up toward the eye
-  compass.scale.setScalar(0.85);
+  compass.position.set(-0.03, 0.06, -0.3);
+  compass.rotation.set(-0.55, -0.6, 0); // face tilted up and turned back toward the eye
+  compass.scale.setScalar(0.6);
   right.add(compass);
 
   const leftBase = left.position.clone();

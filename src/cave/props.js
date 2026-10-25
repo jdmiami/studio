@@ -45,8 +45,8 @@ export function buildDoor(random) {
 // Cube tree: a felt trunk carrying a canopy of fuzzy sage cubes.
 export function buildCubeTree(base, random) {
   const group = new THREE.Group();
-  const trunk = painted(new RoundedBoxGeometry(0.5, 1.9, 0.5, 2, 0.08), '#a07a5c');
-  trunk.translate(0, 0.95, 0);
+  const trunk = painted(new RoundedBoxGeometry(0.5, 1.1, 0.5, 2, 0.08), '#a07a5c');
+  trunk.translate(0, 0.55, 0);
   group.add(new THREE.Mesh(trunk, createTextile('felt', { fuzz: 0.3 })));
   const cubes = [];
   const spots = [
@@ -56,7 +56,7 @@ export function buildCubeTree(base, random) {
   for (const [x, y, z] of spots) {
     const g = puffyTuft(0.18, 0.86, 0.2, 2);
     g.rotateY(random() * 0.6);
-    g.translate(x, y, z);
+    g.translate(x * 1.25, y - 0.85, z * 1.25); // a broad, low crown on a short trunk
     paint(g, pick(random, ['#b7c4ad', '#aebba3', '#c2cdb8']));
     cubes.push(withSeed(g, random()));
   }
@@ -286,14 +286,28 @@ export function buildLightShafts(sources) {
 }
 
 // Pale sage willows, as in the reference.
-export function buildWillows(positions, random) {
-  return buildTasselTrees(positions, random, { canopy: ['#b5cc95', '#a9c48a', '#bfd3a0'] });
+export function buildWillows(positions, random, scale = 1) {
+  const group = new THREE.Group();
+  for (const base of positions) {
+    const tree = buildTasselTrees([new THREE.Vector3()], random, { canopy: ['#b5cc95', '#a9c48a', '#bfd3a0'] });
+    tree.scale.setScalar(scale);
+    tree.position.copy(base);
+    group.add(tree);
+  }
+  return group;
 }
 
 export function buildKnitShrub(base, random) {
-  return buildKnitHills(
-    [{ x: base.x, y: base.y, z: base.z, radius: 0.85, height: 0.75, stripes: ['#7fa86a', '#8fb879', '#6f9a5c', '#9cc387'] }],
+  const group = buildKnitHills(
+    [{ x: base.x, y: base.y, z: base.z, radius: 0.85, height: 0.75, pom: 0, stripes: ['#5f8a55', '#6c9761', '#557d4c', '#76a06a'] }],
     [],
     random,
   );
+  // A small white pom-pom on top, as in the reference.
+  const pom = withSeed(paint(new THREE.SphereGeometry(0.17, 20, 14), '#f5f1ea'), random());
+  pom.translate(base.x, base.y + 0.68, base.z);
+  group.add(createFur(pom, {
+    shells: 20, length: 0.08, density: 120, gravity: 0.1, curl: 0.3, clump: 0.4, tipTint: '#ffffff', rim: 1,
+  }));
+  return group;
 }
