@@ -68,6 +68,7 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uStripes[4];
   uniform float uWraps;
   uniform float uEmissive;
+  uniform float uGrain;
 
   varying vec3 vWorld;
   varying vec3 vNormalW;
@@ -127,7 +128,8 @@ const fragmentShader = /* glsl */ `
     if (uMode == 0) {
       // Felt: matted fiber noise and specks.
       // Matted fiber clouds at two scales; kept low-contrast so felt stays smooth at distance.
-      base *= 0.93 + 0.1 * fbm(vObj * 9.0) + 0.04 * fbm(vObj * 40.0);
+      // uGrain scales the fiber texture (1 = the world's default; the kit's close-ups use more).
+      base *= 1.0 - 0.07 * uGrain + uGrain * (0.1 * fbm(vObj * 9.0) + 0.04 * fbm(vObj * 40.0));
       // Running stitches inset from the edges of each Tuft's top face.
       if (uStitch > 0.0 && n.y > 0.6) {
         float edge = max(abs(vLocal.x), abs(vLocal.z));
@@ -202,6 +204,7 @@ export function createTextile(mode, {
   wraps = 30,
   sway = 0,
   emissive = 0,
+  grain = 1,
   side = THREE.FrontSide,
 } = {}) {
   const stripeColors = (stripes ?? ['#ffffff', '#ffffff', '#ffffff', '#ffffff']).map((c) => new THREE.Color(c));
@@ -229,6 +232,7 @@ export function createTextile(mode, {
       uWraps: { value: wraps },
       uSway: { value: sway },
       uEmissive: { value: emissive },
+      uGrain: { value: grain },
     },
   });
 }
