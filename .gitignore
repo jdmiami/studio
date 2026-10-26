@@ -5,3 +5,6 @@ screenshots/
 .superstack/
 .img2threejs/
 __pycache__/
+
+# Throwaway worktrees for parallel experiments
+.claude/worktrees/
