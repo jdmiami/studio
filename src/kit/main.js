@@ -6,11 +6,17 @@
 //                        module only breaks its own items)
 //   ?only=id1,id2        only those items
 //   ?overlay=0.5         show the reference sheet over the render at that opacity (dev server)
+//   ?finish=procedural   pure procedural felt (default: baked, the reference's de-lit colors baked into
+//                        the felt as vertex colors, see src/kit/bake.js)
+//   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
+//   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
 import * as THREE from 'three';
 import { sharedFurUniforms } from '../fur.js';
 import { rng } from '../world/util.js';
 import { ITEMS, SHEET, anchorOf } from './manifest.js';
+import { bakeFinish } from './bake.js';
+import { addContactShadow } from './contact.js';
 import { createKitRenderer } from './render.js';
 import { KIT_STAGE, applyKitLighting, castShadows } from './style.js';
 
@@ -46,23 +52,22 @@ camera.updateMatrixWorld(); // groundPointAt unprojects before the first render
 // find silhouettes, so only elements may write it).
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200, 200),
-  new THREE.ShadowMaterial({ color: '#4a4048', opacity: KIT_STAGE.shadowOpacity, depthWrite: false }),
+  new THREE.ShadowMaterial({ color: '#3a3d55', opacity: KIT_STAGE.shadowOpacity, depthWrite: false }),
 );
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 ground.renderOrder = -1;
 scene.add(ground);
 const sun = new THREE.DirectionalLight('#ffffff', 1);
-sun.position.copy(KIT_STAGE.sunDir).multiplyScalar(30);
+sun.position.copy(KIT_STAGE.shadowDir).multiplyScalar(30);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.radius = 10;
+sun.shadow.radius = 6;
 sun.shadow.blurSamples = 16;
 sun.shadow.bias = -0.0005;
 Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 70 });
 scene.add(sun);
 scene.add(sun.target);
-
 const kit = createKitRenderer(renderer, scene, camera);
 
 function layout() {
@@ -95,6 +100,12 @@ function groundPointAt([u, v]) {
   return ndc.addScaledVector(forward, t);
 }
 
+const contactArg = params.get('contact')?.split(',').map(Number);
+const contactOptions = contactArg?.length === 4
+  ? { strength: contactArg[0], softness: contactArg[1], bias: [contactArg[2], contactArg[3]] }
+  : {};
+if (params.has('shadow')) ground.material.opacity = Number(params.get('shadow'));
+
 const items = ITEMS.filter((it) => (!familyFilter || it.family === familyFilter) && (!onlyFilter || onlyFilter.includes(it.id)));
 const errors = [];
 await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) => {
@@ -114,11 +125,21 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
       object.position.copy(groundPointAt(mod.ANCHORS?.[item.id] ?? anchorOf(item)));
       object.name = item.id;
       scene.add(castShadows(object));
+      addContactShadow(scene, object, contactOptions);
     } catch (e) {
       errors.push(`${item.id}: ${e.message}`);
     }
   }
 }));
+if ((params.get('finish') ?? 'baked') === 'baked') {
+  const placed = scene.children.filter((o) => o.name && items.some((it) => it.id === o.name));
+  const toSheet = (x, y) => [(x - innerWidth / 2) / view.pxPerRef + SHEET.width / 2, (y - innerHeight / 2) / view.pxPerRef + SHEET.height / 2];
+  try {
+    window.__kitBake = await bakeFinish(placed, { renderer, scene, camera, toSheet });
+  } catch (e) {
+    errors.push(`bake: ${e.message}`);
+  }
+}
 for (const e of errors) console.error(`[kit] ${e}`);
 window.__kitErrors = errors;
 window.__kitScene = scene; // for probes and tests

@@ -19,9 +19,15 @@ export const KIT_STAGE = {
   background: '#dcdcdc',
   // Toward the light: from the upper left and slightly in front, so shadows fall right.
   sunDir: new THREE.Vector3(-0.27, 0.8, 0.53).normalize(),
-  sunColor: new THREE.Color(1.0, 0.97, 0.93).multiplyScalar(0.86),
-  ambient: new THREE.Color(0.6, 0.58, 0.58),
-  shadowOpacity: 0.2,
+  sunColor: new THREE.Color(1.0, 0.97, 0.93).multiplyScalar(0.9),
+  ambient: new THREE.Color(0.54, 0.52, 0.52),
+  shadowOpacity: 0.36,
+  // The cast shadow has its own, higher light: a short shadow to the right and slightly back,
+  // about half a block long (the shading light above would throw it long and up-right).
+  shadowDir: new THREE.Vector3(-0.28, 1, 0.47).normalize(),
+  // Shadow sides deepen and saturate toward the albedo's own hue (measured on the grass and pink
+  // blocks' right faces).
+  shadeSat: 0.85,
 };
 
 /** Albedo colors (sRGB hex) for pastel materials, measured from the reference sheet. */
@@ -100,8 +106,8 @@ export function softBox(w, h, d, { radius = 0.14, res = 28, color = '#ffffff' } 
 }
 
 /** Matte felt with visible fiber mottling; color multiplies the geometry's vertex colors. */
-export function felt(color = '#ffffff', { fuzz = 0.12, grain = 3.4, side } = {}) {
-  return createTextile('felt', { color, fuzz, grain, sheen: '#ffffff', side });
+export function felt(color = '#ffffff', { fuzz = 0.12, grain = 3.4, shadeSat = KIT_STAGE.shadeSat, side } = {}) {
+  return createTextile('felt', { color, fuzz, grain, shadeSat, sheen: '#ffffff', side });
 }
 
 /** Pushes a rounded box's faces outward toward a sphere: a pillow, not a brick. */

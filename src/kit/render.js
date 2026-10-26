@@ -36,7 +36,7 @@ const finalShader = {
       // Scan a small disc: nearest background (for the silhouette line) and nearest object
       // (for the halo), plus the largest depth step to a nearer neighbor (overlap lines).
       float lineR = 1.0 * uScale;   // line width, in reference pixels times the output scale
-      float haloR = 2.2 * uScale;
+      float haloR = 1.2 * uScale;
       float nearestBg = 99.0;
       float nearestObj = 99.0;
       float step = 0.0;
@@ -58,7 +58,10 @@ const finalShader = {
       } else if (inside && step > 0.004) {
         srgb *= mix(1.0, 0.8, smoothstep(0.004, 0.02, step)); // softer crease where parts overlap
       } else if (!inside && nearestObj <= haloR + 0.5) {
-        srgb = mix(srgb, vec3(1.0), 0.16 * (1.0 - nearestObj / (haloR + 1.0)));
+        // The halo only lifts lit background: where the ground is in an element's shadow the
+        // reference shows a dark contact edge instead.
+        float lit = smoothstep(0.5, 0.68, dot(col, vec3(0.2126, 0.7152, 0.0722)));
+        srgb = mix(srgb, vec3(1.0), 0.16 * lit * (1.0 - nearestObj / (haloR + 1.0)));
       }
       gl_FragColor = vec4(srgb, 1.0);
     }

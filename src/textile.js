@@ -69,6 +69,7 @@ const fragmentShader = /* glsl */ `
   uniform float uWraps;
   uniform float uEmissive;
   uniform float uGrain;
+  uniform float uShadeSat;
 
   varying vec3 vWorld;
   varying vec3 vNormalW;
@@ -172,7 +173,11 @@ const fragmentShader = /* glsl */ `
       float edge = pow(1.0 - ndv, 2.2);
       col += mix(base, uSheenColor, 0.55) * edge * (0.45 + 0.55 * wrap) * 1.1;
     } else {
-      col = base * shade * (ambient * 0.7 + uSunColor * wrap * 0.8);
+      // uShadeSat deepens and saturates the albedo where the sun doesn't reach (a painterly
+      // shadow side, as in the kit's reference sheet; 0 = plain ambient, the world's default).
+      float baseLuma = max(dot(base, vec3(0.2126, 0.7152, 0.0722)), 0.02);
+      vec3 shadeTint = mix(vec3(1.0), base / baseLuma, uShadeSat * (1.0 - wrap));
+      col = base * shade * (ambient * 0.7 * shadeTint + uSunColor * wrap * 0.8);
       // Fiber fuzz catches light at the silhouette.
       col += uSheenColor * pow(1.0 - ndv, 2.5) * fuzz * (0.4 + 0.6 * wrap);
     }
@@ -205,6 +210,7 @@ export function createTextile(mode, {
   sway = 0,
   emissive = 0,
   grain = 1,
+  shadeSat = 0,
   side = THREE.FrontSide,
 } = {}) {
   const stripeColors = (stripes ?? ['#ffffff', '#ffffff', '#ffffff', '#ffffff']).map((c) => new THREE.Color(c));
@@ -233,6 +239,7 @@ export function createTextile(mode, {
       uSway: { value: sway },
       uEmissive: { value: emissive },
       uGrain: { value: grain },
+      uShadeSat: { value: shadeSat },
     },
   });
 }

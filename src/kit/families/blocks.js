@@ -7,10 +7,10 @@ import { PASTEL, bulge, felt, lumpy, mottle, shadeBottom, softBox } from '../sty
 
 const SIZE = 1;
 
-function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scale = 2.2, puff = 0.04, stretch, crease = null } = {}) {
-  const g = softBox(SIZE, SIZE, SIZE, { radius, res: 32 });
+function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scale = 2.2, puff = 0.04, stretch, crease = null, height = SIZE } = {}) {
+  const g = softBox(SIZE, height, SIZE, { radius, res: 32 });
   if (puff) bulge(g, puff);
-  g.translate(0, SIZE / 2, 0);
+  g.translate(0, height / 2, 0);
   lumpy(g, { amount: lump, scale: 4, seed });
   mottle(g, color, deep ?? color, { scale, seed, bias: stretch ? -0.1 : -0.25, stretch });
   if (crease) {
@@ -20,6 +20,7 @@ function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scal
     for (let i = 0; i < col.count; i++) col.setXYZ(i, col.getX(i) * folds.getX(i), col.getY(i) * folds.getY(i), col.getZ(i) * folds.getZ(i));
   }
   shadeBottom(g, { from: 0, to: 0.6, dark: 0.86 });
+  shadeBottom(g, { from: 0, to: 0.08, dark: 0.66 }); // contact darkening where the block meets the ground
   return g;
 }
 
@@ -27,21 +28,25 @@ function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scal
  * Green felt cap: a soft slab over the top plus a ring of round felt drops hanging just below
  * its edge, four per side, which reads as the reference's scalloped drip line.
  */
+// Grass cap proportions, fitted to the reference's drip line (heights are fractions of the block).
+const CAP = { bottom: 0.86, top: 1.0, dropY: 0.86, dropTall: 0.08, dropWide: 0.12, dropDepth: 0.038, overhang: 1.045, puff: 0.015 };
+
 function grassCap(seed, random) {
   const parts = [];
-  const slab = softBox(1.06, 0.32, 1.06, { radius: 0.15, res: 32 });
-  bulge(slab, 0.04);
-  slab.translate(0, SIZE - 0.14, 0);
+  const slabH = CAP.top - CAP.bottom;
+  const slab = softBox(CAP.overhang, slabH, CAP.overhang, { radius: 0.15, res: 32 });
+  bulge(slab, CAP.puff);
+  slab.translate(0, CAP.bottom + slabH / 2, 0);
   parts.push(slab);
   const half = 0.5;
   for (let side = 0; side < 4; side++) {
     for (let k = 0; k < 4; k++) {
-      const along = -0.375 + k * 0.25 + (random() - 0.5) * 0.03;
+      const along = -0.36 + k * 0.24 + (random() - 0.5) * 0.03; // corner drops stay inside the corners
       const drop = prepareTextileGeometry(new THREE.SphereGeometry(1, 16, 10));
-      const tall = 0.11 + random() * 0.03;
-      drop.scale(0.135 + random() * 0.02, tall, 0.038);
+      const tall = CAP.dropTall + random() * 0.03;
+      drop.scale(CAP.dropWide + random() * 0.02, tall, CAP.dropDepth);
       // Face +z, then rotate the drop around the block to the other three faces.
-      drop.translate(along, SIZE - 0.29, half);
+      drop.translate(along, CAP.dropY, half);
       drop.rotateY((side * Math.PI) / 2);
       parts.push(drop);
     }
@@ -85,7 +90,8 @@ export function build(variant, random) {
   const group = new THREE.Group();
   switch (variant.kind) {
     case 'grass':
-      group.add(new THREE.Mesh(block(PASTEL.pink, { seed, deep: PASTEL.pinkDeep }), felt('#ffffff')));
+      // The earth body stops inside the cap, so its bulged top can never poke through the felt.
+      group.add(new THREE.Mesh(block(PASTEL.pink, { seed, deep: PASTEL.pinkDeep, height: 0.93 }), felt('#ffffff')));
       group.add(new THREE.Mesh(grassCap(seed, random), felt('#ffffff', { fuzz: 0.25 })));
       break;
     case 'pink':
