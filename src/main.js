@@ -15,6 +15,11 @@ import { createHud } from './fp/hud.js';
 //   ?shot=<seconds>    freeze time for a repeatable screenshot
 //   ?cam=x,y,z         island only: starting camera position
 //   ?lowfx=1           skip god rays and tilt-shift; ?bloom=<strength> overrides bloom
+//   Cave matching flags (scripts/fp/compare_frame.py compares a shot to docs/reference/cave-door.jpg):
+//   ?eye=x,y,z         camera position, overriding the spawn and eye height
+//   ?look=yaw,pitch[,roll]  camera angles in degrees (yaw 0 looks down -z, pitch up is positive)
+//   ?fov=<degrees>     vertical field of view (default 70)
+//   ?nohud=1 ?nohands=1  hide the HUD / the hands, for comparing the world alone
 const params = new URLSearchParams(location.search);
 const sceneName = params.get('scene') === 'island' ? 'island' : 'cave';
 const shotTime = params.has('shot') ? Number(params.get('shot') || 4) : null;
@@ -78,12 +83,21 @@ function startCave() {
   u.uHorizon.value.set('#fbe8d6');
   u.uHorizonSun.value.set('#fff3dc');
 
-  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.03, 600);
+  const camera = new THREE.PerspectiveCamera(Number(params.get('fov')) || 70, innerWidth / innerHeight, 0.03, 600);
   scene.add(camera); // the hands are children of the camera
   const cave = buildCave(scene);
   const controls = createFirstPersonControls(camera, renderer.domElement, cave);
-  const hands = createHands(camera, rng(7));
-  const hud = createHud({ columns: cave.columns, interactables: cave.interactables, shot: shotTime !== null });
+  const hands = params.has('nohands') ? { update() {} } : createHands(camera, rng(7));
+  const hud = params.has('nohud')
+    ? { update: () => null, completeQuest() {}, showToast() {} }
+    : createHud({ columns: cave.columns, interactables: cave.interactables, shot: shotTime !== null });
+  // A fixed camera pose for matching the reference frame (the controls still run underneath).
+  const eye = params.get('eye')?.split(',').map(Number);
+  const look = params.get('look')?.split(',').map((v) => THREE.MathUtils.degToRad(Number(v)));
+  const fixedPose = () => {
+    if (eye?.length === 3 && eye.every(Number.isFinite)) camera.position.set(eye[0], eye[1], eye[2]);
+    if (look?.length >= 2 && look.every(Number.isFinite)) camera.rotation.set(look[1], look[0], look[2] ?? 0, 'YXZ');
+  };
 
   let near = null;
   addEventListener('keydown', (e) => {
@@ -101,6 +115,7 @@ function startCave() {
     postOptions: { godRays: false, tiltShift: false, saturation: 0.9 }, // the reference's muted chalky colors
     update(time, dt) {
       controls.update(dt);
+      fixedPose();
       hands.update(controls.walkPhase, controls.speed);
       cave.update(time);
       near = hud.update({
