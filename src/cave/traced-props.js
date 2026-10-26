@@ -2,7 +2,8 @@
 // ones no kit model matches: the stepped felt domes the painting scatters over the terraces, and
 // the broom tree. Each instance is its family's generator fitted to the painted outline: a dome is
 // a stack of rounded felt tiers (widths, heights and colours from the tiers traced inside its
-// silhouette), the broom a lathe of its traced radius bands on a felt handle.
+// silhouette), the broom a lathe of its traced radius bands on a felt handle. The domes are now
+// turned from the traced silhouette itself (depth-seeded masks, scripts/fp/trace_props.py).
 import * as THREE from 'three';
 import { sharedFurUniforms } from '../fur.js';
 import { bulge, lumpy, softBox } from '../kit/style.js';
@@ -27,8 +28,63 @@ function paint(g, color) {
   return g;
 }
 
-/** A stepped dome: rounded tiers from the bottom up, each no wider than the one below. */
+/**
+ * A stepped dome, turned from its painted outline: the traced silhouette's half-width per row is
+ * the lathe profile (the painting's beehive, not stacked slabs), pinched into grooves at the tier
+ * lines traced across it, each tier band in its painted colour. Instances traced before the profile
+ * existed fall back to the slab stack.
+ */
 function dome(p, seed, material) {
+  if (!p.profile?.length) return slabDome(p, seed, material);
+  const prof = p.profile;
+  const top = prof.at(-1)[0];
+  // Resample finely so the grooves have rows to pinch, then close the top in a soft cap.
+  const pts = [new THREE.Vector2(0.001, 0)];
+  const N = 48;
+  const radiusAt = (y) => {
+    if (y <= prof[0][0]) return prof[0][1];
+    for (let i = 1; i < prof.length; i++) {
+      if (y <= prof[i][0]) {
+        const t = (y - prof[i - 1][0]) / (prof[i][0] - prof[i - 1][0]);
+        return prof[i - 1][1] + (prof[i][1] - prof[i - 1][1]) * t;
+      }
+    }
+    return prof.at(-1)[1];
+  };
+  const groove = (y) => (p.grooves ?? []).reduce((k, g) => k * (1 - 0.09 * Math.exp(-(((y - g) / 0.035) ** 2))), 1);
+  for (let i = 0; i <= N; i++) {
+    const y = (top * i) / N;
+    pts.push(new THREE.Vector2(Math.max(0.002, radiusAt(y) * groove(y)), y));
+  }
+  // The painted top is a rounded crown: arc from the last row's radius into the axis.
+  const r0 = pts.at(-1).x;
+  for (let i = 1; i <= 6; i++) {
+    const a = (i / 6) * (Math.PI / 2);
+    pts.push(new THREE.Vector2(Math.max(0.001, r0 * Math.cos(a)), top + r0 * 0.55 * Math.sin(a)));
+  }
+  const g = new THREE.LatheGeometry(pts, 36);
+  lumpy(g, { amount: 0.008, scale: 9, seed });
+  g.computeVertexNormals();
+  // Tier colours: bands between grooves, bottom up (parts are bottom first, grooves their tops).
+  const cuts = [0, ...(p.grooves ?? []), Infinity];
+  const pos = g.getAttribute('position');
+  const colors = new Float32Array(pos.count * 3);
+  const tierColors = p.parts.map((t) => albedo(t.color));
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    let k = 0;
+    while (k < cuts.length - 2 && y > cuts[k + 1]) k++;
+    const c = tierColors[Math.min(k, tierColors.length - 1)];
+    colors.set([c.r, c.g, c.b], i * 3);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(prepareTextileGeometry(g), material));
+  return group;
+}
+
+/** The older slab stack: rounded tiers from the bottom up, each no wider than the one below. */
+function slabDome(p, seed, material) {
   const group = new THREE.Group();
   const widest = Math.max(...p.parts.map((t) => t.w));
   let y = 0;
@@ -38,12 +94,12 @@ function dome(p, seed, material) {
     const w = Math.min(t.w, below);
     below = w;
     const g = softBox(w, t.h, w, { radius: Math.min(w, t.h) * 0.49, res: 10 });
-    bulge(g, 0.16); // the painting's tiers are pillowy, rounder than a slab
+    bulge(g, 0.16);
     g.translate(0, y + t.h / 2, 0);
     lumpy(g, { amount: 0.01, scale: 9, seed: seed + i });
     paint(g, albedo(t.color));
     group.add(new THREE.Mesh(prepareTextileGeometry(g), material));
-    y += t.h * 0.82; // each tier sinks into the one below, as the painting's do
+    y += t.h * 0.82;
   }
   return group;
 }
