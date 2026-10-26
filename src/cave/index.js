@@ -4,8 +4,9 @@ import { rng } from '../world/util.js';
 import { buildCaveLevel, DOOR } from './level.js';
 import placement from './props-placement.json';
 import { loadKitAssets, placeKitModel } from './kit-assets.js';
+import { buildTracedDoor } from './door.js';
 import {
-  buildBroomTree, buildDoor, buildLightShafts, buildScaffold, buildStones,
+  buildBroomTree, buildLightShafts, buildScaffold, buildStones,
 } from './props.js';
 
 /** Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag). */
@@ -14,7 +15,8 @@ export function buildCave(scene, { hide = null } = {}) {
   const level = buildCaveLevel({ hide });
   scene.add(level.group);
 
-  scene.add(buildDoor(random));
+  // The door is the reference's own mosaic, traced (src/cave/door.js).
+  const doorReady = buildTracedDoor().then((door) => scene.add(door));
 
   // Every prop stands where the reference paints it: src/cave/props-placement.json is computed by
   // scripts/fp/place_props.py (the base pixel's ray from the reference camera into the layout, and
@@ -45,7 +47,7 @@ export function buildCave(scene, { hide = null } = {}) {
   scene.add(dog);
   const critters = new THREE.Group();
   scene.add(critters);
-  const ready = loadKitAssets().then((kit) => {
+  const propsReady = loadKitAssets().then((kit) => {
     const place = (id, p, parent = scene, at = vec(p)) => parent.add(placeKitModel(kit, id, { position: at, height: p.height, yaw: VIEW_TURN }));
     for (const p of byName('cube-tree')) place('tree-cube-large', p);
     for (const p of byName('willow')) place('tree-willow-a', p);
@@ -89,7 +91,7 @@ export function buildCave(scene, { hide = null } = {}) {
     // land on the spawn terrace (top 2) and the eye is EYE_HEIGHT 1.775 above: the solved 3.775.
     spawn: { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
     stats: { blocks: level.blockCount, caps: level.capCount },
-    ready, // resolves when the kit models are in the scene
+    ready: Promise.all([propsReady, doorReady]), // resolves when the kit models and the door are in
     update(time) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03 * dogSpec.scale;
       dog.rotation.z = Math.sin(time * 1.3) * 0.03;
