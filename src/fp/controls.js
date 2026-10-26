@@ -2,7 +2,7 @@
 // and collision against the block grid (step up ledges up to STEP_HEIGHT).
 import * as THREE from 'three';
 
-const EYE_HEIGHT = 1.6;
+const EYE_HEIGHT = 1.775; // the reference frame's solved eye above its terrace (docs/reference/cave-door-camera.json)
 const STEP_HEIGHT = 0.55;
 const RADIUS = 0.28;
 const WALK = 3.6;

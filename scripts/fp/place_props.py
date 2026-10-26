@@ -67,9 +67,13 @@ def march(cam, cells, ceiling, u, v, t_max=60.0, dt=0.02):
             # Entering the column from the side (the ray crossed a cell border above the previous
             # column's top) or from above (through the top face)?
             if prev_cell is not None and prev_cell != cell and P[1] < top - 1e-6 and d[1] < 0:
-                Q = P.copy()
-                Q[1] = top
-                return Q, cell, 'side'
+                # The base pixel lies on this column's side face: what stands there stands at the
+                # foot of the face, on the previous column's top, just in front of the face.
+                Q = P - d * dt
+                Q[0] = min(max(Q[0], prev_cell[0] - 0.45), prev_cell[0] + 0.45)
+                Q[2] = min(max(Q[2], prev_cell[1] - 0.45), prev_cell[1] + 0.45)
+                Q[1] = cells[prev_cell]['top']
+                return Q, prev_cell, 'side'
             Q = P.copy()
             Q[1] = top
             return Q, cell, 'top'

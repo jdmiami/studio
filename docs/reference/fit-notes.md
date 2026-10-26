@@ -77,3 +77,25 @@ the mean dE by the palette: the render's mean Lab b is 17 against the reference'
 chroma 27 against 17, which no block move fixes; the ceiling slabs (L 43 against 58) and the
 water (the reference's cascade is many small steps where the layout has one-unit blocks) are the
 largest remaining regions.
+
+## Verification round 1 (CHANGES 7-11)
+
+An independent check of the integrated frame failed it with concrete fixes; these were applied
+(`scripts/fp/layout_edits.py`, block "Verification round 1"; the fitted input is now kept as
+`docs/reference/cave-door-fitted.json`, converged sweep 8, so the layout rebuilds from the repo):
+
+7. Eye height: the spawn terrace is 2, the solved eye 3.775, so EYE_HEIGHT is 1.775 (was 1.6,
+   which put every near landmark 10-26 px too high). Raising the terrace instead would have left
+   a 0.675 step from the 1.5 stair, too tall to climb.
+8. Cascade: one cell further toward +x and down to z = -1 in half-unit tiers (back-projections of
+   its painted right edge); the left wall x <= -7 at z -1..2 is earth, as painted.
+9. Centre terrace: its front one row back (z = -2 at top 3), so its hem rises to the painted v 305-310.
+10. Lintel (-2..2, -16) is frame stone; the right door post is on the back wall ((3..4, -15) frame 6),
+    and the fit's tall 'frame' cells in front of it are terrace height.
+11. `place_props.py`: a base pixel on a column's side face now stands the prop at the foot of the
+    face, on the previous column's top (it was lifted onto the column).
+
+Masked frame after round 1: meanDE 20.6, edgeRecall 0.627 (before: 21.4 / 0.588). Still open: the
+willow lands in front of the dog (its base pixel back-projects onto the floor); prop scales
+(willow ~0.72, knit shrub ~1.3, broom head height); ceiling slabs on the left one unit lower;
+visible light shafts; the painting's many small cascade steps vs our half-unit tiers.

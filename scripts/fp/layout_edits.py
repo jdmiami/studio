@@ -88,6 +88,33 @@ HAND[(5, -4)] = (0.5, 'step')
 fill(-8, 8, 3, 4, 2, 'wall')
 fill(5, 8, 3, 4, 2, 'step')
 
+# --- Verification round 1 (docs/reference/fit-notes.md, CHANGES 7-10) ---------------------------
+# The cascade, one cell further toward +x and down to z = -1 in half-unit tiers, following the
+# back-projections of its painted right edge ((240, 300) on y = 2.5 -> (-0.66, -0.88), (280, 380)
+# on 1.5 -> (0.49, -0.88)); the painting's earth wall at u 0-55, v 240-420 is the left wall x <= -7.
+for z in range(-1, 3):
+    fill(-6, -5, z, z, 3, 'water')
+    fill(-4, -3, z, z, 2.5, 'water')
+    fill(-2, -2, z, z, 2, 'water')
+    fill(-1, 0, z, z, 1.5, 'water')
+    fill(1, 1, z, z, 1, 'water')
+    fill(-8, -7, z, z, 3, 'wall')
+fill(2, 3, 1, 2, 0.5, 'water')
+# The centre terrace's front one row back: its hem rises from v 320-330 to the painted 305-310.
+fill(-3, 0, -2, -2, 3, 'wall')
+# The lintel: the painting's grey stone above the opening (u 615-745, v 100-155) is frame, not earth.
+fill(-2, 2, -16, -16, 10, 'frame')
+# The right side: the fit's tall 'frame' cells stood for the painted right door post in front of
+# the wall; the post belongs on the back wall ((3..4, -15) frame 6), the cells in front at terrace
+# height ((826, 350): a mushroom on y = 2 at (6.3, -5.4)).
+HAND[(5, -9)] = (1, 'step')
+HAND[(6, -10)] = (2, 'wall')
+HAND[(6, -9)] = (2, 'wall')
+HAND[(6, -8)] = (2, 'wall')
+HAND[(6, -5)] = (2, 'wall')
+HAND[(3, -15)] = (6, 'frame')
+HAND[(4, -15)] = (6, 'frame')
+
 
 def main():
     src, out = sys.argv[1], sys.argv[2]
