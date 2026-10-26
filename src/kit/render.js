@@ -16,6 +16,11 @@ const finalShader = {
     uLineDownWidth: { value: 1.25 }, // its width: the sheet's bottom contour is a single crisp row
     uLineDownShade: { value: 0 }, // > 0: down-facing edges are the surface's own colour times this, not grey ink
     uInk: { value: new THREE.Color(0.44, 0.44, 0.44) }, // the line's ink, an sRGB neutral grey
+    // Per-element line styles: a sheet-sized map of (side, up, down, width / 2), alpha 0 where the
+    // uniforms above apply; uSheetRect is the sheet's rect in the window (uv, y from the top).
+    uStyleMap: { value: null },
+    uUseStyle: { value: 0 },
+    uSheetRect: { value: new THREE.Vector4(0, 0, 1, 1) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -33,6 +38,9 @@ const finalShader = {
     uniform float uLineDownWidth;
     uniform float uLineDownShade;
     uniform vec3 uInk;
+    uniform sampler2D uStyleMap;
+    uniform float uUseStyle;
+    uniform vec4 uSheetRect;
     varying vec2 vUv;
 
     float depthAt(vec2 uv) { return texture2D(tDepth, uv).x; }
@@ -47,7 +55,16 @@ const finalShader = {
       bool inside = d < 0.9999;
       // Scan a small disc: nearest background (for the silhouette line) and nearest object
       // (for the halo), plus the largest depth step to a nearer neighbor (overlap lines).
-      float lineR = uLineWidth * uScale;   // line width, in reference pixels times the output scale
+      // This element's line style, if its family sets one (main.js: LINE), else the defaults.
+      vec2 lineSideUp = uLine;
+      float lineWidth = uLineWidth;
+      float lineDown = uLineDown;
+      float lineDownWidth = uLineDownWidth;
+      if (uUseStyle > 0.5) {
+        vec4 style = texture2D(uStyleMap, vec2((vUv.x - uSheetRect.x) / uSheetRect.z, (1.0 - vUv.y - uSheetRect.y) / uSheetRect.w));
+        if (style.a > 0.0) { lineSideUp = style.rg; lineDown = style.b; lineWidth = style.a * 2.0; lineDownWidth = lineWidth; }
+      }
+      float lineR = lineWidth * uScale;   // line width, in reference pixels times the output scale
       float haloR = 1.2 * uScale;
       float nearestBg = 99.0;
       vec2 bgDir = vec2(0.0); // direction to the nearest background pixel
@@ -66,7 +83,7 @@ const finalShader = {
         }
       }
       vec3 srgb = toSRGB(col);
-      float downR = uLineDownWidth * uScale;
+      float downR = lineDownWidth * uScale;
       float downFacing = smoothstep(0.35, 0.85, -bgDir.y);
       if (inside && nearestBg <= mix(lineR, downR, downFacing) + 0.5) {
         // The silhouette line is a grey ink laid over the element's colour (the reference's line
@@ -75,7 +92,7 @@ const finalShader = {
         float up = smoothstep(0.35, 0.85, bgDir.y);
         float down = downFacing;
         vec3 ink = uLineDownShade > 0.0 ? mix(uInk, srgb * uLineDownShade, down) : uInk;
-        srgb = mix(srgb, ink, mix(mix(uLine.x, uLine.y, up), uLineDown, down));
+        srgb = mix(srgb, ink, mix(mix(lineSideUp.x, lineSideUp.y, up), lineDown, down));
       } else if (inside && step > 0.004) {
         srgb *= mix(1.0, 0.8, smoothstep(0.004, 0.02, step)); // softer crease where parts overlap
       } else if (!inside && nearestObj <= haloR + 0.5) {
@@ -117,5 +134,15 @@ export function createKitRenderer(renderer, scene, camera) {
     renderer.render(quadScene, quadCamera);
   }
 
-  return { render, setSize, uniforms: material.uniforms };
+  /** Per-element line styles: RGBA bytes (side, up, down, width / 2) per sheet pixel, top row first. */
+  function setStyleMap(data, width, height) {
+    const map = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
+    map.magFilter = THREE.NearestFilter;
+    map.minFilter = THREE.NearestFilter;
+    map.needsUpdate = true;
+    material.uniforms.uStyleMap.value = map;
+    material.uniforms.uUseStyle.value = 1;
+  }
+
+  return { render, setSize, setStyleMap, uniforms: material.uniforms };
 }

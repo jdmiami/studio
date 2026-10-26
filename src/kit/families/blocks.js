@@ -26,6 +26,11 @@ export const ANCHORS = {
 // again) and up to 1 px from the outline, so the darker rim inside the outline is baked too.
 export const BAKE = Object.fromEntries(Object.keys(ANCHORS).map((id) => [id, { margin: 1, sample: 'nearest' }]));
 
+// The blocks' own outline (src/kit/render.js): a lighter line on up-facing edges, one reference
+// pixel wide, and none at the base, whose dark contour the baked finish already carries (the
+// default bottom ink only lightens it).
+export const LINE = { side: 0.25, up: 0.2, down: 0, width: 1.0 };
+
 // The warp also moves each block's base onto the sheet's dark bottom contour and places its
 // outline to a fraction of a pixel (src/kit/warp.js).
 export const WARP = Object.fromEntries(Object.keys(ANCHORS).map((id) => [id, { base: true, fine: true }]));

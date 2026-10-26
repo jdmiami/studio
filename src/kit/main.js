@@ -15,7 +15,8 @@
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
 //   ?line=side,up[,w,dn,dw,shade] silhouette-line ink strength on side-, up- and down-facing edges,
 //                        width, the down-facing edges' own width in reference px, and their shade
-//                        factor (> 0: a darker shade of the surface instead of grey ink; for sweeps)
+//                        factor (> 0: a darker shade of the surface instead of grey ink), for every
+//                        element, families' own LINE styles included (for sweeps)
 //   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
 //   ?anchor=id:u,v       override one element's anchor (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
@@ -100,6 +101,8 @@ function layout() {
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
   kit.setSize(w, h, pxPerRef);
+  kit.uniforms.uSheetRect.value.set(0.5 - (SHEET.width * pxPerRef) / (2 * w), 0.5 - (SHEET.height * pxPerRef) / (2 * h),
+    (SHEET.width * pxPerRef) / w, (SHEET.height * pxPerRef) / h);
   return { pxPerRef, sheetAspect };
 }
 let view = layout();
@@ -182,6 +185,24 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
     }
   }
 }));
+// Families may export LINE = { side, up, down, width }: their own silhouette-line strengths (side-,
+// up- and down-facing edges) and width (reference px), drawn within each element's sheet box. A
+// ?line= sweep sets every element's line instead.
+const styled = items.filter((it) => loadedModules[it.family]?.LINE);
+if (styled.length && !params.has('line')) {
+  const data = new Uint8Array(SHEET.width * SHEET.height * 4);
+  const byte = (v) => Math.round(Math.min(Math.max(v, 0), 1) * 255);
+  for (const it of styled) {
+    const { side, up, down, width } = loadedModules[it.family].LINE;
+    const [x0, y0, x1, y1] = it.box;
+    for (let y = Math.max(0, y0 - 6); y < Math.min(SHEET.height, y1 + 6); y++) {
+      for (let x = Math.max(0, x0 - 6); x < Math.min(SHEET.width, x1 + 6); x++) {
+        data.set([byte(side), byte(up), byte(down), byte(width / 2)], (y * SHEET.width + x) * 4);
+      }
+    }
+  }
+  kit.setStyleMap(data, SHEET.width, SHEET.height);
+}
 if ((params.get('finish') ?? 'baked') === 'baked') {
   const placed = scene.children.filter((o) => o.name && items.some((it) => it.id === o.name));
   const toSheet = (x, y) => [(x - innerWidth / 2) / view.pxPerRef + SHEET.width / 2, (y - innerHeight / 2) / view.pxPerRef + SHEET.height / 2];

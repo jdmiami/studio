@@ -146,25 +146,24 @@ function blur(src, w, h, sigma) {
  * an edge within its pixel, least of all a straight vertical one. NaN unless there is clean
  * background just outside.
  */
-function crossing(rgb, w, h, x, y, nx, ny) {
-  const dev = (s) => {
+function crossing(rgb, w, h, x, y, nx, ny, outside = null) {
+  const at = (s) => {
     const fx = Math.min(Math.max(x + s * nx, 0), w - 1.001);
     const fy = Math.min(Math.max(y + s * ny, 0), h - 1.001);
     const x0 = Math.floor(fx); const y0 = Math.floor(fy);
     const ax = fx - x0; const ay = fy - y0;
-    let d = 0;
-    for (let c = 0; c < 3; c++) {
-      const i = (k) => rgb[k * 3 + c];
-      const k = y0 * w + x0;
-      const v = (i(k) * (1 - ax) + i(k + 1) * ax) * (1 - ay) + (i(k + w) * (1 - ax) + i(k + w + 1) * ax) * ay;
-      d += (v - BG[c]) ** 2;
-    }
-    return Math.sqrt(d);
+    const k = y0 * w + x0;
+    return [0, 1, 2].map((c) => (rgb[k * 3 + c] * (1 - ax) + rgb[(k + 1) * 3 + c] * ax) * (1 - ay)
+      + (rgb[(k + w) * 3 + c] * (1 - ax) + rgb[(k + w + 1) * 3 + c] * ax) * ay);
   };
-  if (dev(3) > 14 || dev(2.5) > 14) return NaN;
+  // Distances are from the background grey, or (outside = true) from whatever lies just outside
+  // the outline, so an edge against a cast shadow is placed too; that shadow must be even there.
+  const level = outside ? at(3) : BG;
+  const dev = (s) => Math.hypot(...at(s).map((v, c) => v - level[c]));
+  if (outside ? dev(2.25) > 8 : dev(3) > 14 || dev(2.5) > 14) return NaN;
   let peak = 0;
   for (let s = -3; s <= 0.5; s += 0.25) peak = Math.max(peak, dev(s));
-  if (peak < 30) return NaN;
+  if (peak < (outside ? 15 : 30)) return NaN;
   const half = peak / 2;
   for (let s = 2.5; s > -3; s -= 0.25) {
     const a = dev(s); const b = dev(s - 0.25);
@@ -191,8 +190,23 @@ function displacementField(ref, oursTest, oursElem, w, h, fine = null) {
       if (Math.abs(oursElem[k]) > 1.5) continue;
       const ot = oursTest[k];
       const rt = ref.dTest[k];
-      // Only where both test masks end at the element's own outline (not at a cast shadow).
-      if (Math.abs(ot - oursElem[k]) > EDGE_AGREE || Math.abs(rt - ref.dElem[k]) > EDGE_AGREE) continue;
+      // Only where both test masks end at the element's own outline (not at a cast shadow)...
+      if (Math.abs(ot - oursElem[k]) > EDGE_AGREE || Math.abs(rt - ref.dElem[k]) > EDGE_AGREE) {
+        // ...unless placing outlines finely: then an outline against a cast shadow is placed by
+        // its colour against the shadow, along our own outline's normal.
+        if (!fine || Math.abs(ref.dElem[k]) > 2.5) continue;
+        const ex = oursElem[k + 1] - oursElem[k - 1];
+        const ey = oursElem[k + w] - oursElem[k - w];
+        const el = Math.hypot(ex, ey);
+        if (el < 1e-3) continue;
+        const tRef = crossing(ref.rgb, w, h, x, y, ex / el, ey / el, true);
+        const tOurs = crossing(fine, w, h, x, y, ex / el, ey / el, true);
+        if (Number.isNaN(tRef) || Number.isNaN(tOurs) || Math.abs(tRef - tOurs) >= 2.5) continue;
+        wt[k] = 1;
+        du[k] = (ex / el) * (tRef - tOurs);
+        dv[k] = (ey / el) * (tRef - tOurs);
+        continue;
+      }
       const gx = ref.dTest[k + 1] - ref.dTest[k - 1];
       const gy = ref.dTest[k + w] - ref.dTest[k - w];
       const gl = Math.hypot(gx, gy);
