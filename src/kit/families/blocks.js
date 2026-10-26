@@ -23,8 +23,8 @@ export const ANCHORS = {
 // the reference draws each block a little differently.
 export const FIT = {
   'block-grass-b': [1, 0.97, 1, 0],
-  'block-pink': [1.02, 1.02, 1.02, 0],
-  'block-water': [1, 1, 1.02, 0],
+  'block-pink': [0.98, 1.06, 1.02, 0],
+  'block-water': [0.98, 1.02, 1.04, 0],
   'block-stone-plain': [1.01, 1.01, 1.1, 0.03],
   'block-stone-seam-a': [0.98, 0.96, 1.01, 0],
   'block-stone-seam-b': [0.99, 0.96, 1.04, 0],

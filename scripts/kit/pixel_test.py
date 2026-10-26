@@ -13,7 +13,12 @@ For every element, at the reference's own resolution (512 x 286):
   3. dE          per-pixel CIEDE2000 inside the shared silhouette: mean and 90th percentile;
   4. worstPatch  mean dE of the worst 6 x 6 px patch that is mostly inside the silhouette
                  (one wrong detail fails the element even when the average is fine);
-  5. ssim        luma SSIM over the crop at full resolution (structure, texture, linework).
+  5. ssim        luma SSIM over the crop at full resolution (structure, texture, linework);
+  6. cropDE      mean dE over the whole padded crop, so cast shadows, halo and the background
+                 around the element are checked too.
+
+Masks are "not background" (element plus cast shadow), with holes enclosed by outlines filled,
+so pale elements whose colour is close to the background grey are still measured correctly.
 
 An element PASSES when every threshold holds (see THRESHOLDS). The script exits 1 if any tested
 element fails, so it can run as `npm run test:kit` and as the stop condition of a loop.
@@ -44,7 +49,7 @@ PATCH = 6
 ZOOM = 6
 
 # Near-perfect: what the loop has to reach before an element counts as done.
-THRESHOLDS = {'iou': 0.95, 'meanDE': 6.0, 'p90DE': 12.0, 'worstPatch': 14.0, 'ssim': 0.70}
+THRESHOLDS = {'iou': 0.95, 'meanDE': 6.0, 'p90DE': 12.0, 'worstPatch': 14.0, 'ssim': 0.70, 'cropDE': 5.0}
 
 
 def load_items():
@@ -95,9 +100,38 @@ def ciede2000(lab1, lab2):
 
 
 def mask_of(a):
+    """Non-background pixels (element plus its cast shadow), with enclosed holes filled.
+
+    A pixel is background when it is close to the background grey (dE-like distance <= 20 and low
+    saturation). Pale elements (mint canopies, white fur) are almost that grey inside, so the
+    background is flood-filled in from the crop border instead, and anything it cannot reach is
+    kept: the elements' outlines (strong luminance edges) enclose those pale interiors.
+    """
+    from collections import deque
     d = np.linalg.norm(a - BG, axis=-1)
     sat = a.max(-1) - a.min(-1)
-    return (d > 20) | (sat > 14)
+    lum = a @ np.array([0.299, 0.587, 0.114])
+    gx = np.zeros_like(lum)
+    gy = np.zeros_like(lum)
+    gx[:, 1:-1] = lum[:, 2:] - lum[:, :-2]
+    gy[1:-1, :] = lum[2:, :] - lum[:-2, :]
+    barrier = np.hypot(gx, gy) > 28
+    passable = (d <= 20) & (sat <= 14) & ~barrier
+    h, w = passable.shape
+    reached = np.zeros((h, w), bool)
+    q = deque()
+    border = [(y, x) for y in range(h) for x in (0, w - 1)] + [(y, x) for x in range(w) for y in (0, h - 1)]
+    for y, x in border:
+        if passable[y, x] and not reached[y, x]:
+            reached[y, x] = True
+            q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+            if 0 <= ny < h and 0 <= nx < w and passable[ny, nx] and not reached[ny, nx]:
+                reached[ny, nx] = True
+                q.append((ny, nx))
+    return ~reached
 
 
 def window(img, box, pad):
@@ -162,11 +196,13 @@ def evaluate(ref_img, ren2x, item):
                 m = float(de[y:y + PATCH, x:x + PATCH][cell].mean())
                 if m > worst:
                     worst, worst_at = m, [round((x + PATCH / 2) / w, 2), round((y + PATCH / 2) / h, 2)]
+    crop_de = float(de.mean())
     luma = lambda a: a @ np.array([0.299, 0.587, 0.114])
     result = {
         'id': item['id'], 'family': item['family'], 'offset': [dx, dy],
         'iou': round(float(iou), 4), 'meanDE': round(float(vals.mean()), 2), 'p90DE': round(float(np.percentile(vals, 90)), 2),
         'worstPatch': round(worst, 2), 'worstAt': worst_at, 'ssim': round(ssim(luma(ref), luma(ren)), 4),
+        'cropDE': round(crop_de, 2),
     }
     fails = []
     if result['iou'] < THRESHOLDS['iou']:
@@ -176,6 +212,8 @@ def evaluate(ref_img, ren2x, item):
             fails.append(k)
     if result['ssim'] < THRESHOLDS['ssim']:
         fails.append('ssim')
+    if result['cropDE'] > THRESHOLDS['cropDE']:
+        fails.append('cropDE')
     result['fails'] = fails
     result['pass'] = not fails
     return result, ref, ren, de, inside
@@ -238,7 +276,7 @@ def main():
         t.save(PROGRESS / f"{it['id']}.png")
         tiles.append(t)
         print(f"{'PASS' if r['pass'] else 'FAIL'}  {r['id']:20s} iou {r['iou']:.3f}  dE {r['meanDE']:5.2f} "
-              f"p90 {r['p90DE']:5.2f}  worst {r['worstPatch']:5.2f} at {r['worstAt']}  ssim {r['ssim']:.3f}  "
+              f"p90 {r['p90DE']:5.2f}  worst {r['worstPatch']:5.2f} at {r['worstAt']}  ssim {r['ssim']:.3f}  crop {r['cropDE']:.2f}  "
               f"offset {r['offset'][0]:+.1f},{r['offset'][1]:+.1f}  {'' if r['pass'] else 'fails: ' + ','.join(r['fails'])}")
     passed = sum(r['pass'] for r in results)
     print(f"{passed}/{len(results)} elements pass  (thresholds: {THRESHOLDS})")
