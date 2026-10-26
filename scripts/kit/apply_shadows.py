@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Write a shadowfit.py result into a family's SHADOWS table (cast: false, fitted colour and blobs),
-keeping any per-element contact strength already there.
+keeping any per-element contact strength (or contact options object) already there.
 Usage: apply_shadows.py <family> <fit.json>
 """
 import json
@@ -21,7 +21,7 @@ lines = ['export const SHADOWS = {']
 for item_id, blobs in fit.items():
     if item_id not in members:
         continue
-    m = re.search(r"'" + re.escape(item_id) + r"':.*?contact: ([\d.]+)", old)
+    m = re.search(r"'" + re.escape(item_id) + r"':.*?contact: (\{[^}]*\}|[\d.]+)", old)
     contact = f', contact: {m.group(1)}' if m else ''
     lines.append(f"  '{item_id}': {{ cast: false, color: '{color}', blobs: {json.dumps(blobs, separators=(', ', ': '))}{contact} }},")
 lines.append('};')

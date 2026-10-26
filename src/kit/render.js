@@ -10,9 +10,11 @@ const finalShader = {
     uTexel: { value: new THREE.Vector2() },
     uScale: { value: 1 }, // output pixels per reference pixel
     uExposure: { value: 1 },
-    uLine: { value: new THREE.Vector2(0.88, 0.85) }, // silhouette-line darkening: side-facing, up-facing edges
+    uLine: { value: new THREE.Vector2(0.25, 0.3) }, // silhouette-line ink strength: side-facing, up-facing edges
     uLineWidth: { value: 1.25 }, // silhouette-line width, in reference pixels (swept)
-    uLineDown: { value: 0.88 }, // silhouette-line darkening on down-facing edges (an element's bottom)
+    uLineDown: { value: 0.3 }, // silhouette-line ink strength on down-facing edges (an element's bottom)
+    uLineDownWidth: { value: 1.25 }, // its width: the sheet's bottom contour is a single crisp row
+    uInk: { value: new THREE.Color(0.44, 0.44, 0.44) }, // the line's ink, an sRGB neutral grey
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -27,6 +29,8 @@ const finalShader = {
     uniform vec2 uLine;
     uniform float uLineWidth;
     uniform float uLineDown;
+    uniform float uLineDownWidth;
+    uniform vec3 uInk;
     varying vec2 vUv;
 
     float depthAt(vec2 uv) { return texture2D(tDepth, uv).x; }
@@ -60,12 +64,15 @@ const finalShader = {
         }
       }
       vec3 srgb = toSRGB(col);
-      if (inside && nearestBg <= lineR + 0.5) {
-        // The dark silhouette line takes the element's own hue. uLine sets its strength on side- and
-        // up-facing edges separately (scripts/kit/edgeprofile.py measures both on the reference).
+      float downR = uLineDownWidth * uScale;
+      float downFacing = smoothstep(0.35, 0.85, -bgDir.y);
+      if (inside && nearestBg <= mix(lineR, downR, downFacing) + 0.5) {
+        // The silhouette line is a grey ink laid over the element's colour (the reference's line
+        // is a desaturated grey-brown on every hue, not a darker shade of it). uLine sets its
+        // strength on side- and up-facing edges separately (scripts/kit/edgeprofile.py measures both).
         float up = smoothstep(0.35, 0.85, bgDir.y);
-        float down = smoothstep(0.35, 0.85, -bgDir.y);
-        srgb *= mix(mix(uLine.x, uLine.y, up), uLineDown, down);
+        float down = downFacing;
+        srgb = mix(srgb, uInk, mix(mix(uLine.x, uLine.y, up), uLineDown, down));
       } else if (inside && step > 0.004) {
         srgb *= mix(1.0, 0.8, smoothstep(0.004, 0.02, step)); // softer crease where parts overlap
       } else if (!inside && nearestObj <= haloR + 0.5) {

@@ -7,7 +7,8 @@
 // kit's shading model (textile.js) to recover the albedo that renders to that pixel. Hidden
 // vertices copy the albedo of their mirror image across the element's own x and z planes, then
 // keep the procedural color if no mirror was baked. The meshes carry about one vertex per
-// reference pixel, so this captures the sheet at its own resolution, and the element still renders
+// reference pixel (the blocks two to three, sampled nearest, which keeps the felt's pixel-level
+// grain), so this captures the sheet at its own resolution, and the element still renders
 // correctly from any angle (the albedo is lighting-free).
 import * as THREE from 'three';
 import { KIT_STAGE } from './style.js';
@@ -84,7 +85,13 @@ export function loadSheet() {
 
 const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 
-function sampleSheet(sheet, u, v) {
+function sampleSheet(sheet, u, v, nearest = false) {
+  if (nearest) {
+    // The pixel itself: on a dense mesh (two or more vertices per reference pixel) bilinear would
+    // blur the felt's pixel-level grain a second time, on top of the interpolation between vertices.
+    const i = (Math.floor(v) * sheet.width + Math.floor(u)) * 4;
+    return [0, 1, 2].map((c) => srgbToLinear(sheet.data[i + c] / 255));
+  }
   // Bilinear, in linear light.
   const x = Math.min(Math.max(u - 0.5, 0), sheet.width - 1.001);
   const y = Math.min(Math.max(v - 0.5, 0), sheet.height - 1.001);
@@ -185,9 +192,11 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
   const normalMatrix = new THREE.Matrix3();
   for (const element of elements) {
     // Neutral-grey elements (white fur, grey stone) opt out with { skipNeutral: false }; thin ones
-    // bake closer to their outline with { margin: 1 }.
+    // bake closer to their outline with { margin: 1 }; dense meshes take each vertex's own sheet
+    // pixel with { sample: 'nearest' }.
     const skipNeutral = options[element.name]?.skipNeutral ?? true;
     const inner = options[element.name]?.margin === 1 ? sheet.inner1 : sheet.inner;
+    const nearest = options[element.name]?.sample === 'nearest';
     const rootInverse = element.matrixWorld.clone().invert();
     let baked = 0;
     let total = 0;
@@ -220,7 +229,7 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
         const [su, sv] = toSheet(x, y);
         const pi = Math.floor(sv) * sheet.width + Math.floor(su);
         if (!inner[pi]) continue;
-        const sample = sampleSheet(sheet, su, sv);
+        const sample = sampleSheet(sheet, su, sv, nearest);
         // Skip cast-shadow / background samples (neutral to blue grey, darker than the backdrop):
         // they land where this element's geometry overhangs a gap in the reference (between
         // willow drips, beside a trunk) and would paint it grey. Neighbor fill covers them.
@@ -235,7 +244,9 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
       // within 0.07 units, so baked and procedural colors never meet at a visible seam.
       const nearCell = 0.07;
       const nearGrid = new Map();
-      const nearKey = (x, y, z) => `${Math.floor(x / nearCell)},${Math.floor(y / nearCell)},${Math.floor(z / nearCell)}`;
+      // Numeric cell keys (string keys dominate the bake time on dense meshes).
+      const cellKey = (cx, cy, cz) => ((cx + 1024) * 2048 + cy + 1024) * 2048 + cz + 1024;
+      const nearKey = (x, y, z) => cellKey(Math.floor(x / nearCell), Math.floor(y / nearCell), Math.floor(z / nearCell));
       const wpos = new Float32Array(pos.count * 3);
       const wnrm = new Float32Array(pos.count * 3);
       for (let i = 0; i < pos.count; i++) {
@@ -260,16 +271,16 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
           const reach = Math.ceil(radius / nearCell);
           let wsum = 0; let r = 0; let g = 0; let b = 0; let pl = 0;
           for (let dx = -reach; dx <= reach; dx++) for (let dy = -reach; dy <= reach; dy++) for (let dz = -reach; dz <= reach; dz++) {
-            const list = nearGrid.get(`${cx + dx},${cy + dy},${cz + dz}`);
+            const list = nearGrid.get(cellKey(cx + dx, cy + dy, cz + dz));
             if (!list) continue;
             for (const j of list) {
               const ddx = wpos[j * 3] - x; const ddy = wpos[j * 3 + 1] - y; const ddz = wpos[j * 3 + 2] - z;
-              const dist = Math.hypot(ddx, ddy, ddz);
-              if (dist > radius) continue;
+              const d2 = ddx * ddx + ddy * ddy + ddz * ddz;
+              if (d2 > radius * radius) continue;
               const facing = wnrm[i * 3] * wnrm[j * 3] + wnrm[i * 3 + 1] * wnrm[j * 3 + 1] + wnrm[i * 3 + 2] * wnrm[j * 3 + 2];
               if (facing < minFacing) continue;
-              const w = (facing - minFacing + 0.05) * (1 - dist / radius);
-              wsum += w; r += col.getX(j) * w; g += col.getY(j) * w; b += col.getZ(j) * w;
+              const w = (facing - minFacing + 0.05) * (1 - Math.sqrt(d2) / radius);
+              wsum += w; r += col.array[j * 3] * w; g += col.array[j * 3 + 1] * w; b += col.array[j * 3 + 2] * w;
               pl += lum(proc, j) * w;
             }
           }

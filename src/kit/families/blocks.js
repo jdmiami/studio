@@ -6,6 +6,9 @@ import { prepareTextileGeometry } from '../../textile.js';
 import { PASTEL, bulge, felt, lumpy, mottle, shadeBottom, softBox } from '../style.js';
 
 const SIZE = 1;
+// Mesh density (subdivisions per unit): two to three vertices per reference pixel on screen (a
+// block edge is 39.5 px), so the baked finish keeps the felt's pixel-level grain and seams.
+const RES = 80;
 
 // Where each element's base center stands on the sheet (reference px), registered with
 // scripts/kit/register.py so the baked finish samples the reference exactly where the element is.
@@ -19,6 +22,10 @@ export const ANCHORS = {
   'block-stone-seam-b': [466.00, 61.06], // anchor
 };
 
+// The dense meshes bake each vertex from its own sheet pixel (bilinear would smooth the grain
+// again) and up to 1 px from the outline, so the darker rim inside the outline is baked too.
+export const BAKE = Object.fromEntries(Object.keys(ANCHORS).map((id) => [id, { margin: 1, sample: 'nearest' }]));
+
 // Per-element scale and turn [sx, sy, sz, ry] found by scripts/kit/fit.py and the pixel test:
 // the reference draws each block a little differently.
 export const FIT = {
@@ -30,8 +37,22 @@ export const FIT = {
   'block-stone-seam-b': [0.99, 0.96, 1.04, 0],
 };
 
+// Fitted ground shadows (scripts/kit/shadowfit.py, written by scripts/kit/apply_shadows.py): the
+// sheet's block shadows are a soft blue-grey patch to the right plus a dark band under the
+// bottom-right edge, which the global cast shadow doesn't shape well. The contact decal is a thin
+// strong line hugging the base (the sheet's dark contact line), not the default wide band.
+export const SHADOWS = {
+  'block-grass-a': { cast: false, color: '#727687', blobs: [[0.671, -0.164, 1.494, 0.532, 0.645, -0.343, 0.408], [0.433, 0.31, 0.595, 0.242, 0.79, -0.476, 0.172], [1.272, -0.046, 1.821, 0.422, 0.39, 0.348, 0.124]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
+  'block-grass-b': { cast: false, color: '#727687', blobs: [[1.006, -0.207, 1.916, 0.497, 0.744, 0.301, 0.207], [0.385, 0.335, 0.734, 0.2, 0.759, -0.513, 0.33], [0.668, 0.055, 2.105, 0.294, 0.349, -0.31, 0.0]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
+  'block-pink': { cast: false, color: '#727687', blobs: [[0.863, -0.247, 1.652, 0.397, 0.554, -0.586, 0.434], [0.361, 0.353, 0.659, 0.203, 0.792, -0.548, 0.291], [0.889, -0.153, 0.743, 0.321, 0.452, 0.699, 0.219]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
+  'block-water': { cast: false, color: '#727687', blobs: [[0.584, -0.136, 0.597, 0.45, 0.526, -0.338, 0.57], [0.353, 0.359, 0.672, 0.216, 0.802, -0.519, 0.15], [0.717, -0.254, 0.631, 0.258, 0.171, 0.387, 0.565]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
+  'block-stone-plain': { cast: false, color: '#727687', blobs: [[0.648, -0.124, 1.581, 0.572, 0.668, -0.354, 0.218], [0.34, 0.344, 0.658, 0.263, 0.949, -0.556, 0.311], [1.796, 0.411, 0.849, 2.182, 0.098, -1.521, 0.174]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
+  'block-stone-seam-a': { cast: false, color: '#727687', blobs: [[0.47, -0.191, 1.732, 0.536, 0.733, 0.005, 0.312], [0.382, 0.353, 0.632, 0.216, 0.872, -0.523, 0.415], [1.382, -0.176, 0.616, 0.249, 0.557, -0.403, 0.833]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
+  'block-stone-seam-b': { cast: false, color: '#727687', blobs: [[0.53, 0.033, 0.806, 0.454, 0.473, -0.8, 0.518], [0.319, 0.365, 0.547, 0.239, 0.715, -0.547, 0.485], [1.011, -0.014, 2.226, 0.333, 0.282, 0.683, 0.214]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
+};
+
 function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scale = 2.2, puff = 0.04, stretch, crease = null, height = SIZE } = {}) {
-  const g = softBox(SIZE, height, SIZE, { radius, res: 32 });
+  const g = softBox(SIZE, height, SIZE, { radius, res: RES });
   if (puff) bulge(g, puff);
   g.translate(0, height / 2, 0);
   lumpy(g, { amount: lump, scale: 4, seed });
@@ -49,27 +70,63 @@ function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scal
 
 /**
  * Green felt cap: a soft slab over the top plus a ring of round felt drops hanging just below
- * its edge, four per side, which reads as the reference's scalloped drip line.
+ * its edge, three per side, which reads as the reference's scalloped drip line.
  */
 // Grass cap proportions, fitted to the reference's drip line (heights are fractions of the block).
-const CAP = { bottom: 0.86, top: 1.0, dropY: 0.86, dropTall: 0.08, dropWide: 0.12, dropDepth: 0.038, overhang: 1.045, puff: 0.015 };
+// The drops wrap around the earth's rounded vertical edges (`wrap`, its corner radius).
+const CAP = { bottom: 0.86, top: 1.0, dropY: 0.86, dropDepth: 0.04, dropRoot: 0.03, wrap: 0.13, overhang: 1.045, puff: 0.015 };
+// Drip lobes on each face as [centre, half-width, bottom], the centre measured toward the face's
+// front corner, fitted to the reference's green/pink boundary on both grass blocks (their edges sit
+// half a pixel above it, so the dark drip line bakes onto the earth instead of a lobe's grazing
+// rim): three lobes a face, notched about 0.3 and 0.65 from the front corner, the right face's
+// hanging a little lower. The +z (left on the sheet) and -z faces use `left`, +x and -x `right`.
+const LOBES = {
+  left: [[0.36, 0.14, 0.795], [0.03, 0.145, 0.76], [-0.295, 0.16, 0.755]],
+  right: [[0.305, 0.13, 0.77], [-0.015, 0.17, 0.735], [-0.345, 0.17, 0.73]],
+};
+
+/**
+ * Bends a drop built on the +z face (x along the face, z out of it) around the block's rounded
+ * vertical edges, so a lobe near a corner hugs the earth instead of jutting into the air.
+ */
+function wrapCorners(g, rc) {
+  const pos = g.getAttribute('position');
+  const flat = 0.5 - rc;
+  for (let i = 0; i < pos.count; i++) {
+    const a = pos.getX(i);
+    const n = pos.getZ(i);
+    if (Math.abs(a) <= flat) {
+      pos.setZ(i, 0.5 + n);
+      continue;
+    }
+    const phi = (Math.abs(a) - flat) / rc; // arc length around the corner, as an angle
+    pos.setX(i, Math.sign(a) * (flat + (rc + n) * Math.sin(phi)));
+    pos.setZ(i, flat + (rc + n) * Math.cos(phi));
+  }
+  g.computeVertexNormals();
+  return g;
+}
 
 function grassCap(seed, random) {
   const parts = [];
   const slabH = CAP.top - CAP.bottom;
-  const slab = softBox(CAP.overhang, slabH, CAP.overhang, { radius: 0.15, res: 32 });
+  const slab = softBox(CAP.overhang, slabH, CAP.overhang, { radius: 0.15, res: RES });
   bulge(slab, CAP.puff);
   slab.translate(0, CAP.bottom + slabH / 2, 0);
   parts.push(slab);
-  const half = 0.5;
   for (let side = 0; side < 4; side++) {
-    for (let k = 0; k < 4; k++) {
-      const along = -0.36 + k * 0.24 + (random() - 0.5) * 0.03; // corner drops stay inside the corners
-      const drop = prepareTextileGeometry(new THREE.SphereGeometry(1, 16, 10));
-      const tall = CAP.dropTall + random() * 0.03;
-      drop.scale(CAP.dropWide + random() * 0.02, tall, CAP.dropDepth);
+    // The front corner is at +x on the +z face and at +z (local -x) on the +x face.
+    const toFront = side % 2 === 0 ? 1 : -1;
+    for (const [centre, wide, bottom] of side % 2 === 0 ? LOBES.left : LOBES.right) {
+      const drop = prepareTextileGeometry(new THREE.SphereGeometry(1, 48, 28));
+      const tall = CAP.dropY - bottom + (random() - 0.5) * 0.01;
+      // Only the lower half hangs; the upper half is a short root tucked in under the slab.
+      const pos = drop.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) pos.setY(i, pos.getY(i) * (pos.getY(i) > 0 ? CAP.dropRoot : tall));
+      drop.scale(wide, 1, CAP.dropDepth);
       // Face +z, then rotate the drop around the block to the other three faces.
-      drop.translate(along, CAP.dropY, half);
+      drop.translate(centre * toFront, CAP.dropY, 0);
+      wrapCorners(drop, CAP.wrap);
       drop.rotateY((side * Math.PI) / 2);
       parts.push(drop);
     }
@@ -97,7 +154,7 @@ function seamStone(seed) {
   ];
   const group = new THREE.Group();
   parts.forEach((p, i) => {
-    const g = softBox(p.w, p.h, p.d, { radius: r, res: 32 });
+    const g = softBox(p.w, p.h, p.d, { radius: r, res: RES });
     bulge(g, 0.03);
     lumpy(g, { amount: 0.008, scale: 4, seed: seed + i });
     mottle(g, PASTEL.stone, PASTEL.stoneDeep, { scale: 2.5, seed: seed + i, bias: -0.3 });

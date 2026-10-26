@@ -12,7 +12,8 @@
 //   ?warp=N              silhouette-warp passes (default 3 with the baked finish, 0 skips; src/kit/warp.js)
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
-//   ?line=side,up[,w,dn] silhouette-line darkening on side-, up- and down-facing edges, and width
+//   ?line=side,up[,w,dn,dw] silhouette-line ink strength on side-, up- and down-facing edges, width,
+//                        and the down-facing edges' own width
 //                        in reference px (for tuning sweeps)
 //   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
 //   ?anchor=id:u,v       override one element's anchor (for tuning sweeps)
@@ -78,10 +79,11 @@ scene.add(sun);
 scene.add(sun.target);
 const kit = createKitRenderer(renderer, scene, camera);
 if (params.has('line')) {
-  const [side, up, width, down] = params.get('line').split(',').map(Number);
+  const [side, up, width, down, downWidth] = params.get('line').split(',').map(Number);
   kit.uniforms.uLine.value.set(side, up);
   if (width) kit.uniforms.uLineWidth.value = width;
   if (down) kit.uniforms.uLineDown.value = down;
+  if (downWidth) kit.uniforms.uLineDownWidth.value = downWidth;
 }
 
 function layout() {
@@ -161,8 +163,9 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
       }
       object.name = item.id;
       // A family may export SHADOWS = { id: { cast: false, blobs: [[s, d, rs, rd, strength, turn]], color, contact: 0.3 } }
-      // to drop the global cast shadow, add fitted soft blobs, or soften the contact shadow, and
-      // planar: { dir: [s, d], strength, soft } for a shadow of the element's own shape thrown its own way.
+      // to drop the global cast shadow, add fitted soft blobs, or soften the contact shadow (contact
+      // may also be { strength, softness, bias } to reshape it), and planar: { dir: [s, d], strength,
+      // soft } for a shadow of the element's own shape thrown its own way.
       const shadow = blobOverride?.id === item.id ? blobOverride : mod.SHADOWS?.[item.id];
       scene.add(shadow?.cast === false ? object : castShadows(object));
       if (shadow?.blobs) addShadowBlobs(scene, object, shadow.blobs, shadow.color);
@@ -170,7 +173,8 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
         ? { dir: planarOverride.value.slice(0, 2), strength: planarOverride.value[2], soft: planarOverride.value[3] }
         : shadow?.planar;
       if (planar) addPlanarShadow(renderer, scene, object, { color: shadow?.color, ...planar });
-      addContactShadow(scene, object, shadow?.contact !== undefined ? { ...contactOptions, strength: shadow.contact } : contactOptions);
+      const contact = typeof shadow?.contact === 'object' ? shadow.contact : shadow?.contact !== undefined ? { strength: shadow.contact } : {};
+      addContactShadow(scene, object, { ...contactOptions, ...contact });
     } catch (e) {
       errors.push(`${item.id}: ${e.message}`);
     }
