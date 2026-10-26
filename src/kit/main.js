@@ -28,6 +28,7 @@ import { bakeFinish, loadSheet } from './bake.js';
 import { addContactShadow, addPlanarShadow, addShadowBlobs } from './contact.js';
 import { createKitRenderer } from './render.js';
 import { warpToReference } from './warp.js';
+import { exportElementsGLB } from './export.js';
 import { KIT_STAGE, applyKitLighting, castShadows } from './style.js';
 
 const params = new URLSearchParams(location.search);
@@ -228,6 +229,8 @@ if ((params.get('finish') ?? 'baked') === 'baked') {
 for (const e of errors) console.error(`[kit] ${e}`);
 window.__kitErrors = errors;
 window.__kitScene = scene; // for probes and tests
+// The finished elements as glTF for the game (scripts/kit/export_glb.mjs).
+window.__kitExportGLB = (ids) => exportElementsGLB(scene, ids ?? []);
 
 if (params.has('overlay')) {
   const img = document.createElement('img');

@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { rng } from '../world/util.js';
 import { buildCaveLevel, DOOR } from './level.js';
 import placement from './props-placement.json';
+import { loadKitAssets, placeKitModel } from './kit-assets.js';
 import {
-  buildBroomTree, buildCritters, buildCubeTree, buildDoor, buildFence, buildFluffDog, buildKnitShrub,
-  buildLightShafts, buildMushrooms, buildScaffold, buildStones, buildWillows,
+  buildBroomTree, buildDoor, buildLightShafts, buildScaffold, buildStones,
 } from './props.js';
 
 /** Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag). */
@@ -24,20 +24,7 @@ export function buildCave(scene, { hide = null } = {}) {
   const vec = (p) => new THREE.Vector3(p.x, p.y, p.z);
   const scaled = (object, s) => { object.scale.setScalar(s); return object; };
 
-  for (const p of byName('cube-tree')) scene.add(scaled(buildCubeTree(vec(p), random), p.scale));
-  for (const p of [...byName('willow'), ...byName('willow-2')]) scene.add(buildWillows([vec(p)], random, p.scale));
   for (const p of byName('broom-tree')) scene.add(scaled(buildBroomTree(vec(p), random), p.scale));
-  for (const p of byName('knit-shrub')) scene.add(buildKnitShrub(vec(p), random, p.scale, true));
-  for (const p of [...byName('bush'), ...byName('knit-bush')]) scene.add(buildKnitShrub(vec(p), random, p.scale, false));
-  for (const p of byName('fence')) {
-    // Built along local +z from the origin, then turned onto the line between its two end legs.
-    const [a, b] = p.ends;
-    const fence = buildFence(0, p.length, 0, p.scale);
-    fence.position.set(a[0], Math.min(a[1], b[1]), a[2]);
-    fence.rotation.y = Math.atan2(b[0] - a[0], b[2] - a[2]);
-    scene.add(fence);
-  }
-  scene.add(buildMushrooms(byName('mushroom').map((p) => Object.assign(vec(p), { scale: p.scale })), random));
   scene.add(buildStones(byName('stone').map((p) => Object.assign(vec(p), { scale: p.scale })), random));
   for (const p of byName('scaffold')) {
     const scaffold = scaled(buildScaffold(vec(p)), p.scale);
@@ -45,15 +32,40 @@ export function buildCave(scene, { hide = null } = {}) {
     scene.add(scaffold);
   }
 
-  const dogSpec = byName('dog')[0] ?? { x: 0, y: level.heightAt(0, -10), z: -10, scale: 1, yaw: 0 };
-  const dog = scaled(buildFluffDog(random), dogSpec.scale);
+  // The trees, domes, bushes, mushrooms, fence, dog and critters are the kit's own models, the ones
+  // matched to the asset sheet (src/cave/kit-assets.js), each as tall as the reference paints it.
+  // The kit sees every model from azimuth 45 degrees and bakes the sheet's colors for that view; the
+  // reference's camera looks 40.43 degrees round, so each model turns by the difference to show
+  // the same side.
+  const VIEW_TURN = THREE.MathUtils.degToRad(40.43 - 45);
+  const dogSpec = byName('dog')[0] ?? { x: 0, y: level.heightAt(0, -10), z: -10, height: 0.9 };
   const dogBase = vec(dogSpec);
+  const dog = new THREE.Group(); // the model is added when the kit file has loaded
   dog.position.copy(dogBase);
-  dog.rotation.y = dogSpec.yaw; // facing the player, as in the reference
   scene.add(dog);
-
-  const critters = buildCritters(byName('critter').map((p) => Object.assign(vec(p), { scale: p.scale })), random);
+  const critters = new THREE.Group();
   scene.add(critters);
+  const ready = loadKitAssets().then((kit) => {
+    const place = (id, p, parent = scene, at = vec(p)) => parent.add(placeKitModel(kit, id, { position: at, height: p.height, yaw: VIEW_TURN }));
+    for (const p of byName('cube-tree')) place('tree-cube-large', p);
+    for (const p of byName('willow')) place('tree-willow-a', p);
+    for (const p of byName('knit-shrub')) place('dome-knit-teal', p);
+    for (const p of byName('knit-bush')) place('dome-knit-green', p);
+    byName('bush').forEach((p, i) => place(i % 2 ? 'bush-round-dark' : 'bush-round-light', p));
+    const shrooms = ['mushroom-pink', 'mushroom-tan', 'mushroom-lilac'];
+    byName('mushroom').forEach((p, i) => place(shrooms[i % shrooms.length], p));
+    for (const p of byName('fence')) {
+      // Along the line between its two painted end posts: the kit fence's long side onto it.
+      const [a, b] = p.ends;
+      const fence = placeKitModel(kit, 'fence-a', { position: new THREE.Vector3((a[0] + b[0]) / 2, Math.min(a[1], b[1]), (a[2] + b[2]) / 2), height: p.height });
+      const size = new THREE.Box3().setFromObject(kit.get('fence-a')).getSize(new THREE.Vector3());
+      fence.rotation.y += p.yaw - (size.x >= size.z ? 0 : -Math.PI / 2);
+      scene.add(fence);
+    }
+    place('dog-a', dogSpec, dog, new THREE.Vector3());
+    const critterIds = ['critter-a', 'critter-b', 'critter-c'];
+    byName('critter').forEach((p, i) => place(critterIds[i % critterIds.length], p, critters));
+  });
 
   scene.add(buildLightShafts(placement.lights.map((l) => ({ x: l.x, y: l.y, z: l.z, width: l.width, length: 9, twist: 0.6 }))));
 
@@ -74,9 +86,10 @@ export function buildCave(scene, { hide = null } = {}) {
     interactables,
     // The reference frame's camera pose (docs/reference/cave-door-camera.json, solved by line
     // tracing): the room's front-right corner, looking 40 degrees left of the door's axis. The feet
-    // land on the spawn terrace (top 2), so the eye is at 3.6, 0.175 below the solved 3.775.
+    // land on the spawn terrace (top 2) and the eye is EYE_HEIGHT 1.775 above: the solved 3.775.
     spawn: { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
     stats: { blocks: level.blockCount, caps: level.capCount },
+    ready, // resolves when the kit models are in the scene
     update(time) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03 * dogSpec.scale;
       dog.rotation.z = Math.sin(time * 1.3) * 0.03;

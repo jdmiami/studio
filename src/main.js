@@ -50,6 +50,10 @@ addEventListener('resize', () => {
   post.setSize(innerWidth, innerHeight);
 });
 
+// Screenshots wait for the scene's loaded assets (the cave's kit models) before counting frames.
+let assetsReady = false;
+Promise.resolve(start.ready).then(() => { assetsReady = true; }, (e) => { console.error(e); assetsReady = true; });
+
 const clock = new THREE.Clock();
 let last = 0;
 let frames = 0;
@@ -64,7 +68,7 @@ renderer.setAnimationLoop(() => {
   post.render(time, sharedFurUniforms.uSunDir.value, sharedFurUniforms.uSunColor.value);
   // Screenshot mode: after a few frames, stop rendering so the capture isn't racing a
   // slow (software-rendered) frame, then signal readiness.
-  if (++frames === 3 && shotTime !== null) {
+  if (assetsReady && ++frames === 3 && shotTime !== null) {
     renderer.setAnimationLoop(null);
     window.__phluphReady = true;
   }
@@ -125,6 +129,7 @@ function startCave() {
   const timerStart = 15 * 60 - 3; // matches the reference frame's 14:57
   return {
     camera,
+    ready: cave.ready,
     postOptions: { godRays: false, tiltShift: false, saturation: 0.72 }, // the reference's muted chalky colors
     update(time, dt) {
       controls.update(dt);

@@ -102,25 +102,53 @@ def main():
     props = json.load(open(args.props))['props']
     eye = cam.eye
 
-    def place(u, v):
+    KINDS = {1: ('wall',), 4: ('floor', 'step'), 3: ('water', 'stream')}
+
+    def visible_top(u, v, kinds, near):
+        """The point on a column top of one of `kinds` that projects nearest (u, v), within 25 px,
+        among tops not hidden behind a nearer column at that pixel (no farther than `near` + 3)."""
+        best = None
+        for (x, z), c in cells.items():
+            if c['kind'] not in kinds:
+                continue
+            for dx in np.linspace(-0.4, 0.4, 9):
+                for dz in np.linspace(-0.4, 0.4, 9):
+                    Q = np.array([x + dx, c['top'], z + dz])
+                    q = cam.project(Q)
+                    if q is None or np.linalg.norm(Q - eye) > near + 3:
+                        continue
+                    d = float(np.hypot(q[0] - u, q[1] - v))
+                    if d < 25 and (best is None or d < best[0]):
+                        best = (d, Q, (x, z))
+        return best
+
+    def place(u, v, stands_on=None):
         P, cell, how = march(cam, cells, ceiling, u, v)
-        if how == 'side':
-            # Stand on the column the base pixel belongs to, a little in from its edge.
-            cx, cz = cell
-            P = P.copy()
-            P[0] = min(max(P[0], cx - 0.35), cx + 0.35)
-            P[2] = min(max(P[2], cz - 0.35), cz + 0.35)
+        if how == 'side' and stands_on in KINDS:
+            # The base pixel lands on a column's face, but the reference paints the prop standing on
+            # a top of a known surface: stand it on the visible top of that surface whose projection
+            # lands nearest the base pixel (the painting's base, not the face the ray grazed).
+            found = visible_top(u, v, KINDS[stands_on], float(np.linalg.norm(P - eye)))
+            if found is not None:
+                return found[1], found[2], 'top*'
         return P, cell, how
 
     out = []
     for p in props:
         name = p['name']
-        P, cell, how = place(*p['base'])
+        P, cell, how = place(*p['base'], p.get('standsOn'))
         if cell is None or how == 'out':
             print(f'  {name}: ray leaves the level ({how}); skipped', file=sys.stderr)
             continue
         ppu = px_per_unit(cam, P)
-        height = p['heightPx'] / ppu
+        height_px = p['heightPx']
+        if name == 'knit-shrub':
+            # The painting's pom-pom is listed on its own, but the kit's knit dome carries its pom:
+            # the model's height runs from the dome's base to the pom's top.
+            pom = next((q for q in props if q['name'] == 'pom'), None)
+            if pom:
+                height_px = p['base'][1] - pom['box'][1]
+        height = height_px / ppu
         entry = {
             'name': name, 'x': round(float(P[0]), 3), 'y': round(float(P[1]), 3), 'z': round(float(P[2]), 3),
             'cell': list(cell), 'surface': cells[cell]['kind'], 'hit': how,
@@ -133,7 +161,7 @@ def main():
         if p.get('bases'):
             ends = []
             for b in p['bases']:
-                Q, c2, how2 = place(*b)
+                Q, c2, how2 = place(*b, p.get('standsOn'))
                 ends.append([round(float(Q[0]), 3), round(float(Q[1]), 3), round(float(Q[2]), 3)])
             entry['ends'] = ends
             (ax, ay, az), (bx, by, bz) = ends
