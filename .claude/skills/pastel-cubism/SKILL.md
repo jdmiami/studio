@@ -116,6 +116,13 @@ dark eyes) or `{ margin: 1 }` (thin rails and sticks). Only felt meshes bake.
 
 `src/kit/warp.js` nudges silhouette vertices (3 passes, at most a few pixels) onto the reference
 outline, measured with the test's own masks on the actual render. It fades out near the ground.
+Masks only place an edge to the pixel, and never the base (it runs into the contact shadow), so a
+family can opt in per element with `WARP = { id: { base: true, fine: true } }`:
+- `base` moves the base contour onto the reference's dark bottom line, found per column to a
+  fraction of a pixel against our exact depth coverage (base vertices slide toward the camera,
+  never under the ground's decals);
+- `fine` places outlines to a fraction of a pixel where each image's colour crosses the background
+  (or the cast shadow just outside), the same measure on both images.
 
 ### 4. Shadows: fit them
 
@@ -137,8 +144,16 @@ pixel; keep the anchor that scored best. Then read the board: the heat map says 
 crops (`maskdiff.py`, `edgeprofile.py`, `--dump=__kitWarp|__kitBake` on screenshot.mjs) say why.
 
 Global settings (line strength and width in `render.js`, warp passes) are chosen by a sweep over
-every built family, never by one element.
+every built family, never by one element. A family whose outline differs exports its own
+`LINE = { side, up, down, width }` (drawn within its elements' sheet boxes): the blocks' base
+needs no bottom ink, because the bake already carries the reference's contour there, while white
+fur needs it to stand off the background.
+
+`diffmap.py <render> <id>...` maps the signed luma error (red: render too dark, blue: too light)
+and the chroma error, and lists the worst spots: read it before guessing. Shaded faces off in hue
+while lit faces match means the de-light (bake.js), not the albedo. Render heavy scenes one at a
+time: two dense scenes at once can lose the software WebGL context and save a blank frame.
 
 URL flags (`kit.html?...`): `family=a,b`, `only=`, `overlay=0.5`, `finish=procedural`, `warp=N`,
-`line=side,up,width,down`, `fit=`, `anchor=`, `blobs=`, `planar=`, `contact=`, `shadow=`,
-`warpprobe=id`.
+`line=side,up,width,down[,downWidth,downShade]` (every element), `fit=`, `anchor=`, `blobs=`,
+`planar=`, `contact=` (overrides family values), `shadow=`, `base=0`, `warpprobe=id`.
