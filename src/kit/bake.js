@@ -164,13 +164,19 @@ function delight(obs, n, material) {
   const sunArr = [sun.r, sun.g, sun.b];
   const tintArr = [tint.r, tint.g, tint.b];
   // base = vertexColor * uColor; solve for base, then divide out uColor.
+  // The shadow side's saturation depends on base itself: iterate to the fixed point. It converges
+  // slowly on shaded faces of strong hues (a few iterations left the water's shaded face a full
+  // 10 levels too blue), so run until it settles.
   let base = target.map((t, c) => t / (ambArr[c] * 0.7 + sunArr[c] * wrap * 0.8));
-  for (let it = 0; it < 4; it++) {
+  for (let it = 0; it < 60; it++) {
     const luma = Math.max(0.2126 * base[0] + 0.7152 * base[1] + 0.0722 * base[2], 0.02);
-    base = target.map((t, c) => {
+    const next = target.map((t, c) => {
       const shadeTint = 1 + (base[c] / luma - 1) * shadeSat * (1 - wrap);
-      return t / (ambArr[c] * 0.7 * shadeTint + sunArr[c] * wrap * 0.8);
+      return t / Math.max(ambArr[c] * 0.7 * shadeTint + sunArr[c] * wrap * 0.8, 1e-3);
     });
+    const change = Math.abs(next[0] - base[0]) + Math.abs(next[1] - base[1]) + Math.abs(next[2] - base[2]);
+    base = next;
+    if (change < 1e-5) break;
   }
   return base.map((b, c) => THREE.MathUtils.clamp(b / Math.max(tintArr[c], 1e-3), 0, 1.5));
 }

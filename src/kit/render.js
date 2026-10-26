@@ -14,6 +14,7 @@ const finalShader = {
     uLineWidth: { value: 1.25 }, // silhouette-line width, in reference pixels (swept)
     uLineDown: { value: 0.3 }, // silhouette-line ink strength on down-facing edges (an element's bottom)
     uLineDownWidth: { value: 1.25 }, // its width: the sheet's bottom contour is a single crisp row
+    uLineDownShade: { value: 0 }, // > 0: down-facing edges are the surface's own colour times this, not grey ink
     uInk: { value: new THREE.Color(0.44, 0.44, 0.44) }, // the line's ink, an sRGB neutral grey
   },
   vertexShader: /* glsl */ `
@@ -30,6 +31,7 @@ const finalShader = {
     uniform float uLineWidth;
     uniform float uLineDown;
     uniform float uLineDownWidth;
+    uniform float uLineDownShade;
     uniform vec3 uInk;
     varying vec2 vUv;
 
@@ -72,7 +74,8 @@ const finalShader = {
         // strength on side- and up-facing edges separately (scripts/kit/edgeprofile.py measures both).
         float up = smoothstep(0.35, 0.85, bgDir.y);
         float down = downFacing;
-        srgb = mix(srgb, uInk, mix(mix(uLine.x, uLine.y, up), uLineDown, down));
+        vec3 ink = uLineDownShade > 0.0 ? mix(uInk, srgb * uLineDownShade, down) : uInk;
+        srgb = mix(srgb, ink, mix(mix(uLine.x, uLine.y, up), uLineDown, down));
       } else if (inside && step > 0.004) {
         srgb *= mix(1.0, 0.8, smoothstep(0.004, 0.02, step)); // softer crease where parts overlap
       } else if (!inside && nearestObj <= haloR + 0.5) {

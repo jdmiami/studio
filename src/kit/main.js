@@ -10,11 +10,12 @@
 //   ?finish=procedural   pure procedural felt (default: baked, the reference's de-lit colors baked into
 //                        the felt as vertex colors, see src/kit/bake.js)
 //   ?warp=N              silhouette-warp passes (default 3 with the baked finish, 0 skips; src/kit/warp.js)
+//   ?base=0              skip the warp's base-contour pass for families that export WARP
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
-//   ?line=side,up[,w,dn,dw] silhouette-line ink strength on side-, up- and down-facing edges, width,
-//                        and the down-facing edges' own width
-//                        in reference px (for tuning sweeps)
+//   ?line=side,up[,w,dn,dw,shade] silhouette-line ink strength on side-, up- and down-facing edges,
+//                        width, the down-facing edges' own width in reference px, and their shade
+//                        factor (> 0: a darker shade of the surface instead of grey ink; for sweeps)
 //   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
 //   ?anchor=id:u,v       override one element's anchor (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
@@ -79,11 +80,12 @@ scene.add(sun);
 scene.add(sun.target);
 const kit = createKitRenderer(renderer, scene, camera);
 if (params.has('line')) {
-  const [side, up, width, down, downWidth] = params.get('line').split(',').map(Number);
+  const [side, up, width, down, downWidth, downShade] = params.get('line').split(',').map(Number);
   kit.uniforms.uLine.value.set(side, up);
   if (width) kit.uniforms.uLineWidth.value = width;
   if (down) kit.uniforms.uLineDown.value = down;
   if (downWidth) kit.uniforms.uLineDownWidth.value = downWidth;
+  if (downShade) kit.uniforms.uLineDownShade.value = downShade;
 }
 
 function layout() {
@@ -174,7 +176,7 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
         : shadow?.planar;
       if (planar) addPlanarShadow(renderer, scene, object, { color: shadow?.color, ...planar });
       const contact = typeof shadow?.contact === 'object' ? shadow.contact : shadow?.contact !== undefined ? { strength: shadow.contact } : {};
-      addContactShadow(scene, object, { ...contactOptions, ...contact });
+      addContactShadow(scene, object, { ...contact, ...contactOptions }); // a ?contact= sweep wins
     } catch (e) {
       errors.push(`${item.id}: ${e.message}`);
     }
@@ -192,7 +194,10 @@ if ((params.get('finish') ?? 'baked') === 'baked') {
       // finish is baked again so colors register on the moved vertices.
       const toWindow = (u, v) => [(u - SHEET.width / 2) * view.pxPerRef + innerWidth / 2, (v - SHEET.height / 2) * view.pxPerRef + innerHeight / 2];
       const passes = Number(params.get('warp') ?? 3);
-      window.__kitWarp = warpToReference(placed, items, await loadSheet(), { renderer, scene, camera, renderFrame: kit.render, toWindow, pxPerRef: view.pxPerRef, passes });
+      // Families may export WARP = { id: { base: true } } to also move an element's base contour
+      // onto the reference's (?base=0 turns that off, for comparisons).
+      const warpOptions = params.get('base') === '0' ? {} : Object.assign({}, ...Object.values(loadedModules).map((m) => m.WARP ?? {}));
+      window.__kitWarp = warpToReference(placed, items, await loadSheet(), { renderer, scene, camera, renderFrame: kit.render, toWindow, pxPerRef: view.pxPerRef, passes, options: warpOptions });
       window.__kitBake = await bakeFinish(placed, { renderer, scene, camera, toSheet, options });
     }
   } catch (e) {

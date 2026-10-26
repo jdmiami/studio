@@ -22,6 +22,8 @@ const PAD = 6;
 const SIGMA = 2.5; // px: how far inside the outline the correction fades out
 const MAX_SHIFT = 3; // px per pass
 const EDGE_AGREE = 1.25; // px: the test mask boundary must be this close to the element's own outline
+const BASE_SIGMA = 2; // px: how far above the base the base-contour correction fades out
+const BASE_LINE_HALF = 0.65; // px from the contour line's centre to the silhouette's edge (swept 0.5-1)
 const BG = [220, 220, 220];
 
 /** Signed distance (px, positive outside) to the boundary of a w x h boolean mask. */
@@ -137,13 +139,49 @@ function blur(src, w, h, sigma) {
 }
 
 /**
+ * Where an outline lies along the outward normal (nx, ny) from pixel (x, y)'s centre, to a fraction
+ * of a pixel: the outermost point where the colour's distance from the background falls to half its
+ * strongest value just inside (the contour line, or the element's own colour). Measured the same
+ * way on the reference and on our render, so the operator's bias cancels; a binary mask can't place
+ * an edge within its pixel, least of all a straight vertical one. NaN unless there is clean
+ * background just outside.
+ */
+function crossing(rgb, w, h, x, y, nx, ny) {
+  const dev = (s) => {
+    const fx = Math.min(Math.max(x + s * nx, 0), w - 1.001);
+    const fy = Math.min(Math.max(y + s * ny, 0), h - 1.001);
+    const x0 = Math.floor(fx); const y0 = Math.floor(fy);
+    const ax = fx - x0; const ay = fy - y0;
+    let d = 0;
+    for (let c = 0; c < 3; c++) {
+      const i = (k) => rgb[k * 3 + c];
+      const k = y0 * w + x0;
+      const v = (i(k) * (1 - ax) + i(k + 1) * ax) * (1 - ay) + (i(k + w) * (1 - ax) + i(k + w + 1) * ax) * ay;
+      d += (v - BG[c]) ** 2;
+    }
+    return Math.sqrt(d);
+  };
+  if (dev(3) > 14 || dev(2.5) > 14) return NaN;
+  let peak = 0;
+  for (let s = -3; s <= 0.5; s += 0.25) peak = Math.max(peak, dev(s));
+  if (peak < 30) return NaN;
+  const half = peak / 2;
+  for (let s = 2.5; s > -3; s -= 0.25) {
+    const a = dev(s); const b = dev(s - 0.25);
+    if (a < half && b >= half) return s - 0.25 * ((half - a) / (b - a));
+  }
+  return NaN;
+}
+
+/**
  * Smooth screen-space displacement (sheet px) toward the reference outline. Measured on the pixels
  * of our element's outline where both test masks end at an element outline, then spread by
  * normalized convolution, so the per-pixel staircase of the masks (and JPEG noise on the
  * reference) averages out instead of making straight edges ragged. Sub-pixel disagreements count
- * as zero: a mask boundary can't resolve them.
+ * as zero: a mask boundary can't resolve them, unless `fine` (our render's colours) is given: then
+ * both images' outlines are placed to a fraction of a pixel where they cross clean background.
  */
-function displacementField(ref, oursTest, oursElem, w, h) {
+function displacementField(ref, oursTest, oursElem, w, h, fine = null) {
   const du = new Float32Array(w * h);
   const dv = new Float32Array(w * h);
   const wt = new Float32Array(w * h);
@@ -162,6 +200,12 @@ function displacementField(ref, oursTest, oursElem, w, h) {
       if (gl < 1e-3) continue;
       let amount = -(rt - ot); // px along the reference field's gradient
       if (Math.abs(amount) < 0.6) amount = 0;
+      if (fine) {
+        // Sub-pixel: where each image's outline crosses the normal, when both are found.
+        const tRef = crossing(ref.rgb, w, h, x, y, gx / gl, gy / gl);
+        const tOurs = crossing(fine, w, h, x, y, gx / gl, gy / gl);
+        if (!Number.isNaN(tRef) && !Number.isNaN(tOurs) && Math.abs(tRef - tOurs) < 2.5) amount = tRef - tOurs;
+      }
       amount = Math.max(-MAX_SHIFT, Math.min(MAX_SHIFT, amount));
       du[k] = (gx / gl) * amount;
       dv[k] = (gy / gl) * amount;
@@ -263,16 +307,76 @@ function elementCoverage(renderer, scene, camera, element, width, height) {
 }
 
 /**
+ * The base contour, column by column (sheet px, continuous: a pixel spans [y, y + 1]): where our
+ * element's lowest covered pixel ends (exact, from its depth coverage at window resolution) and
+ * where the reference's ends. The masks can't place the reference's base: there the element runs
+ * into its contact shadow. But every base on the sheet carries the style's dark contour line just
+ * inside the silhouette, so the reference's base is found from that line: its darkest pixel near
+ * our base, refined to sub-pixel with a parabola, plus half the line's width (BASE_LINE_HALF).
+ * (Our own render can't be measured the same way: its line is the reference's, baked onto
+ * whichever vertices land there.) Returns { ours, dv } per column (dv: sheet px to move the base
+ * down; NaN where not measured), dv smoothed along the contour.
+ */
+function baseOffsets(refRgb, covered, x0, y0, w, h, toWindow, n) {
+  const ours = new Float32Array(w).fill(NaN);
+  const raw = new Float32Array(w).fill(NaN);
+  const lum = (x, y) => 0.299 * refRgb[(y * w + x) * 3] + 0.587 * refRgb[(y * w + x) * 3 + 1] + 0.114 * refRgb[(y * w + x) * 3 + 2];
+  for (let x = 0; x < w; x++) {
+    const [wx, wy0] = toWindow(x0 + x, y0);
+    let bottom = 0; let cols = 0;
+    for (let dx = 0; dx < n; dx++) {
+      for (let py = Math.floor(wy0) + h * n - 1; py >= Math.floor(wy0); py--) {
+        if (covered(Math.floor(wx) + dx, py)) { bottom += (py + 1 - wy0) / n; cols++; break; }
+      }
+    }
+    if (cols < n) continue;
+    ours[x] = bottom / cols;
+    // The reference's contour line: the darkest pixel within 5 rows of our base, if it is a line
+    // (clearly darker than the pixels two rows above and below it), not a gradient.
+    const guess = Math.floor(ours[x] - 0.5);
+    let best = -1; let bestL = 1e9;
+    for (let y = Math.max(2, guess - 5); y <= Math.min(h - 3, guess + 5); y++) {
+      const l = lum(x, y);
+      if (l < bestL) { bestL = l; best = y; }
+    }
+    if (best < 0 || bestL > 130 || bestL > Math.min(lum(x, best - 2), lum(x, best + 2)) - 15) continue;
+    const a = lum(x, best - 1); const c = lum(x, best + 1);
+    const curve = a - 2 * bestL + c;
+    const off = curve > 1e-3 ? Math.max(-0.5, Math.min(0.5, (a - c) / (2 * curve))) : 0;
+    const refBase = best + 0.5 + off + BASE_LINE_HALF;
+    const d = refBase - ours[x];
+    if (Math.abs(d) <= 4) raw[x] = d;
+  }
+  // Smooth along the contour (normalized convolution), so JPEG noise in single columns averages out.
+  const dv = new Float32Array(w).fill(NaN);
+  for (let x = 0; x < w; x++) {
+    if (Number.isNaN(ours[x])) continue;
+    let s = 0; let k = 0;
+    for (let i = -4; i <= 4; i++) {
+      const v = raw[x + i];
+      if (v === undefined || Number.isNaN(v)) continue;
+      const g = Math.exp(-(i * i) / 8);
+      s += v * g; k += g;
+    }
+    if (k > 1) dv[x] = s / k;
+  }
+  return { ours, dv };
+}
+
+/**
  * Warps each element toward its reference silhouette. `items` gives each element's sheet box;
  * `renderFrame()` draws the kit's final image to the canvas; `toWindow(u, v)` maps a sheet pixel
- * to a window pixel; `pxPerRef` is window px per sheet px.
+ * to a window pixel; `pxPerRef` is window px per sheet px. `options[id].base` also moves the
+ * element's base contour onto the reference's (see baseOffsets); `options[id].fine` places its
+ * outline to a fraction of a pixel (see crossing).
  */
-export function warpToReference(elements, items, sheet, { renderer, scene, camera, renderFrame, toWindow, pxPerRef, passes = 2 }) {
+export function warpToReference(elements, items, sheet, { renderer, scene, camera, renderFrame, toWindow, pxPerRef, passes = 2, options = {} }) {
   const size = renderer.getSize(new THREE.Vector2());
   const width = Math.floor(size.x);
   const height = Math.floor(size.y);
   const right = new THREE.Vector3(Math.cos(KIT_STAGE.azimuth), 0, -Math.sin(KIT_STAGE.azimuth));
   const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+  const toward = new THREE.Vector3(Math.sin(KIT_STAGE.azimuth), 0, Math.cos(KIT_STAGE.azimuth)); // horizontal, toward the camera
   const n = Math.round(pxPerRef);
   const stats = {};
   const refCache = {};
@@ -289,6 +393,7 @@ export function warpToReference(elements, items, sheet, { renderer, scene, camer
         const rgb = sheetCrop(sheet, x0, y0, w, h);
         if (window.__kitWarpProbe === element.name) window.__kitWarpRef = { w, h, rgb: [...rgb] };
         refCache[element.name] = {
+          rgb,
           dTest: signedDistance(testMask(rgb, w, h), w, h),
           dElem: signedDistance(elementMask(rgb, w, h), w, h),
         };
@@ -316,9 +421,10 @@ export function warpToReference(elements, items, sheet, { renderer, scene, camer
       }
       const oursTest = signedDistance(testMask(rgb, w, h), w, h);
       const oursElem = signedDistance(elem, w, h);
-      const field = displacementField(ref, oursTest, oursElem, w, h);
+      const field = displacementField(ref, oursTest, oursElem, w, h, options[element.name]?.fine ? rgb : null);
+      const base = options[element.name]?.base ? baseOffsets(ref.rgb, covered, x0, y0, w, h, toWindow, n) : null;
       if (window.__kitWarpProbe === element.name) {
-        (window.__kitWarpDebug ??= []).push({ w, h, oursTest: [...oursTest], oursElem: [...oursElem], refTest: [...ref.dTest], refElem: [...ref.dElem], u: [...field.u], v: [...field.v] });
+        (window.__kitWarpDebug ??= []).push({ w, h, oursTest: [...oursTest], oursElem: [...oursElem], refTest: [...ref.dTest], refElem: [...ref.dElem], u: [...field.u], v: [...field.v], base: base && { ours: [...base.ours], dv: [...base.dv] } });
       }
       let moved = 0;
       let sum = 0;
@@ -341,13 +447,23 @@ export function warpToReference(elements, items, sheet, { renderer, scene, camer
           // shadow, which no mask can tell from the element.
           const ground = Math.min(1, Math.max(0, (v.y - 0.02) / 0.1));
           const weight = Math.exp(-(oe * oe) / (SIGMA * SIGMA)) * ground * ground * (3 - 2 * ground);
-          if (weight < 0.02) continue;
-          const du = sample(field.u, w, h, su, sv) * weight;
-          const dv = sample(field.v, w, h, su, sv) * weight;
-          const amount = Math.hypot(du, dv);
+          const du = weight >= 0.02 ? sample(field.u, w, h, su, sv) * weight : 0;
+          const dv = weight >= 0.02 ? sample(field.v, w, h, su, sv) * weight : 0;
+          // The base contour instead follows the reference's contour line (no ground fade): a
+          // vertex moves down by the column's offset, faded by its height above our base.
+          const col = Math.floor(su);
+          let db = 0;
+          if (base && !Number.isNaN(base.dv[col])) {
+            const above = base.ours[col] - sv;
+            if (above > -1) db = base.dv[col] * Math.exp(-(above * above) / (BASE_SIGMA * BASE_SIGMA));
+          }
+          const amount = Math.hypot(du, dv + db);
           if (amount < 0.05) continue;
-          // Sheet px -> world: right is +u, screen-down (+v) is -up.
-          shift.copy(right).multiplyScalar(du / KIT_STAGE.pxPerUnit).addScaledVector(up, -dv / KIT_STAGE.pxPerUnit);
+          // Sheet px -> world: right is +u, screen-down (+v) is -up. The base moves horizontally
+          // toward the camera instead (which only moves it down the screen), so it never sinks
+          // below the ground, where the ground's shadow decals would paint over it.
+          shift.copy(right).multiplyScalar(du / KIT_STAGE.pxPerUnit).addScaledVector(up, -dv / KIT_STAGE.pxPerUnit)
+            .addScaledVector(toward, db / (Math.sin(KIT_STAGE.elevation) * KIT_STAGE.pxPerUnit));
           v.add(shift).applyMatrix4(inverse);
           pos.setXYZ(i, v.x, v.y, v.z);
           moved++;

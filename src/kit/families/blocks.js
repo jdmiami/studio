@@ -26,15 +26,20 @@ export const ANCHORS = {
 // again) and up to 1 px from the outline, so the darker rim inside the outline is baked too.
 export const BAKE = Object.fromEntries(Object.keys(ANCHORS).map((id) => [id, { margin: 1, sample: 'nearest' }]));
 
+// The warp also moves each block's base onto the sheet's dark bottom contour and places its
+// outline to a fraction of a pixel (src/kit/warp.js).
+export const WARP = Object.fromEntries(Object.keys(ANCHORS).map((id) => [id, { base: true, fine: true }]));
+
 // Per-element scale and turn [sx, sy, sz, ry] found by scripts/kit/fit.py and the pixel test:
 // the reference draws each block a little differently.
 export const FIT = {
-  'block-grass-b': [1, 0.97, 1, 0],
-  'block-pink': [0.98, 1.06, 1.02, 0],
-  'block-water': [0.98, 1.02, 1.04, 0],
-  'block-stone-plain': [1.01, 1.01, 1.1, 0.03],
-  'block-stone-seam-a': [0.98, 0.96, 1.01, 0],
-  'block-stone-seam-b': [0.99, 0.96, 1.04, 0],
+  'block-grass-a': [1.017, 1, 1.017, 0],
+  'block-grass-b': [1.01, 0.97, 1.01, 0],
+  'block-pink': [0.999, 1.052, 1.04, 0],
+  'block-water': [0.994, 1.037, 1.055, 0],
+  'block-stone-plain': [1.025, 1.003, 1.116, 0.03],
+  'block-stone-seam-a': [0.98, 0.97, 1.01, 0],
+  'block-stone-seam-b': [0.997, 0.962, 1.047, 0],
 };
 
 // Fitted ground shadows (scripts/kit/shadowfit.py, written by scripts/kit/apply_shadows.py): the
