@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { rng } from '../world/util.js';
 import { buildCaveLevel, DOOR } from './level.js';
+import placement from './props-placement.json';
 import {
   buildBroomTree, buildCritters, buildCubeTree, buildDoor, buildFence, buildFluffDog, buildKnitShrub,
   buildLightShafts, buildMushrooms, buildScaffold, buildStones, buildWillows,
@@ -12,39 +13,49 @@ export function buildCave(scene, { hide = null } = {}) {
   const random = rng(20261026);
   const level = buildCaveLevel({ hide });
   scene.add(level.group);
-  const at = (x, z, dy = 0) => new THREE.Vector3(x, level.heightAt(x, z) + dy, z);
 
   scene.add(buildDoor(random));
-  scene.add(buildCubeTree(at(-8, -9), random));
-  scene.add(buildWillows([at(-6, -10.2), at(4.6, -11)], random, 0.7));
-  scene.add(buildBroomTree(at(1.8, -9.1), random));
-  scene.add(buildKnitShrub(at(0.3, -7.6), random));
-  const fence = buildFence(-2.2, 0.4, level.heightAt(-1, -6));
-  fence.rotation.y = Math.PI / 2; // runs across the view along the terrace edge
-  fence.position.z = -6.25;
-  scene.add(fence);
-  scene.add(buildMushrooms(
-    [[0.3, -9.2], [-0.3, -5.4], [2.6, -10.7], [-8.4, -9.3], [-7.8, -10.1], [-6.2, -7.6], [-1.6, -13.4], [3.6, -13]]
-      .map(([x, z]) => at(x, z)),
-    random,
-  ));
-  scene.add(buildStones([[-6.8, -7.4], [-6.1, -7.2], [-6.3, -8.2], [-7.4, -10], [-2.6, -12.4]].map(([x, z]) => at(x, z)), random));
-  scene.add(buildScaffold(at(-11.5, -13)));
 
-  const dog = buildFluffDog(random);
-  const dogBase = at(-3.7, -10.6);
+  // Every prop stands where the reference paints it: src/cave/props-placement.json is computed by
+  // scripts/fp/place_props.py (the base pixel's ray from the reference camera into the layout, and
+  // the painted height in pixels over the pixels per unit at that spot); the game only reads it.
+  const props = placement.props.filter((p) => p.build);
+  const byName = (name) => props.filter((p) => p.name === name);
+  const vec = (p) => new THREE.Vector3(p.x, p.y, p.z);
+  const scaled = (object, s) => { object.scale.setScalar(s); return object; };
+
+  for (const p of byName('cube-tree')) scene.add(scaled(buildCubeTree(vec(p), random), p.scale));
+  for (const p of [...byName('willow'), ...byName('willow-2')]) scene.add(buildWillows([vec(p)], random, p.scale));
+  for (const p of byName('broom-tree')) scene.add(scaled(buildBroomTree(vec(p), random), p.scale));
+  for (const p of byName('knit-shrub')) scene.add(buildKnitShrub(vec(p), random, p.scale, true));
+  for (const p of [...byName('bush'), ...byName('knit-bush')]) scene.add(buildKnitShrub(vec(p), random, p.scale, false));
+  for (const p of byName('fence')) {
+    // Built along local +z from the origin, then turned onto the line between its two end legs.
+    const [a, b] = p.ends;
+    const fence = buildFence(0, p.length, 0, p.scale);
+    fence.position.set(a[0], Math.min(a[1], b[1]), a[2]);
+    fence.rotation.y = Math.atan2(b[0] - a[0], b[2] - a[2]);
+    scene.add(fence);
+  }
+  scene.add(buildMushrooms(byName('mushroom').map((p) => Object.assign(vec(p), { scale: p.scale })), random));
+  scene.add(buildStones(byName('stone').map((p) => Object.assign(vec(p), { scale: p.scale })), random));
+  for (const p of byName('scaffold')) {
+    const scaffold = scaled(buildScaffold(vec(p)), p.scale);
+    scaffold.rotation.y = p.yaw;
+    scene.add(scaffold);
+  }
+
+  const dogSpec = byName('dog')[0] ?? { x: 0, y: level.heightAt(0, -10), z: -10, scale: 1, yaw: 0 };
+  const dog = scaled(buildFluffDog(random), dogSpec.scale);
+  const dogBase = vec(dogSpec);
   dog.position.copy(dogBase);
-  dog.rotation.y = -2.0; // three-quarter view, looking toward the player
+  dog.rotation.y = dogSpec.yaw; // facing the player, as in the reference
   scene.add(dog);
 
-  const critterSpots = [[-2.2, -9.6], [-3.8, -7.9], [-1.5, -12]].map(([x, z]) => at(x, z));
-  const critters = buildCritters(critterSpots, random);
+  const critters = buildCritters(byName('critter').map((p) => Object.assign(vec(p), { scale: p.scale })), random);
   scene.add(critters);
 
-  scene.add(buildLightShafts([
-    { x: -11, y: 7, z: -8, width: 3.4, length: 9, twist: 0.4 },
-    { x: 0, y: 8, z: -13, width: 2.4, length: 9, twist: 0.9 },
-  ]));
+  scene.add(buildLightShafts(placement.lights.map((l) => ({ x: l.x, y: l.y, z: l.z, width: l.width, length: 9, twist: 0.6 }))));
 
   // Lights only affect the glossy button eyes and the compass; textiles and fur light themselves.
   scene.add(new THREE.HemisphereLight('#fff1e6', '#d9b3a3', 1.3));
@@ -61,15 +72,15 @@ export function buildCave(scene, { hide = null } = {}) {
     heightAt: level.heightAt,
     columns: level.columns,
     interactables,
-    // The reference frame's camera (docs/reference/cave-door-camera.json, solved by line tracing)
-    // stands at the room's front-right corner looking 40 degrees left of the door's axis, which this
-    // layout walls in; the spawn moves there when the layout is rebuilt around the reference.
-    spawn: { position: new THREE.Vector3(-5.5, 0, -1.5), yaw: 0, pitch: -0.1 },
+    // The reference frame's camera pose (docs/reference/cave-door-camera.json, solved by line
+    // tracing): the room's front-right corner, looking 40 degrees left of the door's axis. The feet
+    // land on the spawn terrace (top 2), so the eye is at 3.6, 0.175 below the solved 3.775.
+    spawn: { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
     stats: { blocks: level.blockCount, caps: level.capCount },
     update(time) {
-      dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03;
+      dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03 * dogSpec.scale;
       dog.rotation.z = Math.sin(time * 1.3) * 0.03;
-      critters.position.y = Math.abs(Math.sin(time * 3.1)) * 0.05;
+      critters.position.y = Math.abs(Math.sin(time * 3.1)) * 0.02;
     },
   };
 }

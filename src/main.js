@@ -75,8 +75,9 @@ renderer.setAnimationLoop(() => {
 function startCave() {
   // Warm light from above-left, behind the player, so the great door is lit.
   sharedFurUniforms.uSunDir.value.set(-0.4, 0.8, 0.45).normalize();
-  sharedFurUniforms.uSunColor.value.set('#fff1e2').multiplyScalar(1.2);
-  sharedFurUniforms.uSkyColor.value.set('#f0ddd2');
+  // The reference is chalky and slightly cool (mean Lab b 9.5 against 17 with the warmer light).
+  sharedFurUniforms.uSunColor.value.set('#fff6f1').multiplyScalar(1.25);
+  sharedFurUniforms.uSkyColor.value.set('#f3e4e2');
   sharedFurUniforms.uGroundColor.value.set('#dcb4a4');
   sharedFurUniforms.uFogColor.value.set('#f2dfd2');
   sharedFurUniforms.uFogDensity.value = 0.004;
@@ -124,7 +125,7 @@ function startCave() {
   const timerStart = 15 * 60 - 3; // matches the reference frame's 14:57
   return {
     camera,
-    postOptions: { godRays: false, tiltShift: false, saturation: 0.9 }, // the reference's muted chalky colors
+    postOptions: { godRays: false, tiltShift: false, saturation: 0.72 }, // the reference's muted chalky colors
     update(time, dt) {
       controls.update(dt);
       fixedPose();

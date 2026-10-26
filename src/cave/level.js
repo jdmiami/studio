@@ -1,9 +1,13 @@
 // "The Great Cave Door" level: a terraced felt canyon on a 1-unit block grid, laid out to match
 // docs/reference/cave-door.jpg (see docs/fp-reference-analysis.md).
 //
-// Coordinates: the player starts at (-5.5, -1.5) looking down -Z toward the door at z = -16.
+// The per-cell layout is src/cave/layout.json: the block layout fitted to the reference frame under
+// its solved camera (scripts/fp/fit_layout.py; hand corrections in docs/reference/fit-notes.md).
+// The player spawns at the reference camera's pose, the room's front-right corner, looking 40
+// degrees left of the door's axis (the door is at z = -16).
 // A block at integer cell (x, y, z) fills [x-0.5, x+0.5] x [y, y+1] x [z-0.5, z+0.5].
 import * as THREE from 'three';
+import layout from './layout.json';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { build as buildKitBlock } from '../kit/families/blocks.js';
 import { rng } from '../world/util.js';
@@ -20,20 +24,40 @@ export const CAVE_PALETTE = {
   ceiling: ['#e2c6b6', '#dbbcab', '#e8cfc0'],
 };
 
-export const DOOR = { z: -16, xMin: -2, xMax: 2, height: 6 };
+export const DOOR = layout.door ?? { z: -16, xMin: -2, xMax: 2, height: 6 };
 
-// The player starts on a raised landing at (-5.5, -1.5), left of the door's axis, so the door sits
-// right of center like the reference. Water cascades down on the left, green terraces climb between
-// the water and the floor, and a grassy terrace runs along the right toward the door.
-const X_MIN = -15;
-const X_MAX = 7;
-const Z_FRONT = 3;
-const Z_BACK = -17;
+// The level's extent: the fitted layout's cells (every cell inside it that the layout does not
+// list falls back to layoutColumn below).
+const CELLS = layout.cells ?? {};
+const CEILING = layout.ceiling ?? null;
+const cellKeys = Object.keys(CELLS).map((k) => k.split(',').map(Number));
+const X_MIN = cellKeys.length ? Math.min(...cellKeys.map(([x]) => x)) : -15;
+const X_MAX = cellKeys.length ? Math.max(...cellKeys.map(([x]) => x)) : 7;
+const Z_BACK = cellKeys.length ? Math.min(...cellKeys.map(([, z]) => z)) : -17;
+const Z_FRONT = cellKeys.length ? Math.max(...cellKeys.map(([, z]) => z)) : 3;
+export const EXTENT = { xMin: X_MIN, xMax: X_MAX, zBack: Z_BACK, zFront: Z_FRONT };
+
+/** Column top and kind at (x, z): the fitted layout, else the procedural fallback (enclosure walls). */
+function columnAt(x, z) {
+  const c = CELLS[`${x},${z}`];
+  if (c) return { top: c.top, kind: c.kind };
+  if (cellKeys.length) return { top: 10, kind: 'wall' };
+  return layoutColumn(x, z);
+}
+
+/** Ceiling slab bottom at (x, z) or null: the fitted layout's, else the procedural fallback. */
+function ceilingAt(x, z) {
+  if (CEILING) {
+    const b = CEILING[`${x},${z}`];
+    return b === undefined || b === null ? null : b;
+  }
+  return ceilingAtProcedural(x, z);
+}
 
 /** Left edge of the right-hand terrace at depth z (the floor narrows toward the player). */
 const rightEdge = (z) => (z > -5 ? -3 : -3 + (-z - 5) * 0.6);
 
-/** Column heights (top surface y) and material for every walkable or solid cell. */
+/** The original hand layout, kept as the fallback for cells the fitted layout does not list. */
 function layoutColumn(x, z) {
   // Back wall with the door opening; enclosure walls everywhere else.
   if (z <= DOOR.z) return { top: 10, kind: 'wall' };
@@ -74,7 +98,7 @@ function layoutColumn(x, z) {
 
 // Ceiling slabs over the back of the cave, with a lower overhang on the left and two openings
 // for the light shafts (a skylight left of the door and one high on the left).
-function ceilingAt(x, z) {
+function ceilingAtProcedural(x, z) {
   const skylight = x >= -1 && x <= 1 && z <= -12 && z >= -14;
   const leftLight = x >= -12 && x <= -10 && z <= -7 && z >= -9;
   if (skylight || leftLight) return null;
@@ -122,7 +146,7 @@ export function buildCaveLevel({ hide = null } = {}) {
 
   for (let x = X_MIN; x <= X_MAX; x++) {
     for (let z = Z_BACK; z <= Z_FRONT; z++) {
-      const col = layoutColumn(x, z);
+      const col = columnAt(x, z);
       columns.set(`${x},${z}`, col);
       const top = Math.ceil(col.top);
       const doorGap = z === DOOR.z && x >= DOOR.xMin && x <= DOOR.xMax;
@@ -153,7 +177,7 @@ export function buildCaveLevel({ hide = null } = {}) {
   // Only blocks with at least one open face can ever be seen.
   const exposed = (b) => [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]
     .some(([dx, dy, dz]) => !solid.has(key(b.x + dx, b.y + dy, b.z + dz)));
-  const visible = blocks.filter((b) => exposed(b) && b.y >= -1);
+  const visible = blocks.filter((b) => exposed(b));
 
   const group = new THREE.Group();
   const m = new THREE.Matrix4();
@@ -185,7 +209,8 @@ export function buildCaveLevel({ hide = null } = {}) {
     const y = b.kind === 'ceiling' ? b.y : b.y + (col.top - Math.ceil(col.top));
     // Soft depth shading: blocks lower in a stack sit in more shadow (no shadow maps needed).
     const depth = Math.max(0, Math.min(4, Math.ceil(col.top) - 1 - b.y));
-    const shade = b.kind === 'ceiling' ? 1 : (1 - depth * 0.06) * sideShade(b.x);
+    // The slabs' undersides face away from the light; the reference paints them as bright as the walls.
+    const shade = b.kind === 'ceiling' ? 1.3 : (1 - depth * 0.06) * sideShade(b.x);
     const variant = Math.floor(random() * VARIANTS);
     const id = `${design}:${variant}`;
     if (!placed.has(id)) placed.set(id, []);

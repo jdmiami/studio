@@ -88,19 +88,19 @@ export function buildBroomTree(base, random) {
 }
 
 // Low fence: rounded pink posts and two rails.
-export function buildFence(from, to, y) {
+export function buildFence(from, to, y, scale = 1) {
   const parts = [];
   const length = Math.abs(to - from);
-  const posts = Math.round(length / 0.9) + 1;
+  const posts = Math.max(2, Math.round(length / (0.9 * scale)) + 1);
   for (let i = 0; i < posts; i++) {
     const z = from + ((to - from) * i) / (posts - 1);
-    const post = new RoundedBoxGeometry(0.16, 0.7, 0.16, 2, 0.05);
-    post.translate(0, y + 0.35, z);
+    const post = new RoundedBoxGeometry(0.16 * scale, 0.7 * scale, 0.16 * scale, 2, 0.05 * scale);
+    post.translate(0, y + 0.35 * scale, z);
     parts.push(painted(post, '#e7b8c0'));
   }
   for (const h of [0.28, 0.55]) {
-    const rail = new RoundedBoxGeometry(0.1, 0.12, length, 2, 0.04);
-    rail.translate(0, y + h, (from + to) / 2);
+    const rail = new RoundedBoxGeometry(0.1 * scale, 0.12 * scale, length, 2, 0.04 * scale);
+    rail.translate(0, y + h * scale, (from + to) / 2);
     parts.push(painted(rail, '#efc6cc'));
   }
   return new THREE.Mesh(mergeGeometries(parts), createTextile('felt', { fuzz: 0.35 }));
@@ -111,8 +111,9 @@ export function buildMushrooms(spots, random) {
   const caps = [];
   const felt = [];
   for (const s of spots) {
-    const r = 0.16 + random() * 0.12;
-    const stemH = 0.16 + random() * 0.14;
+    const k = s.scale ?? 1; // per-spot size (1 = about 0.42 tall)
+    const r = (0.16 + random() * 0.12) * k;
+    const stemH = (0.16 + random() * 0.14) * k;
     const stem = new THREE.CylinderGeometry(r * 0.32, r * 0.4, stemH, 10, 2);
     stem.translate(s.x, s.y + stemH / 2, s.z);
     felt.push(painted(stem, '#f3ece0'));
@@ -139,8 +140,8 @@ export function buildMushrooms(spots, random) {
 // Small pastel stone cubes scattered on the floor and terraces.
 export function buildStones(spots, random) {
   const parts = spots.map((s) => {
-    const size = 0.22 + random() * 0.2;
-    const g = puffyTuft(0.15, size, size * 0.3, 2);
+    const size = (0.22 + random() * 0.2) * (s.scale ?? 1);
+    const g = puffyTuft(0.15 * (s.scale ?? 1), size, size * 0.3, 2);
     g.rotateY(random() * Math.PI);
     g.translate(s.x, s.y + size / 2, s.z);
     return painted(g, pick(random, ['#cbbbe0', '#b9dccf', '#d9c9e6', '#c4e0d4']));
@@ -195,7 +196,7 @@ export function buildFluffDog(random) {
 // Little white fluff critters with button eyes.
 export function buildCritters(spots, random) {
   const parts = spots.map((s) => {
-    const r = 0.13 + random() * 0.05;
+    const r = (0.13 + random() * 0.05) * (s.scale ?? 1);
     const g = new THREE.SphereGeometry(r, 18, 14);
     g.translate(s.x, s.y + r, s.z);
     return withSeed(paint(g, '#fbf8f3'), random());
@@ -206,9 +207,10 @@ export function buildCritters(spots, random) {
   }));
   const button = new THREE.MeshPhysicalMaterial({ color: '#1d1820', roughness: 0.2, clearcoat: 1 });
   for (const s of spots) {
+    const k = s.scale ?? 1;
     for (const side of [1, -1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), button);
-      eye.position.set(s.x + 0.06 * side, s.y + 0.2, s.z + 0.15);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02 * k, 8, 6), button);
+      eye.position.set(s.x + 0.06 * k * side, s.y + 0.2 * k, s.z + 0.15 * k);
       group.add(eye);
     }
   }
@@ -297,15 +299,17 @@ export function buildWillows(positions, random, scale = 1) {
   return group;
 }
 
-export function buildKnitShrub(base, random) {
+/** A knitted green shrub (0.75 tall at scale 1), optionally with a small white pom-pom on top. */
+export function buildKnitShrub(base, random, scale = 1, withPom = true) {
   const group = buildKnitHills(
-    [{ x: base.x, y: base.y, z: base.z, radius: 0.85, height: 0.75, pom: 0, stripes: ['#5f8a55', '#6c9761', '#557d4c', '#76a06a'] }],
+    [{ x: base.x, y: base.y + 0.15 * (1 - scale), z: base.z, radius: 0.85 * scale, height: 0.75 * scale, pom: 0, stripes: ['#5f8a55', '#6c9761', '#557d4c', '#76a06a'] }],
     [],
     random,
   );
+  if (!withPom) return group;
   // A small white pom-pom on top, as in the reference.
-  const pom = withSeed(paint(new THREE.SphereGeometry(0.17, 20, 14), '#f5f1ea'), random());
-  pom.translate(base.x, base.y + 0.68, base.z);
+  const pom = withSeed(paint(new THREE.SphereGeometry(0.17 * scale, 20, 14), '#f5f1ea'), random());
+  pom.translate(base.x, base.y + 0.68 * scale, base.z);
   group.add(createFur(pom, {
     shells: 20, length: 0.08, density: 120, gravity: 0.1, curl: 0.3, clump: 0.4, tipTint: '#ffffff', rim: 1,
   }));
