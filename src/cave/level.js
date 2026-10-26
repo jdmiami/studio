@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { build as buildKitBlock } from '../kit/families/blocks.js';
 import { rng } from '../world/util.js';
+import { buildGrassBlankets } from './grass.js';
 
 export const CAVE_PALETTE = {
   wall: ['#d6b4a8', '#cfab9f', '#dcbcb1', '#c9a59a', '#d3b0a4'],
@@ -156,25 +157,26 @@ export function buildCaveLevel() {
   const c = new THREE.Color();
 
   // Each block is one of the kit's cube designs (src/kit/families/blocks.js, matched to the
-  // reference sheet): grass on every open wall top, pink earth under it, marbled water, plain stone
-  // on the floor and steps, seamed stone around the door.
-  const designFor = (b, open) => {
+  // reference sheet): pink earth for the walls and terraces, marbled water, plain stone on the
+  // floor and steps, seamed stone around the door. Every open wall top is a grass cell: the earth
+  // cube stays pink and one felt blanket per terrace (src/cave/grass.js) drapes over it, as in the
+  // reference; the kit's per-block grass cap is for the asset sheet, not this scale.
+  const designFor = (b) => {
     if (b.kind === 'water' || b.kind === 'stream') return 'water';
     if (b.kind === 'floor' || b.kind === 'step') return 'stone';
     if (b.kind === 'frame') return 'stone-seam';
-    if (b.kind === 'wall' && open && b.y < 9) return 'grass';
     return 'pink';
   };
   // The right side of the cave sits in the overhang's shadow, darkening toward the outer wall.
   const sideShade = (x) => 1 - Math.min(0.45, Math.max(0, x + 2) * 0.06);
   const placed = new Map(); // `${design}:${variant}` -> [{ x, y, z, shade }]
-  let grassCount = 0;
+  const grassCells = []; // { x, z, y: the column's top }
   visible.forEach((b) => {
     const open = !solid.has(key(b.x, b.y + 1, b.z));
-    const design = designFor(b, open);
-    if (design === 'grass') grassCount++;
-    // Fractional tops (the pool, the half step) sink the whole column.
+    const design = designFor(b);
     const col = columns.get(`${b.x},${b.z}`);
+    if (b.kind === 'wall' && open && b.y < 9) grassCells.push({ x: b.x, z: b.z, y: col.top });
+    // Fractional tops (the pool, the half step) sink the whole column.
     const y = b.kind === 'ceiling' ? b.y : b.y + (col.top - Math.ceil(col.top));
     // Soft depth shading: blocks lower in a stack sit in more shadow (no shadow maps needed).
     const depth = Math.max(0, Math.min(4, Math.ceil(col.top) - 1 - b.y));
@@ -197,6 +199,15 @@ export function buildCaveLevel() {
     }
   }
 
+  // The grass: one draped felt blanket per terrace, shaded like the cubes under it (a grass cell
+  // is always a column's top block, so only the side shade applies).
+  const blankets = buildGrassBlankets(grassCells, {
+    heightAt: (x, z) => columns.get(`${x},${z}`)?.top ?? null,
+    shadeAt: (x) => sideShade(x),
+    seed: 31,
+  });
+  group.add(blankets);
+
   /** Highest walkable surface under (x, z); the door and walls report as very tall. */
   function heightAt(x, z) {
     const cx = Math.round(x);
@@ -207,5 +218,11 @@ export function buildCaveLevel() {
     return col.top;
   }
 
-  return { group, heightAt, columns, ceilingAt, blockCount: visible.length, capCount: grassCount };
+  return {
+    group, heightAt, columns, ceilingAt,
+    blockCount: visible.length,
+    capCount: grassCells.length,
+    blanketRegions: blankets.userData.regions,
+    blanketVertices: blankets.userData.vertices,
+  };
 }
