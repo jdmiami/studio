@@ -37,7 +37,8 @@ def main():
         _, ref, ren, _, _ = evaluate(ref_img, ren2x, items[item_id])
         m = mask_of(ref)
         d = sdf(m)
-        # Only the upper 70% of the crop: below that the outline meets ground shadows.
+        # Up and side edges: only the upper 70% of the crop (below that the outline meets ground
+        # shadows). Down-facing edges are all at the bottom, so they use the whole crop.
         h = m.shape[0]
         rows = np.arange(h)[:, None] < 0.7 * h
         # Outward direction of the outline: up-facing edges (the outward normal points up on screen)
@@ -45,11 +46,11 @@ def main():
         gy, gx = np.gradient(d)
         ny = gy / np.maximum(np.hypot(gx, gy), 1e-6)
         print(item_id)
-        print('  dist   up: ref   ren  diff  |  side: ref   ren  diff')
+        print('  dist   up: ref   ren  diff  |  side: ref   ren  diff  |  down: ref   ren  diff')
         for k in range(-5, 4):
             line = f'  {k:+d}  '
-            for sel_dir in (ny < -0.6, np.abs(ny) <= 0.6):
-                sel = rows & (np.round(d) == k) & sel_dir
+            for sel_dir, region in ((ny < -0.6, rows), (np.abs(ny) <= 0.6, rows), (ny > 0.6, np.ones_like(rows))):
+                sel = region & (np.round(d) == k) & sel_dir
                 if sel.sum() < 5:
                     line += '      (few)          |'
                     continue

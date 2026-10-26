@@ -119,7 +119,16 @@ function outlineMask(rgb, w, h) {
     }
   }
   const passable = thick.map((t) => 1 - t);
-  return unreached(passable, w, h);
+  const mask = unreached(passable, w, h);
+  // Erode back the pixel the barrier was thickened by, so the boundary sits where the test's does.
+  const eroded = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const k = y * w + x;
+      eroded[k] = mask[k] & mask[k - 1] & mask[k + 1] & mask[k - w] & mask[k + w];
+    }
+  }
+  return eroded;
 }
 
 /** Separable Gaussian blur of a w x h field. */
@@ -295,6 +304,9 @@ export function warpToReference(elements, items, sheet, { renderer, scene, camer
       const oursTest = signedDistance(testMask(rgb, w, h), w, h);
       const oursElem = signedDistance(elem, w, h);
       const field = displacementField(ref, oursTest, oursElem, w, h);
+      if (window.__kitWarpProbe === element.name) {
+        (window.__kitWarpDebug ??= []).push({ w, h, oursTest: [...oursTest], oursElem: [...oursElem], refTest: [...ref.dTest], refElem: [...ref.dElem], u: [...field.u], v: [...field.v] });
+      }
       let moved = 0;
       let sum = 0;
       const v = new THREE.Vector3();

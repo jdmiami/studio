@@ -30,10 +30,10 @@ export const FIT = {
 // shadow for blobs [s, d, rs, rd, strength, turn] and a colour fitted to the reference by
 // scripts/kit/shadowfit.py.
 export const SHADOWS = {
-  'tree-cube-large': { cast: false, color: '#5b6b82', blobs: [[0.983, -0.341, 1.829, 1.055, 0.704, -0.101], [0.363, 0.164, 0.825, 0.458, 0.579, -0.08]] },
-  'tree-cube-small': { cast: false, color: '#5b6b82', blobs: [[0.514, -0.431, 0.819, 1.147, 0.584, 1.106], [0.668, -0.064, 0.996, 0.302, 0.463, -0.303]] },
-  'tree-willow-a': { cast: false, color: '#5b6b82', blobs: [[0.771, -0.323, 2.457, 0.954, 0.747, -0.136], [0.218, 0.235, 0.913, 0.287, 0.748, -0.111]] },
-  'tree-willow-b': { cast: false, color: '#5b6b82', blobs: [[1.365, -0.462, 2.498, 0.986, 0.581, -0.087], [0.344, 0.05, 0.953, 0.389, 0.504, -0.195]] },
+  'tree-cube-large': { cast: false, color: '#385171', blobs: [[1.094, -0.477, 1.384, 0.908, 0.609, 0.149], [0.645, 0.106, 1.352, 0.497, 0.523, -0.097], [0.317, -0.167, 0.995, 0.493, 0.431, -1.454]] },
+  'tree-cube-small': { cast: false, color: '#385171', blobs: [[1.073, -0.405, 1.84, 0.63, 0.649, 0.351], [0.508, 0.004, 0.954, 0.365, 0.57, -0.283], [0.243, -0.112, 0.692, 0.329, 0.534, -0.795]] },
+  'tree-willow-a': { cast: false, color: '#385171', blobs: [[0.397, -0.082, 1.234, 0.65, 0.457, -0.275], [0.578, -0.265, 1.441, 0.743, 0.464, -0.53], [1.404, -0.821, 2.065, 0.33, 0.474, -0.078]], contact: 0.3 },
+  'tree-willow-b': { cast: false, color: '#385171', blobs: [[0.463, -0.361, 1.629, 0.817, 0.576, -0.248], [0.091, 0.042, 1.484, 0.382, 0.49, -0.088], [1.204, -0.178, 0.568, 1.281, 0.05, -0.547]], contact: 0.3 },
 };
 
 /** Merge geometries that may differ in indexing/uv into one felt-ready geometry. */

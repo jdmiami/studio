@@ -7,8 +7,9 @@ family, reads each element's best alignment offset from the pixel test, and prin
 (current anchor - offset: a positive offset means the element stands lower/right of the reference). Paste them into the family's ANCHORS and run again until the offsets
 are ~0.
 
-Usage: register.py <family> [--write] [--ids a,b]
+Usage: register.py <family> [--write] [--ids a,b] [--with trees,blocks]
   --write   update the ANCHORS entries in src/kit/families/<family>.js in place
+  --with    also render these families (their shadows reach into this family's crops)
   --ids     only these elements
 """
 import json
@@ -23,7 +24,9 @@ write = '--write' in sys.argv
 only = sys.argv[sys.argv.index('--ids') + 1].split(',') if '--ids' in sys.argv else None
 png = ROOT / f'screenshots/kit/register-{family}.png'
 out = ROOT / f'screenshots/kit/register-{family}.json'
-subprocess.run(['node', 'scripts/screenshot.mjs', str(png), '--page=kit.html', '--size=1024x572', f'--query=family={family}'],
+neighbours = sys.argv[sys.argv.index('--with') + 1] if '--with' in sys.argv else ''
+scene = ','.join([family] + [f for f in neighbours.split(',') if f])
+subprocess.run(['node', 'scripts/screenshot.mjs', str(png), '--page=kit.html', '--size=1024x572', f'--query=family={scene}'],
                cwd=ROOT, capture_output=True, check=True)
 subprocess.run([sys.executable, 'scripts/kit/pixel_test.py', str(png), '--family', family, '--json', str(out)], cwd=ROOT, capture_output=True)
 results = json.loads(out.read_text())['results']

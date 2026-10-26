@@ -2,13 +2,14 @@
 // docs/reference/asset-kit.jpg so each one can be scored against its crop of the reference.
 //
 // URL flags:
-//   ?family=blocks       only that family (each family module loads on its own, so a broken
-//                        module only breaks its own items)
+//   ?family=blocks       only that family, or a list (trees,domes: neighbours' shadows reach into
+//                        each other's crops); each family module loads on its own, so a broken
+//                        module only breaks its own items
 //   ?only=id1,id2        only those items
 //   ?overlay=0.5         show the reference sheet over the render at that opacity (dev server)
 //   ?finish=procedural   pure procedural felt (default: baked, the reference's de-lit colors baked into
 //                        the felt as vertex colors, see src/kit/bake.js)
-//   ?warp=N              silhouette-warp passes (default 2 with the baked finish, 0 skips; src/kit/warp.js)
+//   ?warp=N              silhouette-warp passes (default 3 with the baked finish, 0 skips; src/kit/warp.js)
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
 //   ?line=side,up        silhouette-line darkening on side- and up-facing edges (for tuning sweeps)
@@ -26,7 +27,8 @@ import { warpToReference } from './warp.js';
 import { KIT_STAGE, applyKitLighting, castShadows } from './style.js';
 
 const params = new URLSearchParams(location.search);
-const familyFilter = params.get('family');
+window.__kitWarpProbe = params.get('warpprobe'); // dev: keep that element's warp fields in __kitWarpDebug
+const familyFilter = params.get('family')?.split(',');
 const onlyFilter = params.get('only')?.split(',');
 const shot = params.has('shot');
 const families = import.meta.glob('./families/*.js');
@@ -122,7 +124,7 @@ const contactOptions = contactArg?.length === 4
   : {};
 if (params.has('shadow')) ground.material.opacity = Number(params.get('shadow'));
 
-const items = ITEMS.filter((it) => (!familyFilter || it.family === familyFilter) && (!onlyFilter || onlyFilter.includes(it.id)));
+const items = ITEMS.filter((it) => (!familyFilter || familyFilter.includes(it.family)) && (!onlyFilter || onlyFilter.includes(it.id)));
 const errors = [];
 const loadedModules = {};
 await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) => {
@@ -171,7 +173,7 @@ if ((params.get('finish') ?? 'baked') === 'baked') {
       // The warp measures the baked render (the test's masks depend on its colors), then the
       // finish is baked again so colors register on the moved vertices.
       const toWindow = (u, v) => [(u - SHEET.width / 2) * view.pxPerRef + innerWidth / 2, (v - SHEET.height / 2) * view.pxPerRef + innerHeight / 2];
-      const passes = Number(params.get('warp') ?? 2);
+      const passes = Number(params.get('warp') ?? 3);
       window.__kitWarp = warpToReference(placed, items, await loadSheet(), { renderer, scene, camera, renderFrame: kit.render, toWindow, pxPerRef: view.pxPerRef, passes });
       window.__kitBake = await bakeFinish(placed, { renderer, scene, camera, toSheet, options });
     }

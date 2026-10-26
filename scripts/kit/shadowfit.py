@@ -13,6 +13,7 @@ element's shadow runs into its neighbour's crop.
 The blobs' shared colour is fitted too (the sheet's shadows are a saturated blue-grey).
 
 Usage: shadowfit.py <id> [<id> ...] [--blobs 2] [--iters 6] [--init init.json] [--out fit.json]
+                    [--through a,b]   (elements whose ground shows through them: willow drips)
 Prints {id: [[s, d, rs, rd, strength, turn], ...]} (screen-aligned units relative to each base)
 and the colour.
 """
@@ -54,6 +55,15 @@ def anchors():
     return out
 
 
+def fitted_shadows():
+    """Blobs already in the families' SHADOWS tables: {id: (color, blobs)}."""
+    out = {}
+    for fam in (ROOT / 'src/kit/families').glob('*.js'):
+        for m in re.finditer(r"'([\w-]+)': \{ cast: false, color: '(#[0-9a-f]{6})', blobs: (\[\[.*?\]\])", fam.read_text()):
+            out[m.group(1)] = (m.group(2), json.loads(m.group(3)))
+    return out
+
+
 def ground_offsets(us, vs, anchor):
     """Sheet pixels -> ground point (s, d) in screen-aligned units relative to the element's base."""
     # A ground point s*Rs + d*Ds projects to u = au + PX*s, v = av + PX*d*sin(EL) (Ds points toward
@@ -74,8 +84,8 @@ def blob_alpha(s, d, blob):
     return strength * (1 - t * t * (3 - 2 * t))
 
 
-def model(blobs_by_id, pix, offsets, color=BLOB_COLOR):
-    lin = np.full(pix[0].shape + (3,), to_linear(np.array([BACKDROP] * 3))[0])
+def model(blobs_by_id, pix, offsets, color=BLOB_COLOR, fixed=None):
+    lin = np.full(pix[0].shape + (3,), to_linear(np.array([BACKDROP] * 3))[0]) if fixed is None else fixed.copy()
     col = to_linear(np.asarray(color, float))
     for item_id, blobs in blobs_by_id.items():
         s, d = offsets[item_id]
@@ -92,7 +102,9 @@ def main():
     ap.add_argument('--iters', type=int, default=6)
     ap.add_argument('--init')
     ap.add_argument('--out')
+    ap.add_argument('--through', default='', help='elements whose ground shows through (willows)')
     args = ap.parse_args()
+    through = set(args.through.split(','))
     items = {it['id']: it for it in load_items()}
     anchor_of = anchors()
     ref = np.asarray(Image.open(ROOT / 'docs/reference/asset-kit.jpg').convert('RGB'), dtype=np.float64)
@@ -122,7 +134,8 @@ def main():
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             ground = ground & np.roll(np.roll(ground, dy, 0), dx, 1)  # solid patches, not creases
         low = np.arange(m.shape[0])[:, None] > pad + 0.65 * (by1 - by0)  # where ground can show
-        m &= ~(inner & ground & low)
+        if it['id'] in through:
+            m &= ~(inner & ground & low)
         for yy, xx in zip(*np.nonzero(m)):
             Y, X = gy0 + yy - y0, gx0 + xx - x0
             if 0 <= Y < keep.shape[0] and 0 <= X < keep.shape[1]:
@@ -130,7 +143,7 @@ def main():
         if it['id'] in anchor_of:
             au, av = anchor_of[it['id']]
             yy, xx = np.mgrid[y0:y1, x0:x1]
-            keep &= np.hypot(xx - au, (yy - av) * 1.6) > 9
+            keep &= np.hypot(xx - au, (yy - av) * 1.6) > 5
     ys, xs = np.nonzero(keep)
     us, vs = xs + x0 + 0.5, ys + y0 + 0.5
     target = ref[ys + y0, xs + x0]
@@ -142,9 +155,21 @@ def main():
         blobs = {i: [list(b) for b in base[:args.blobs]] for i in args.ids}
 
     color = list(BLOB_COLOR)
+    # Neighbours' shadows that are already fitted (another family's) stay as they are.
+    fixed = np.full((len(us), 3), to_linear(np.array([BACKDROP] * 3))[0])
+    for item_id, (hexcolor, nblobs) in fitted_shadows().items():
+        if item_id in args.ids or item_id not in anchor_of:
+            continue
+        col = to_linear(np.array([int(hexcolor[i:i + 2], 16) for i in (1, 3, 5)], float))
+        s_, d_ = ground_offsets(us, vs, anchor_of[item_id])
+        for blob in nblobs:
+            a = blob_alpha(s_, d_, list(blob) + [0.0] * (6 - len(blob)))[:, None]
+            if a.max() > 0.01:
+                fixed = fixed * (1 - a) + col * a
+    fixed_srgb_lin = fixed
 
     def cost(b, c=None):
-        diff = model(b, (us,), offsets, color if c is None else c) - target
+        diff = model(b, (us,), offsets, color if c is None else c, fixed_srgb_lin) - target
         return float((diff ** 2).sum() / len(us))
 
     best = cost(blobs)
@@ -192,7 +217,7 @@ def main():
     img = np.full((y1 - y0, x1 - x0, 3), 255.0)
     img[ys, xs] = target
     mod = np.full_like(img, 255.0)
-    mod[ys, xs] = model(blobs, (us,), offsets, color)
+    mod[ys, xs] = model(blobs, (us,), offsets, color, fixed_srgb_lin)
     both = np.concatenate([img, np.full((3, x1 - x0, 3), 0.0), mod], 0).astype(np.uint8)
     path = ROOT / 'screenshots/kit/progress/shadowfit.png'
     Image.fromarray(both).resize((both.shape[1] * 3, both.shape[0] * 3), Image.Resampling.NEAREST).save(path)

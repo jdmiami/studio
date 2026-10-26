@@ -1,6 +1,7 @@
 // Renders the running Phluph dev server in headless Chromium and saves a screenshot.
 // Usage: npm run dev (in another shell), then
 //   node scripts/screenshot.mjs [out.png] [--shot=<seconds>] [--size=1600x900] [--page=kit.html]
+//     [--dump=__kitWarp]  also print that window global as JSON (probes, stats)
 // Env: BASE_URL (default http://127.0.0.1:5173)
 import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -40,5 +41,7 @@ await page.waitForFunction(() => window.__phluphReady === true, null, { timeout:
 mkdirSync(dirname(out), { recursive: true });
 await page.screenshot({ path: out, timeout: 120000 });
 console.log(`saved ${out}`);
+const dump = args.find((a) => a.startsWith('--dump='))?.split('=')[1];
+if (dump) console.log(JSON.stringify(await page.evaluate((name) => window[name], dump)));
 if (problems.length) console.log('console problems:\n  ' + problems.slice(0, 10).join('\n  '));
 await browser.close();
