@@ -61,8 +61,8 @@ export const SHADOWS = {
   'block-stone-seam-b': { cast: false, color: '#727687', blobs: [[0.53, 0.033, 0.806, 0.454, 0.473, -0.8, 0.518], [0.319, 0.365, 0.547, 0.239, 0.715, -0.547, 0.485], [1.011, -0.014, 2.226, 0.333, 0.282, 0.683, 0.214]], contact: { strength: 0.6, softness: 0.025, bias: [0.03, -0.05] } },
 };
 
-function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scale = 2.2, puff = 0.04, stretch, crease = null, height = SIZE } = {}) {
-  const g = softBox(SIZE, height, SIZE, { radius, res: RES });
+function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scale = 2.2, puff = 0.04, stretch, crease = null, height = SIZE, res = RES } = {}) {
+  const g = softBox(SIZE, height, SIZE, { radius, res });
   if (puff) bulge(g, puff);
   g.translate(0, height / 2, 0);
   lumpy(g, { amount: lump, scale: 4, seed });
@@ -117,10 +117,10 @@ function wrapCorners(g, rc) {
   return g;
 }
 
-function grassCap(seed, random) {
+function grassCap(seed, random, res = RES) {
   const parts = [];
   const slabH = CAP.top - CAP.bottom;
-  const slab = softBox(CAP.overhang, slabH, CAP.overhang, { radius: 0.15, res: RES });
+  const slab = softBox(CAP.overhang, slabH, CAP.overhang, { radius: 0.15, res });
   bulge(slab, CAP.puff);
   slab.translate(0, CAP.bottom + slabH / 2, 0);
   parts.push(slab);
@@ -128,7 +128,7 @@ function grassCap(seed, random) {
     // The front corner is at +x on the +z face and at +z (local -x) on the +x face.
     const toFront = side % 2 === 0 ? 1 : -1;
     for (const [centre, wide, bottom] of side % 2 === 0 ? LOBES.left : LOBES.right) {
-      const drop = prepareTextileGeometry(new THREE.SphereGeometry(1, 48, 28));
+      const drop = prepareTextileGeometry(new THREE.SphereGeometry(1, Math.max(12, Math.round(res * 0.6)), Math.max(8, Math.round(res * 0.35))));
       const tall = CAP.dropY - bottom + (random() - 0.5) * 0.01;
       // Only the lower half hangs; the upper half is a short root tucked in under the slab.
       const pos = drop.getAttribute('position');
@@ -152,7 +152,7 @@ function grassCap(seed, random) {
 }
 
 /** Stone cube built from a top slab, a thin plate on the left face, and a block behind it. */
-function seamStone(seed) {
+function seamStone(seed, res = RES) {
   const gap = 0.012;
   const r = 0.09;
   const top = 0.34;
@@ -164,7 +164,7 @@ function seamStone(seed) {
   ];
   const group = new THREE.Group();
   parts.forEach((p, i) => {
-    const g = softBox(p.w, p.h, p.d, { radius: r, res: RES });
+    const g = softBox(p.w, p.h, p.d, { radius: r, res });
     bulge(g, 0.03);
     lumpy(g, { amount: 0.008, scale: 4, seed: seed + i });
     mottle(g, PASTEL.stone, PASTEL.stoneDeep, { scale: 2.5, seed: seed + i, bias: -0.3 });
@@ -175,29 +175,34 @@ function seamStone(seed) {
   return group;
 }
 
-export function build(variant, random) {
+/**
+ * One block, base centre at the origin, 1 unit a side. `res` is the mesh density (subdivisions per
+ * unit): the kit's 80 lets the baked finish keep the felt's pixel grain; a game level of hundreds
+ * of blocks wants about a tenth of that.
+ */
+export function build(variant, random, item, { res = RES } = {}) {
   const seed = variant.seed ?? 1;
   const group = new THREE.Group();
   switch (variant.kind) {
     case 'grass':
       // The earth body stops inside the cap, so its bulged top can never poke through the felt.
-      group.add(new THREE.Mesh(block(PASTEL.pink, { seed, deep: PASTEL.pinkDeep, height: 0.93 }), felt('#ffffff')));
-      group.add(new THREE.Mesh(grassCap(seed, random), felt('#ffffff', { fuzz: 0.25 })));
+      group.add(new THREE.Mesh(block(PASTEL.pink, { seed, deep: PASTEL.pinkDeep, height: 0.93, res }), felt('#ffffff')));
+      group.add(new THREE.Mesh(grassCap(seed, random, res), felt('#ffffff', { fuzz: 0.25 })));
       break;
     case 'pink':
-      group.add(new THREE.Mesh(block(PASTEL.pink, { seed, deep: PASTEL.pinkDeep }), felt('#ffffff')));
+      group.add(new THREE.Mesh(block(PASTEL.pink, { seed, deep: PASTEL.pinkDeep, res }), felt('#ffffff')));
       break;
     case 'water':
       group.add(new THREE.Mesh(
-        block('#a2d0e9', { seed, deep: '#5596c4', lump: 0.012, scale: 2.4, stretch: [1, 2.6, 1], crease: '#9fb8cc' }),
+        block('#a2d0e9', { seed, deep: '#5596c4', lump: 0.012, scale: 2.4, stretch: [1, 2.6, 1], crease: '#9fb8cc', res }),
         felt('#ffffff', { fuzz: 0.1, grain: 1.6 }),
       ));
       break;
     case 'stone':
-      group.add(new THREE.Mesh(block(PASTEL.stone, { seed, deep: PASTEL.stoneDeep, radius: 0.2, puff: 0.08 }), felt('#ffffff', { fuzz: 0.08 })));
+      group.add(new THREE.Mesh(block(PASTEL.stone, { seed, deep: PASTEL.stoneDeep, radius: 0.2, puff: 0.08, res }), felt('#ffffff', { fuzz: 0.08 })));
       break;
     case 'stone-seam':
-      group.add(seamStone(seed));
+      group.add(seamStone(seed, res));
       break;
     default:
       throw new Error(`unknown block kind "${variant.kind}"`);

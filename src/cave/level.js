@@ -4,8 +4,9 @@
 // Coordinates: the player starts at (-5.5, -1.5) looking down -Z toward the door at z = -16.
 // A block at integer cell (x, y, z) fills [x-0.5, x+0.5] x [y, y+1] x [z-0.5, z+0.5].
 import * as THREE from 'three';
-import { createTextile, prepareTextileGeometry } from '../textile.js';
-import { puffyTuft, rng, pick } from '../world/util.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { build as buildKitBlock } from '../kit/families/blocks.js';
+import { rng } from '../world/util.js';
 
 export const CAVE_PALETTE = {
   wall: ['#d6b4a8', '#cfab9f', '#dcbcb1', '#c9a59a', '#d3b0a4'],
@@ -81,6 +82,35 @@ function ceilingAt(x, z) {
   return null;
 }
 
+// Each design is built in a few seeds, so neighbouring blocks don't share one mottle.
+const VARIANTS = 3;
+// Mesh density for the level's blocks (subdivisions per unit; the kit renders at 80).
+const BLOCK_RES = 14;
+const partCache = new Map();
+
+/** A kit block design as instanceable parts: one merged geometry per material. */
+function blockParts(design, variant) {
+  const id = `${design}:${variant}`;
+  if (partCache.has(id)) return partCache.get(id);
+  const group = buildKitBlock({ kind: design, seed: 1 + variant * 7 }, rng(99 + variant), null, { res: BLOCK_RES });
+  group.updateMatrixWorld(true);
+  const byMaterial = new Map();
+  group.traverse((o) => {
+    if (!o.isMesh) return;
+    // Seamed stone's three slabs each have their own (identical) felt: group them by settings.
+    const k = `${o.material.uniforms.uFuzz.value}:${o.material.uniforms.uGrain?.value}`;
+    if (!byMaterial.has(k)) byMaterial.set(k, { material: o.material, geometries: [] });
+    const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
+    byMaterial.get(k).geometries.push(g.index ? g.toNonIndexed() : g);
+  });
+  const parts = [...byMaterial.values()].map(({ material, geometries }) => ({
+    material,
+    geometry: geometries.length === 1 ? geometries[0] : mergeGeometries(geometries),
+  }));
+  partCache.set(id, parts);
+  return parts;
+}
+
 export function buildCaveLevel() {
   const random = rng(4242);
   const solid = new Set();
@@ -125,50 +155,47 @@ export function buildCaveLevel() {
   const m = new THREE.Matrix4();
   const c = new THREE.Color();
 
-  // Clay-felt blocks: rounded, barely bulged.
-  const blockGeometry = prepareTextileGeometry(puffyTuft(0.08, 1.0, 0.22, 2));
-  const colorFor = (b) => {
-    if (b.kind === 'water') return pick(random, CAVE_PALETTE.water);
-    if (b.kind === 'floor') return pick(random, CAVE_PALETTE.floor);
-    if (b.kind === 'stream') return CAVE_PALETTE.water[0];
-    if (b.kind === 'step') return pick(random, CAVE_PALETTE.step);
-    if (b.kind === 'ceiling') return pick(random, CAVE_PALETTE.ceiling);
-    if (b.kind === 'frame') return pick(random, CAVE_PALETTE.frame);
-    return pick(random, CAVE_PALETTE.wall);
+  // Each block is one of the kit's cube designs (src/kit/families/blocks.js, matched to the
+  // reference sheet): grass on every open wall top, pink earth under it, marbled water, plain stone
+  // on the floor and steps, seamed stone around the door.
+  const designFor = (b, open) => {
+    if (b.kind === 'water' || b.kind === 'stream') return 'water';
+    if (b.kind === 'floor' || b.kind === 'step') return 'stone';
+    if (b.kind === 'frame') return 'stone-seam';
+    if (b.kind === 'wall' && open && b.y < 9) return 'grass';
+    return 'pink';
   };
   // The right side of the cave sits in the overhang's shadow, darkening toward the outer wall.
   const sideShade = (x) => 1 - Math.min(0.45, Math.max(0, x + 2) * 0.06);
-  const blockMesh = new THREE.InstancedMesh(blockGeometry, createTextile('felt', { fuzz: 0.35 }), visible.length);
-  visible.forEach((b, i) => {
+  const placed = new Map(); // `${design}:${variant}` -> [{ x, y, z, shade }]
+  let grassCount = 0;
+  visible.forEach((b) => {
+    const open = !solid.has(key(b.x, b.y + 1, b.z));
+    const design = designFor(b, open);
+    if (design === 'grass') grassCount++;
     // Fractional tops (the pool, the half step) sink the whole column.
     const col = columns.get(`${b.x},${b.z}`);
     const y = b.kind === 'ceiling' ? b.y : b.y + (col.top - Math.ceil(col.top));
-    blockMesh.setMatrixAt(i, m.makeTranslation(b.x, y + 0.5, b.z));
     // Soft depth shading: blocks lower in a stack sit in more shadow (no shadow maps needed).
-    const top = Math.ceil(col.top);
-    const depth = Math.max(0, Math.min(4, top - 1 - b.y));
-    const ao = b.kind === 'ceiling' ? 1 : 1 - depth * 0.06;
-    blockMesh.setColorAt(i, c.set(colorFor(b)).multiplyScalar(ao * (b.kind === 'ceiling' ? 1 : sideShade(b.x))));
+    const depth = Math.max(0, Math.min(4, Math.ceil(col.top) - 1 - b.y));
+    const shade = b.kind === 'ceiling' ? 1 : (1 - depth * 0.06) * sideShade(b.x);
+    const variant = Math.floor(random() * VARIANTS);
+    const id = `${design}:${variant}`;
+    if (!placed.has(id)) placed.set(id, []);
+    placed.get(id).push({ x: b.x, y, z: b.z, shade });
   });
-  blockMesh.frustumCulled = false;
-  group.add(blockMesh);
-
-  // Grass caps on every exposed wall top; foam caps on the water steps.
-  const capGeometry = prepareTextileGeometry(puffyTuft(0.0, 1, 0.12, 2));
-  capGeometry.scale(1.1, 0.16, 1.1); // a soft felt layer draped slightly past the block edge
-  const caps = visible.filter((b) => !solid.has(key(b.x, b.y + 1, b.z)) && b.y < 9
-    && (b.kind === 'wall' || b.kind === 'water'));
-  const capY = (b) => {
-    const col = columns.get(`${b.x},${b.z}`);
-    return b.y + 1.02 + (col.top - Math.ceil(col.top));
-  };
-  const capMesh = new THREE.InstancedMesh(capGeometry, createTextile('felt', { fuzz: 0.5 }), caps.length);
-  caps.forEach((b, i) => {
-    capMesh.setMatrixAt(i, m.makeTranslation(b.x, capY(b), b.z));
-    capMesh.setColorAt(i, c.set(b.kind === 'water' ? CAVE_PALETTE.foam : pick(random, CAVE_PALETTE.cap)).multiplyScalar(sideShade(b.x)));
-  });
-  capMesh.frustumCulled = false;
-  group.add(capMesh);
+  for (const [id, cells] of placed) {
+    const [design, variant] = id.split(':');
+    for (const part of blockParts(design, Number(variant))) {
+      const mesh = new THREE.InstancedMesh(part.geometry, part.material, cells.length);
+      cells.forEach((cell, i) => {
+        mesh.setMatrixAt(i, m.makeTranslation(cell.x, cell.y, cell.z));
+        mesh.setColorAt(i, c.setScalar(cell.shade));
+      });
+      mesh.frustumCulled = false;
+      group.add(mesh);
+    }
+  }
 
   /** Highest walkable surface under (x, z); the door and walls report as very tall. */
   function heightAt(x, z) {
@@ -180,5 +207,5 @@ export function buildCaveLevel() {
     return col.top;
   }
 
-  return { group, heightAt, columns, ceilingAt, blockCount: visible.length, capCount: caps.length };
+  return { group, heightAt, columns, ceilingAt, blockCount: visible.length, capCount: grassCount };
 }
