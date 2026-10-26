@@ -7,6 +7,29 @@ import { PASTEL, bulge, felt, lumpy, mottle, shadeBottom, softBox } from '../sty
 
 const SIZE = 1;
 
+// Where each element's base center stands on the sheet (reference px), registered with
+// scripts/kit/register.py so the baked finish samples the reference exactly where the element is.
+export const ANCHORS = {
+  'block-grass-a': [48.00, 61.90], // anchor
+  'block-grass-b': [111.00, 61.62], // anchor
+  'block-pink': [173.50, 61.62], // anchor
+  'block-water': [236.50, 61.34], // anchor
+  'block-stone-plain': [340.50, 61.06], // anchor
+  'block-stone-seam-a': [403.50, 61.34], // anchor
+  'block-stone-seam-b': [466.00, 61.06], // anchor
+};
+
+// Per-element scale and turn [sx, sy, sz, ry] found by scripts/kit/fit.py and the pixel test:
+// the reference draws each block a little differently.
+export const FIT = {
+  'block-grass-b': [1, 0.97, 1, 0],
+  'block-pink': [1.02, 1.02, 1.02, 0],
+  'block-water': [1, 1, 1.02, 0],
+  'block-stone-plain': [1.01, 1.01, 1.1, 0.03],
+  'block-stone-seam-a': [0.98, 0.96, 1.01, 0],
+  'block-stone-seam-b': [0.99, 0.96, 1.04, 0],
+};
+
 function block(color, { radius = 0.13, lump = 0.014, seed = 0, deep = null, scale = 2.2, puff = 0.04, stretch, crease = null, height = SIZE } = {}) {
   const g = softBox(SIZE, height, SIZE, { radius, res: 32 });
   if (puff) bulge(g, puff);

@@ -10,6 +10,7 @@
 //                        the felt as vertex colors, see src/kit/bake.js)
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
+//   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
 import * as THREE from 'three';
 import { sharedFurUniforms } from '../fur.js';
@@ -100,6 +101,8 @@ function groundPointAt([u, v]) {
   return ndc.addScaledVector(forward, t);
 }
 
+const fitArg = params.get('fit')?.split(':');
+const fitOverride = fitArg?.length === 2 ? { id: fitArg[0], value: fitArg[1].split(',').map(Number) } : null;
 const contactArg = params.get('contact')?.split(',').map(Number);
 const contactOptions = contactArg?.length === 4
   ? { strength: contactArg[0], softness: contactArg[1], bias: [contactArg[2], contactArg[3]] }
@@ -121,8 +124,14 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
   for (const item of items.filter((it) => it.family === family)) {
     try {
       const object = mod.build(item.variant, rng(item.variant.seed ?? 1), item);
-      // A family module may export ANCHORS = { id: [u, v] } to fine-tune where its items stand.
+      // A family module may export ANCHORS = { id: [u, v] } to fine-tune where its items stand, and
+      // FIT = { id: [sx, sy, sz, ry] }: the per-element scale and turn found by the fit search.
       object.position.copy(groundPointAt(mod.ANCHORS?.[item.id] ?? anchorOf(item)));
+      const fit = fitOverride?.id === item.id ? fitOverride.value : mod.FIT?.[item.id];
+      if (fit) {
+        object.scale.set(fit[0], fit[1], fit[2]);
+        object.rotation.y += fit[3] ?? 0;
+      }
       object.name = item.id;
       scene.add(castShadows(object));
       addContactShadow(scene, object, contactOptions);

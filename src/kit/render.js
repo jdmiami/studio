@@ -38,6 +38,7 @@ const finalShader = {
       float lineR = 1.0 * uScale;   // line width, in reference pixels times the output scale
       float haloR = 1.2 * uScale;
       float nearestBg = 99.0;
+      vec2 bgDir = vec2(0.0); // direction to the nearest background pixel
       float nearestObj = 99.0;
       float step = 0.0;
       for (int y = -5; y <= 5; y++) {
@@ -47,14 +48,17 @@ const finalShader = {
           if (r > haloR + 0.5) continue;
           float nd = depthAt(vUv + o * uTexel);
           bool nInside = nd < 0.9999;
-          if (inside && !nInside) nearestBg = min(nearestBg, r);
+          if (inside && !nInside && r < nearestBg) { nearestBg = r; bgDir = o / max(r, 1e-3); }
           if (!inside && nInside) nearestObj = min(nearestObj, r);
           if (inside && nInside && r <= lineR + 0.5) step = max(step, d - nd);
         }
       }
       vec3 srgb = toSRGB(col);
       if (inside && nearestBg <= lineR + 0.5) {
-        srgb *= 0.76; // the dark silhouette line takes the element's own hue
+        // The dark silhouette line takes the element's own hue, and fades out on upward-facing edges:
+        // the reference's top edges are just soft felt against the background.
+        float up = smoothstep(0.35, 0.85, bgDir.y);
+        srgb *= mix(0.76, 1.0, up);
       } else if (inside && step > 0.004) {
         srgb *= mix(1.0, 0.8, smoothstep(0.004, 0.02, step)); // softer crease where parts overlap
       } else if (!inside && nearestObj <= haloR + 0.5) {
