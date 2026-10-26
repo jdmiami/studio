@@ -1,0 +1,749 @@
+{
+ "_": "Props in docs/reference/cave-door.jpg (1024x572). box [u0, v0, u1, v1]; base = bottom-centre pixel where the prop meets the surface it stands on (estimated when baseVisible is false); standsOn = class id of that surface (cave-door-classes.png ids); heightPx = base to top; fence and scaffold also give both end legs as bases.",
+ "classes": {
+  "0": "none",
+  "1": "grass",
+  "2": "earth",
+  "3": "water",
+  "4": "floor",
+  "5": "door",
+  "6": "frame",
+  "7": "ceiling",
+  "8": "light",
+  "9": "prop",
+  "10": "mask"
+ },
+ "props": [
+  {
+   "name": "cube-tree",
+   "box": [
+    292,
+    100,
+    445,
+    250
+   ],
+   "base": [
+    362,
+    250
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 150,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "earth"
+  },
+  {
+   "name": "willow",
+   "box": [
+    436,
+    158,
+    542,
+    300
+   ],
+   "base": [
+    492,
+    300
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 142,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "willow-2",
+   "box": [
+    798,
+    55,
+    1024,
+    258
+   ],
+   "base": [
+    940,
+    340
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 285,
+   "baseVisible": false,
+   "maskedFraction": 0.32,
+   "labelBelowBase": null
+  },
+  {
+   "name": "broom-tree",
+   "box": [
+    846,
+    140,
+    960,
+    292
+   ],
+   "base": [
+    893,
+    352
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 212,
+   "baseVisible": false,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "pom",
+   "box": [
+    870,
+    290,
+    915,
+    328
+   ],
+   "base": [
+    892,
+    327
+   ],
+   "standsOn": 9,
+   "standsOnName": "prop",
+   "heightPx": 37,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "knit-shrub",
+   "box": [
+    835,
+    312,
+    945,
+    365
+   ],
+   "base": [
+    890,
+    364
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 52,
+   "baseVisible": false,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "fence",
+   "box": [
+    820,
+    343,
+    948,
+    398
+   ],
+   "base": [
+    883,
+    397
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 54,
+   "baseVisible": true,
+   "bases": [
+    [
+     828,
+     396
+    ],
+    [
+     938,
+     398
+    ]
+   ],
+   "basesStandOn": [
+    1,
+    1
+   ],
+   "maskedFraction": 0.52,
+   "labelBelowBase": null
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    292,
+    257,
+    320,
+    288
+   ],
+   "base": [
+    305,
+    288
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 31,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    325,
+    252,
+    356,
+    280
+   ],
+   "base": [
+    342,
+    280
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 28,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    349,
+    268,
+    364,
+    281
+   ],
+   "base": [
+    357,
+    282
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 14,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    354,
+    337,
+    381,
+    360
+   ],
+   "base": [
+    369,
+    360
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 23,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    803,
+    310,
+    850,
+    350
+   ],
+   "base": [
+    826,
+    350
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 40,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    965,
+    378,
+    1024,
+    432
+   ],
+   "base": [
+    998,
+    432
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 54,
+   "baseVisible": true,
+   "maskedFraction": 1.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "stone",
+   "box": [
+    327,
+    296,
+    361,
+    320
+   ],
+   "base": [
+    345,
+    320
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 24,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "stone",
+   "box": [
+    382,
+    295,
+    410,
+    318
+   ],
+   "base": [
+    396,
+    321
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 26,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "stone",
+   "box": [
+    405,
+    273,
+    441,
+    320
+   ],
+   "base": [
+    423,
+    320
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 47,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "stone",
+   "box": [
+    410,
+    250,
+    443,
+    269
+   ],
+   "base": [
+    427,
+    273
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 23,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "stone",
+   "box": [
+    402,
+    330,
+    439,
+    360
+   ],
+   "base": [
+    421,
+    360
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 30,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "stone",
+   "box": [
+    510,
+    350,
+    529,
+    365
+   ],
+   "base": [
+    519,
+    365
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 15,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "bush",
+   "box": [
+    437,
+    371,
+    472,
+    409
+   ],
+   "base": [
+    454,
+    409
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 38,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "bush",
+   "box": [
+    455,
+    340,
+    484,
+    368
+   ],
+   "base": [
+    470,
+    368
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 28,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "bush",
+   "box": [
+    497,
+    362,
+    550,
+    425
+   ],
+   "base": [
+    523,
+    425
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 63,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "bush",
+   "box": [
+    475,
+    350,
+    512,
+    380
+   ],
+   "base": [
+    493,
+    380
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 30,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "bush",
+   "box": [
+    440,
+    300,
+    474,
+    336
+   ],
+   "base": [
+    457,
+    338
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 38,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "earth"
+  },
+  {
+   "name": "bush",
+   "box": [
+    529,
+    320,
+    565,
+    358
+   ],
+   "base": [
+    547,
+    361
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 41,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "earth"
+  },
+  {
+   "name": "bush",
+   "box": [
+    495,
+    325,
+    521,
+    347
+   ],
+   "base": [
+    508,
+    347
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 22,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "bush",
+   "box": [
+    733,
+    317,
+    762,
+    346
+   ],
+   "base": [
+    747,
+    346
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 29,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "knit-bush",
+   "box": [
+    760,
+    324,
+    797,
+    352
+   ],
+   "base": [
+    778,
+    352
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 28,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "crate",
+   "box": [
+    488,
+    298,
+    521,
+    328
+   ],
+   "base": [
+    504,
+    328
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 30,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "bench",
+   "box": [
+    722,
+    318,
+    753,
+    353
+   ],
+   "base": [
+    738,
+    353
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 35,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  },
+  {
+   "name": "dog",
+   "box": [
+    552,
+    296,
+    624,
+    368
+   ],
+   "base": [
+    590,
+    368
+   ],
+   "standsOn": 4,
+   "standsOnName": "floor",
+   "heightPx": 72,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "floor"
+  },
+  {
+   "name": "critter",
+   "box": [
+    657,
+    357,
+    690,
+    392
+   ],
+   "base": [
+    673,
+    392
+   ],
+   "standsOn": 4,
+   "standsOnName": "floor",
+   "heightPx": 35,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "floor"
+  },
+  {
+   "name": "critter",
+   "box": [
+    598,
+    393,
+    630,
+    423
+   ],
+   "base": [
+    614,
+    423
+   ],
+   "standsOn": 4,
+   "standsOnName": "floor",
+   "heightPx": 30,
+   "baseVisible": true,
+   "maskedFraction": 0.0,
+   "labelBelowBase": "floor"
+  },
+  {
+   "name": "critter",
+   "box": [
+    706,
+    373,
+    723,
+    389
+   ],
+   "base": [
+    714,
+    389
+   ],
+   "standsOn": 4,
+   "standsOnName": "floor",
+   "heightPx": 16,
+   "baseVisible": true,
+   "maskedFraction": 1.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "sprout",
+   "box": [
+    689,
+    400,
+    708,
+    413
+   ],
+   "base": [
+    698,
+    412
+   ],
+   "standsOn": 4,
+   "standsOnName": "floor",
+   "heightPx": 12,
+   "baseVisible": true,
+   "maskedFraction": 0.97,
+   "labelBelowBase": null
+  },
+  {
+   "name": "npc",
+   "box": [
+    156,
+    168,
+    204,
+    240
+   ],
+   "base": [
+    187,
+    245
+   ],
+   "standsOn": 9,
+   "standsOnName": "prop",
+   "heightPx": 77,
+   "baseVisible": false,
+   "maskedFraction": 0.0,
+   "labelBelowBase": null
+  },
+  {
+   "name": "scaffold",
+   "box": [
+    150,
+    206,
+    232,
+    290
+   ],
+   "base": [
+    184,
+    289
+   ],
+   "standsOn": 1,
+   "standsOnName": "grass",
+   "heightPx": 83,
+   "baseVisible": true,
+   "bases": [
+    [
+     160,
+     290
+    ],
+    [
+     208,
+     287
+    ]
+   ],
+   "basesStandOn": [
+    3,
+    1
+   ],
+   "maskedFraction": 0.0,
+   "labelBelowBase": "grass"
+  }
+ ]
+}
