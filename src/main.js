@@ -18,8 +18,10 @@ import { createHud } from './fp/hud.js';
 //   Cave matching flags (scripts/fp/compare_frame.py compares a shot to docs/reference/cave-door.jpg):
 //   ?eye=x,y,z         camera position, overriding the spawn and eye height
 //   ?look=yaw,pitch[,roll]  camera angles in degrees (yaw 0 looks down -z, pitch up is positive)
-//   ?fov=<degrees>     vertical field of view (default 70)
+//   ?fov=<degrees>     vertical field of view (default 58.3, the reference frame's)
 //   ?nohud=1 ?nohands=1  hide the HUD / the hands, for comparing the world alone
+//   ?clear=x0,x1,z0,z1 hide the level's blocks in that cell box (to look from a solved camera that
+//                      the current layout walls in; scripts/fp/solve_camera.py)
 const params = new URLSearchParams(location.search);
 const sceneName = params.get('scene') === 'island' ? 'island' : 'cave';
 const shotTime = params.has('shot') ? Number(params.get('shot') || 4) : null;
@@ -83,9 +85,14 @@ function startCave() {
   u.uHorizon.value.set('#fbe8d6');
   u.uHorizonSun.value.set('#fff3dc');
 
-  const camera = new THREE.PerspectiveCamera(Number(params.get('fov')) || 70, innerWidth / innerHeight, 0.03, 600);
+  // 58.3 degrees vertical is the reference frame's solved field of view (scripts/fp/solve_camera.py).
+  const camera = new THREE.PerspectiveCamera(Number(params.get('fov')) || 58.3, innerWidth / innerHeight, 0.03, 600);
   scene.add(camera); // the hands are children of the camera
-  const cave = buildCave(scene);
+  const clear = params.get('clear')?.split(',').map(Number);
+  const hide = clear?.length === 4 && clear.every(Number.isFinite)
+    ? (x, y, z) => x >= clear[0] && x <= clear[1] && z >= clear[2] && z <= clear[3]
+    : null;
+  const cave = buildCave(scene, { hide });
   const controls = createFirstPersonControls(camera, renderer.domElement, cave);
   const hands = params.has('nohands') ? { update() {} } : createHands(camera, rng(7));
   const hud = params.has('nohud')

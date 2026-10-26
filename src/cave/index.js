@@ -7,9 +7,10 @@ import {
   buildLightShafts, buildMushrooms, buildScaffold, buildStones, buildWillows,
 } from './props.js';
 
-export function buildCave(scene) {
+/** Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag). */
+export function buildCave(scene, { hide = null } = {}) {
   const random = rng(20261026);
-  const level = buildCaveLevel();
+  const level = buildCaveLevel({ hide });
   scene.add(level.group);
   const at = (x, z, dy = 0) => new THREE.Vector3(x, level.heightAt(x, z) + dy, z);
 
@@ -60,7 +61,14 @@ export function buildCave(scene) {
     heightAt: level.heightAt,
     columns: level.columns,
     interactables,
-    spawn: { position: new THREE.Vector3(-5.5, 0, -1.5), yaw: 0, pitch: -0.1 },
+    // The reference frame's camera, solved by line tracing (scripts/fp/solve_camera.py): the player
+    // stands at the front-right corner of the room looking 40 degrees left of the door's axis, eye at
+    // y = 3.78 (so the landing under the spawn should be 2.2 high; the eye is EYE_HEIGHT above it).
+    spawn: {
+      position: new THREE.Vector3(7.4, 0, 2.26),
+      yaw: THREE.MathUtils.degToRad(40.43),
+      pitch: THREE.MathUtils.degToRad(-7.99),
+    },
     stats: { blocks: level.blockCount, caps: level.capCount },
     update(time) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03;

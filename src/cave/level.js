@@ -112,7 +112,8 @@ function blockParts(design, variant) {
   return parts;
 }
 
-export function buildCaveLevel() {
+/** @param {{ hide?: ((x: number, y: number, z: number) => boolean) | null }} options blocks to leave out */
+export function buildCaveLevel({ hide = null } = {}) {
   const random = rng(4242);
   const solid = new Set();
   const blocks = []; // { x, y, z, kind }
@@ -127,6 +128,7 @@ export function buildCaveLevel() {
       const doorGap = z === DOOR.z && x >= DOOR.xMin && x <= DOOR.xMax;
       for (let y = -2; y < top; y++) {
         if (doorGap && y >= 0 && y < DOOR.height) continue;
+        if (hide?.(x, y, z)) continue;
         const kind = col.kind === 'floor' || col.kind === 'stream' || col.kind === 'step'
           ? (y === top - 1 ? col.kind : 'wall')
           : col.kind;
@@ -140,6 +142,7 @@ export function buildCaveLevel() {
       const ceiling = ceilingAt(x, z);
       if (ceiling !== null) {
         for (let y = Math.max(ceiling, top); y < 10; y++) {
+          if (hide?.(x, y, z)) continue;
           blocks.push({ x, y, z, kind: 'ceiling' });
           solid.add(key(x, y, z));
         }
