@@ -30,14 +30,40 @@ R = np.array([math.sqrt(0.5), 0, -math.sqrt(0.5)])
 U = np.array([-math.sin(EL) * math.sin(math.pi / 4), math.cos(EL), -math.sin(EL) * math.cos(math.pi / 4)])
 
 
-def reference_object_mask(box, pad):
+def reference_object_mask(box, pad, edge=22):
+    """Only the element: everything its outline encloses.
+
+    The background is flood-filled in from the crop border through every pixel that is not on a
+    strong luminance edge (thickened by one pixel to close small gaps). Cast shadows have soft
+    edges, so the fill flows through them; the element's dark outline stops it.
+    """
+    from collections import deque
     img = np.asarray(Image.open(ROOT / 'docs/reference/asset-kit.jpg').convert('RGB'), dtype=np.float64)
     x0, y0, x1, y1 = box
     a = img[y0 - pad:y1 + pad, x0 - pad:x1 + pad]
-    d = np.linalg.norm(a - 220, axis=-1)
-    sat = a.max(-1) - a.min(-1)
-    shadowish = (sat < 9) & (a[..., 2] >= a[..., 0] - 3)  # grey-blue cast shadow, not an object
-    return ((d > 20) | (sat > 14)) & ~shadowish
+    lum = a @ np.array([0.299, 0.587, 0.114])
+    gx = np.zeros_like(lum)
+    gy = np.zeros_like(lum)
+    gx[:, 1:-1] = lum[:, 2:] - lum[:, :-2]
+    gy[1:-1, :] = lum[2:, :] - lum[:-2, :]
+    barrier = np.hypot(gx, gy) > edge
+    thick = barrier.copy()
+    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        thick |= np.roll(np.roll(barrier, dy, 0), dx, 1)
+    h, w = lum.shape
+    reached = np.zeros((h, w), bool)
+    q = deque()
+    for y, x in [(y, x) for y in range(h) for x in (0, w - 1)] + [(y, x) for x in range(w) for y in (0, h - 1)]:
+        if not thick[y, x] and not reached[y, x]:
+            reached[y, x] = True
+            q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+            if 0 <= ny < h and 0 <= nx < w and not thick[ny, nx] and not reached[ny, nx]:
+                reached[ny, nx] = True
+                q.append((ny, nx))
+    return ~reached
 
 
 def rounded_box_points(size, height, radius, n=14):
@@ -105,14 +131,14 @@ def render_mask(layout, trunk, anchor, origin, shape):
         xs, yy = project(pts, anchor, origin)
         splat(m, xs, yy, 3)
     for s, y, d, size in layout:
-        pts = rounded_box_points(size, size * 0.92, size * 0.4)
+        # Shells at several scales fill each puff's volume, so its projection is solid while gaps
+        # between puffs stay open (a scan fill would hide them).
+        base = rounded_box_points(size, size * 0.92, size * 0.4, n=12)
+        pts = np.concatenate([base * k for k in (1.0, 0.75, 0.5, 0.25)])
         pts = rot_y(pts, math.pi / 4) * 1.03 + world_of(s, y + size * 0.46, d)  # 1.03: bulge
         xs, yy = project(pts, anchor, origin)
-        splat(m, xs, yy, 3)
-    # Fill: points sample the surface; close the interior with a vertical scan fill per column.
-    filled = np.maximum.accumulate(m, axis=0) & np.maximum.accumulate(m[::-1], axis=0)[::-1]
-    filled &= np.maximum.accumulate(m, axis=1) & np.maximum.accumulate(m[:, ::-1], axis=1)[:, ::-1]
-    return filled.reshape(shape[0], SS, shape[1], SS).mean(axis=(1, 3)) > 0.5
+        splat(m, xs, yy, 4)
+    return m.reshape(shape[0], SS, shape[1], SS).mean(axis=(1, 3)) > 0.5
 
 
 def iou(a, b):

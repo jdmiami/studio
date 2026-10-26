@@ -77,3 +77,53 @@ export function addContactShadow(scene, element, { strength = 0.65, softness = 0
   scene.add(plane);
   return plane;
 }
+
+const blobFragment = /* glsl */ `
+  uniform vec2 uCenter;
+  uniform vec2 uRadii;
+  uniform float uAngle;
+  uniform float uStrength;
+  uniform vec3 uColor;
+  varying vec2 vXZ;
+  void main() {
+    vec2 p = vXZ - uCenter;
+    float c = cos(uAngle); float s = sin(uAngle);
+    p = vec2(c * p.x - s * p.y, s * p.x + c * p.y) / uRadii;
+    float a = uStrength * (1.0 - smoothstep(0.15, 1.0, length(p)));
+    gl_FragColor = vec4(uColor, a);
+  }
+`;
+
+/**
+ * Soft elliptical shadow blobs on the ground, for elements whose reference shadow a single
+ * directional light can't reproduce (the sheet's shadows are not physically consistent: blocks
+ * cast short ones, trees long ones). Each blob is [s, d, rs, rd, strength] in screen-aligned
+ * units relative to the element's base: s along screen-right, d toward the camera.
+ */
+export function addShadowBlobs(scene, element, blobs, color = '#3a3d55') {
+  const k = Math.SQRT1_2;
+  for (const [bs, bd, rs, rd, strength] of blobs) {
+    const center = new THREE.Vector2(element.position.x + (bs + bd) * k, element.position.z + (bd - bs) * k);
+    const size = Math.max(rs, rd) * 2.2;
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader: blobFragment,
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uCenter: { value: center },
+          uRadii: { value: new THREE.Vector2(rs, rd) },
+          uAngle: { value: -Math.PI / 4 }, // screen-aligned axes
+          uStrength: { value: strength },
+          uColor: { value: new THREE.Color(color) },
+        },
+      }),
+    );
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.set(center.x, 0.0015, center.y);
+    plane.renderOrder = -0.6;
+    scene.add(plane);
+  }
+}

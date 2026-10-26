@@ -17,7 +17,7 @@ import { sharedFurUniforms } from '../fur.js';
 import { rng } from '../world/util.js';
 import { ITEMS, SHEET, anchorOf } from './manifest.js';
 import { bakeFinish } from './bake.js';
-import { addContactShadow } from './contact.js';
+import { addContactShadow, addShadowBlobs } from './contact.js';
 import { createKitRenderer } from './render.js';
 import { KIT_STAGE, applyKitLighting, castShadows } from './style.js';
 
@@ -103,6 +103,9 @@ function groundPointAt([u, v]) {
 
 const fitArg = params.get('fit')?.split(':');
 const fitOverride = fitArg?.length === 2 ? { id: fitArg[0], value: fitArg[1].split(',').map(Number) } : null;
+// ?blobs=id:s,d,rs,rd,strength;s,d,... overrides one element's shadow blobs (for tuning sweeps).
+const blobArg = params.get('blobs')?.split(':');
+const blobOverride = blobArg?.length === 2 ? { id: blobArg[0], blobs: blobArg[1].split(';').map((b) => b.split(',').map(Number)) } : null;
 const contactArg = params.get('contact')?.split(',').map(Number);
 const contactOptions = contactArg?.length === 4
   ? { strength: contactArg[0], softness: contactArg[1], bias: [contactArg[2], contactArg[3]] }
@@ -133,7 +136,11 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
         object.rotation.y += fit[3] ?? 0;
       }
       object.name = item.id;
-      scene.add(castShadows(object));
+      // A family may export SHADOWS = { id: { cast: false, blobs: [[s, d, rs, rd, strength]] } }
+      // to replace the global cast shadow with hand-placed soft blobs.
+      const shadow = blobOverride?.id === item.id ? { cast: true, blobs: blobOverride.blobs } : mod.SHADOWS?.[item.id];
+      scene.add(shadow?.cast === false ? object : castShadows(object));
+      if (shadow?.blobs) addShadowBlobs(scene, object, shadow.blobs);
       addContactShadow(scene, object, contactOptions);
     } catch (e) {
       errors.push(`${item.id}: ${e.message}`);

@@ -7,7 +7,9 @@ family, reads each element's best alignment offset from the pixel test, and prin
 (current anchor - offset: a positive offset means the element stands lower/right of the reference). Paste them into the family's ANCHORS and run again until the offsets
 are ~0.
 
-Usage: register.py <family> [--current anchors.json]
+Usage: register.py <family> [--write] [--ids a,b]
+  --write   update the ANCHORS entries in src/kit/families/<family>.js in place
+  --ids     only these elements
 """
 import json
 import re
@@ -17,6 +19,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 family = sys.argv[1]
+write = '--write' in sys.argv
+only = sys.argv[sys.argv.index('--ids') + 1].split(',') if '--ids' in sys.argv else None
 png = ROOT / f'screenshots/kit/register-{family}.png'
 out = ROOT / f'screenshots/kit/register-{family}.json'
 subprocess.run(['node', 'scripts/screenshot.mjs', str(png), '--page=kit.html', '--size=1024x572', f'--query=family={family}'],
@@ -33,8 +37,18 @@ current = {m.group(1): [float(m.group(2)), float(m.group(3))]
            for m in re.finditer(r"'([^']+)': \[([-\d.]+), ([-\d.]+)\],\s*// anchor", family_src)}
 print('export const ANCHORS = {')
 for r in results:
+    if only and r['id'] not in only:
+        continue
     x0, y0, x1, y1 = boxes[r['id']]
     u, v = current.get(r['id'], [(x0 + x1) / 2, y1 - 0.22 * (x1 - x0)])
     dx, dy = r['offset']
     print(f"  '{r['id']}': [{u - dx:.2f}, {v - dy:.2f}], // anchor (offset was {dx:+.1f}, {dy:+.1f})")
+    if write:
+        pattern = r"'" + re.escape(r['id']) + r"': \[[-\d.]+, [-\d.]+\], // anchor"
+        family_src, n = re.subn(pattern, f"'{r['id']}': [{u - dx:.2f}, {v - dy:.2f}], // anchor", family_src)
+        if n != 1:
+            print(f"  (no ANCHORS entry for {r['id']} to update)")
 print('};')
+if write:
+    (ROOT / f'src/kit/families/{family}.js').write_text(family_src)
+    print(f'wrote src/kit/families/{family}.js')

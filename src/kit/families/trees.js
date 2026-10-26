@@ -14,10 +14,21 @@ import { PASTEL, bulge, felt, lumpy, mottle, shadeBottom, softBox } from '../sty
 
 // Where each tree's base center stands on the sheet (reference px), from scripts/kit/register.py.
 export const ANCHORS = {
-  'tree-cube-large': [50.50, 148.92], // anchor
+  'tree-cube-large': [49.00, 151.92], // anchor
   'tree-cube-small': [115.50, 148.62], // anchor
   'tree-willow-a': [178.00, 143.68], // anchor
   'tree-willow-b': [244.50, 142.40], // anchor
+};
+
+// Per-element scale and turn [sx, sy, sz, ry] found by scripts/kit/fit.py.
+export const FIT = {
+  'tree-cube-large': [1, 0.99, 0.94, 0],
+};
+
+// Extra soft shadow under the canopy (screen-aligned [s, d, rs, rd, strength]): the reference
+// darkens the ground beneath the canopy's right half, which the global shadow light misses.
+export const SHADOWS = {
+  'tree-cube-large': { blobs: [[0.45, 0, 0.5, 0.32, 0.55]] },
 };
 
 /** Merge geometries that may differ in indexing/uv into one felt-ready geometry. */
@@ -31,7 +42,7 @@ function merge(parts) {
 }
 
 function trunk(radius, height, seed) {
-  const g = prepareTextileGeometry(new THREE.CylinderGeometry(radius * 0.92, radius, height, 28, 12));
+  const g = prepareTextileGeometry(new THREE.CylinderGeometry(radius * 0.95, radius, height, 28, 12));
   g.translate(0, height / 2, 0);
   lumpy(g, { amount: 0.012, scale: 9, seed });
   mottle(g, PASTEL.bark, '#6e5038', { scale: 7, seed, stretch: [3, 0.4, 3], ridged: true, bias: 0.15 });
@@ -52,12 +63,23 @@ const worldOf = (s, y, d) => [(s + d) * SQRT1_2, y, (d - s) * SQRT1_2];
 // one has a front-left puff, a bigger front-right puff and a top puff behind them.
 const CUBE_TREES = {
   large: {
-    trunk: { radius: 0.21, height: 0.75 },
+    trunk: { radius: 0.215, height: 0.85 },
+    // Fitted to the reference silhouette with scripts/kit/silfit.py.
     puffs: [
-      [-0.5, 0.5, 0.22, 0.5], [0.0, 0.48, 0.32, 0.52], [0.5, 0.5, 0.22, 0.5],
-      [-0.32, 0.55, -0.3, 0.5], [0.32, 0.55, -0.3, 0.5],
-      [-0.46, 0.86, 0.12, 0.5], [0.0, 0.84, 0.22, 0.52], [0.46, 0.86, 0.12, 0.5],
-      [-0.2, 1.18, -0.02, 0.5], [0.22, 1.18, -0.06, 0.48], [0.0, 1.1, -0.36, 0.5],
+      [-0.474, 0.815, 0.220, 0.694],
+      [-0.174, 0.638, 0.320, 0.665],
+      [0.423, 0.781, 0.220, 0.584],
+      [-0.176, 1.404, -0.300, 0.520],
+      [0.320, 0.650, -0.300, 0.500],
+      [-0.540, 1.404, 0.120, 0.440],
+      [0.000, 0.940, 0.220, 0.520],
+      [0.525, 1.059, 0.120, 0.555],
+      [-0.200, 1.280, -0.020, 0.500],
+      [0.299, 1.479, -0.060, 0.464],
+      [0.088, 1.312, -0.360, 0.526],
+      [0.150, 0.800, -0.050, 0.620],
+      [0.208, 0.520, 0.120, 0.436],
+      [0.078, 0.420, 0.180, 0.360],
     ],
   },
   small: {

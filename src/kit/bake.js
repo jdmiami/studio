@@ -183,6 +183,50 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet })
         done[i] = 1;
         baked++;
       }
+      // Neighbor fill: an unbaked vertex close to baked ones (a rim the depth or facing test
+      // rejected, a crease between puffs) takes the normal-weighted average of baked vertices
+      // within 0.07 units, so baked and procedural colors never meet at a visible seam.
+      const nearCell = 0.07;
+      const nearGrid = new Map();
+      const nearKey = (x, y, z) => `${Math.floor(x / nearCell)},${Math.floor(y / nearCell)},${Math.floor(z / nearCell)}`;
+      const wpos = new Float32Array(pos.count * 3);
+      const wnrm = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+        n.fromBufferAttribute(nrm, i).applyMatrix3(normalMatrix).normalize();
+        wpos.set([v.x, v.y, v.z], i * 3);
+        wnrm.set([n.x, n.y, n.z], i * 3);
+        if (!done[i]) continue;
+        const k = nearKey(v.x, v.y, v.z);
+        if (!nearGrid.has(k)) nearGrid.set(k, []);
+        nearGrid.get(k).push(i);
+      }
+      const filled = new Uint8Array(pos.count);
+      for (let i = 0; i < pos.count; i++) {
+        if (done[i]) continue;
+        const x = wpos[i * 3]; const y = wpos[i * 3 + 1]; const z = wpos[i * 3 + 2];
+        const cx = Math.floor(x / nearCell); const cy = Math.floor(y / nearCell); const cz = Math.floor(z / nearCell);
+        let wsum = 0; let r = 0; let g = 0; let b = 0;
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+          const list = nearGrid.get(`${cx + dx},${cy + dy},${cz + dz}`);
+          if (!list) continue;
+          for (const j of list) {
+            const ddx = wpos[j * 3] - x; const ddy = wpos[j * 3 + 1] - y; const ddz = wpos[j * 3 + 2] - z;
+            const dist = Math.hypot(ddx, ddy, ddz);
+            if (dist > nearCell) continue;
+            const facing = wnrm[i * 3] * wnrm[j * 3] + wnrm[i * 3 + 1] * wnrm[j * 3 + 1] + wnrm[i * 3 + 2] * wnrm[j * 3 + 2];
+            if (facing < 0.3) continue;
+            const w = facing * (1 - dist / nearCell);
+            wsum += w; r += col.getX(j) * w; g += col.getY(j) * w; b += col.getZ(j) * w;
+          }
+        }
+        if (wsum > 0) {
+          col.setXYZ(i, r / wsum, g / wsum, b / wsum);
+          filled[i] = 1;
+        }
+      }
+      for (let i = 0; i < pos.count; i++) if (filled[i]) done[i] = 1;
+
       // Mirror fill: a hidden vertex takes the albedo of the nearest baked vertex at its mirror
       // image across the element's x = 0 and z = 0 planes.
       const cell = 0.04;
