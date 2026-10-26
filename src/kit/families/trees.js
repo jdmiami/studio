@@ -15,9 +15,9 @@ import { PASTEL, bulge, felt, lumpy, mottle, shadeBottom, softBox } from '../sty
 // Where each tree's base center stands on the sheet (reference px), from scripts/kit/register.py.
 export const ANCHORS = {
   'tree-cube-large': [49.00, 151.92], // anchor
-  'tree-cube-small': [115.50, 148.62], // anchor
-  'tree-willow-a': [178.00, 143.68], // anchor
-  'tree-willow-b': [244.50, 142.40], // anchor
+  'tree-cube-small': [116.50, 154.92], // anchor
+  'tree-willow-a': [181.00, 149.18], // anchor
+  'tree-willow-b': [247.50, 148.40], // anchor
 };
 
 // Per-element scale and turn [sx, sy, sz, ry] found by scripts/kit/fit.py.
@@ -29,6 +29,7 @@ export const FIT = {
 // darkens the ground beneath the canopy's right half, which the global shadow light misses.
 export const SHADOWS = {
   'tree-cube-large': { blobs: [[0.45, 0, 0.5, 0.32, 0.55]] },
+  'tree-cube-small': { contact: 0.15 },
 };
 
 /** Merge geometries that may differ in indexing/uv into one felt-ready geometry. */
@@ -83,10 +84,14 @@ const CUBE_TREES = {
     ],
   },
   small: {
-    trunk: { radius: 0.21, height: 0.7 },
+    trunk: { radius: 0.205, height: 0.91 },
+    // Fitted to the reference silhouette with scripts/kit/silfit.py.
     puffs: [
-      [-0.32, 0.5, 0.2, 0.56], [0.3, 0.48, 0.18, 0.62], [0.0, 0.52, -0.3, 0.56],
-      [-0.04, 0.88, -0.1, 0.6],
+      [-0.349, 0.727, 0.200, 0.804],
+      [0.254, 0.784, 0.180, 0.824],
+      [0.269, 0.788, -0.300, 0.560],
+      [-0.124, 1.128, -0.100, 0.662],
+      [0.199, 0.621, 0.200, 0.360],
     ],
   },
 };
@@ -110,53 +115,78 @@ function cubeTree(size, seed, random) {
   return group;
 }
 
+// Per-willow strand lengths, one array per lobe, fitted by scripts/kit/dripfit.py.
+export const WILLOW_DRIPS = {
+  'tree-willow-a': [[0.879, 0.91, 1.153, 0.551, 0.814, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153, 1.153], [0.12, 0.788, 0.529, 0.75, 0.793, 0.986, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.12], [0.695, 0.12, 0.123, 0.452, 0.263, 0.12, 0.263, 0.263, 0.263, 0.263, 0.263, 0.263, 0.263, 0.263, 0.263, 0.288], [0.409, 0.12, 0.517, 0.259, 0.255, 0.836, 0.259, 0.259, 0.259, 0.259, 0.259, 0.259, 0.259, 0.259, 0.259, 0.187]],
+  'tree-willow-b': [[0.873, 0.78, 1.092, 0.421, 0.683, 1.038, 1.136, 0.88, 0.88, 0.88, 0.88, 0.88, 0.88, 0.88, 0.88, 0.88, 0.88, 1.147], [0.312, 0.72, 0.492, 0.928, 0.725, 0.855, 0.72, 0.72, 0.72, 0.72, 0.72, 0.72, 0.72, 0.12], [0.565, 0.12, 0.24, 0.322, 0.225, 0.12, 0.24, 0.24, 0.24, 0.24, 0.24, 0.24, 0.24, 0.24, 0.24, 0.343], [0.341, 0.19, 0.417, 0.19, 0.31, 0.706, 0.31, 0.31, 0.31, 0.31, 0.31, 0.31, 0.31, 0.31, 0.31, 0.12]],
+};
+
 // Willow lobes in screen-aligned coordinates: a big back lobe, a back-right lobe, two front lobes.
+// `drop` is how far the strands hang below the dome's rim (longest strands), as a fraction of the
+// rim's height above the ground.
 const WILLOW_LOBES = [
-  { s: -0.1, d: -0.25, top: 1.55, r: 0.4 },
-  { s: 0.42, d: -0.2, top: 1.32, r: 0.3 },
-  { s: -0.34, d: 0.22, top: 1.18, r: 0.34 },
-  { s: 0.28, d: 0.2, top: 1.22, r: 0.34 },
+  { s: -0.1, d: -0.25, top: 1.55, r: 0.42, drop: 0.7 },
+  { s: 0.42, d: -0.2, top: 1.32, r: 0.32, drop: 0.75 },
+  { s: -0.34, d: 0.22, top: 1.18, r: 0.36, drop: 0.85 },
+  { s: 0.28, d: 0.2, top: 1.22, r: 0.36, drop: 0.85 },
 ];
 
-/** One lobe: a squashed dome with a ring of fused felt strands of uneven length hanging from its rim. */
-function lobe({ s, d, top, r }, seed, random) {
+/**
+ * One lobe: an inner dome plus strands that start near the apex, follow the dome over its rim and
+ * hang down as rounded drips of uneven length. Neighbouring strands overlap, so together they read
+ * as one ridged, draped felt surface that separates into drips at the bottom (as on the sheet).
+ */
+function lobe({ s, d, top, r, drop }, random, lengths) {
   const parts = [];
   const [x, , z] = worldOf(s, 0, d);
-  const dome = prepareTextileGeometry(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2));
-  dome.scale(1, 0.85, 1);
-  const rimY = top - r * 0.85;
-  dome.translate(x, rimY, z);
-  parts.push(dome);
-  const strands = Math.round(r * 46);
+  const squash = 0.85;
+  const rimY = top - r * squash;
+  const inner = prepareTextileGeometry(new THREE.SphereGeometry(r * 0.94, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2));
+  inner.scale(1, squash, 1);
+  inner.translate(x, rimY, z);
+  parts.push(inner);
+  const strands = Math.round(r * 44);
+  const thick = r * 0.15;
   for (let i = 0; i < strands; i++) {
-    const a = (i / strands) * Math.PI * 2 + random() * 0.15;
-    // Strands end at uneven heights; the longest reach close to the ground.
-    const length = Math.max(0.2, (rimY - 0.12) * (0.55 + random() * 0.45));
-    const thick = 0.05 + random() * 0.02;
-    const g = prepareTextileGeometry(new THREE.CapsuleGeometry(thick, length, 4, 8));
-    g.translate(0, -length / 2, 0);
-    g.rotateZ(0.05);
-    g.rotateY(-a);
-    g.translate(x + Math.cos(a) * r * 0.92, rimY + 0.03, z + Math.sin(a) * r * 0.92);
-    parts.push(g);
+    const a = (i / strands) * Math.PI * 2;
+    // Fitted lengths (scripts/kit/dripfit.py) put each visible drip's tip where the sheet's is.
+    const length = lengths?.[i] ?? Math.max(0.12, rimY * drop * (0.55 + random() * 0.45));
+    const pts = [];
+    for (let k = 0; k <= 8; k++) {
+      const phi = 0.25 + (k / 8) * (Math.PI / 2 - 0.25);
+      const rr = r * Math.sin(phi);
+      pts.push(new THREE.Vector3(x + Math.cos(a) * rr, rimY + r * squash * Math.cos(phi), z + Math.sin(a) * rr));
+    }
+    for (let k = 1; k <= 6; k++) {
+      const t = k / 6;
+      const rr = r * (1 + 0.06 * t);
+      pts.push(new THREE.Vector3(x + Math.cos(a) * rr, rimY - length * t, z + Math.sin(a) * rr));
+    }
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const tube = prepareTextileGeometry(new THREE.TubeGeometry(curve, 28, thick, 8, false));
+    parts.push(tube);
+    const tip = prepareTextileGeometry(new THREE.SphereGeometry(thick, 8, 6));
+    const end = pts[pts.length - 1];
+    tip.translate(end.x, end.y, end.z);
+    parts.push(tip);
   }
   return parts;
 }
 
-function willow(seed, random) {
+function willow(seed, random, id) {
   const group = new THREE.Group();
   group.add(new THREE.Mesh(trunk(0.15, 0.75, seed), felt('#ffffff', { fuzz: 0.1 })));
-  const parts = WILLOW_LOBES.flatMap((l) => lobe(l, seed, random));
+  const parts = WILLOW_LOBES.flatMap((l, i) => lobe(l, random, WILLOW_DRIPS[id]?.[i]));
   const canopy = merge(parts);
-  lumpy(canopy, { amount: 0.006, scale: 10, seed });
   mottle(canopy, PASTEL.willow, '#9fbd80', { scale: 6, seed, stretch: [3, 0.5, 3], bias: -0.1 });
+  shadeBottom(canopy, { from: 0.2, to: 1.1, dark: 0.85 });
   group.add(new THREE.Mesh(canopy, felt('#ffffff', { fuzz: 0.3 })));
   return group;
 }
 
-export function build(variant, random) {
+export function build(variant, random, item) {
   const seed = variant.seed ?? 1;
   if (variant.kind === 'cube') return cubeTree(variant.size, seed, random);
-  if (variant.kind === 'willow') return willow(seed, random);
+  if (variant.kind === 'willow') return willow(seed, random, item.id);
   throw new Error(`unknown tree kind "${variant.kind}"`);
 }

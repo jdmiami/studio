@@ -18,7 +18,7 @@ const BG = [220, 220, 220];
 let sheetPromise = null;
 
 /** The reference sheet's pixels (sRGB bytes) and a per-pixel "well inside an element" mask. */
-function loadSheet() {
+export function loadSheet() {
   sheetPromise ??= new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -67,6 +67,13 @@ function sampleSheet(sheet, u, v) {
     for (let c = 0; c < 3; c++) out[c] += srgbToLinear(sheet.data[i + c] / 255) * w;
   }
   return out;
+}
+
+function isShadowLike(sheet, pi) {
+  const r = sheet.data[pi * 4]; const g = sheet.data[pi * 4 + 1]; const b = sheet.data[pi * 4 + 2];
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  const sat = Math.max(r, g, b) - Math.min(r, g, b);
+  return lum < 214 && sat < 12 && b >= r - 6;
 }
 
 const isFelt = (m) => m.isMesh && !m.isInstancedMesh && m.material?.uniforms?.uMode?.value === 0;
@@ -136,7 +143,7 @@ function delight(obs, n, material) {
  * Bakes the reference's de-lit colors into every felt mesh of the given elements.
  * `toSheet(x, y)` converts a window pixel to a sheet pixel. Returns per-element coverage.
  */
-export async function bakeFinish(elements, { renderer, scene, camera, toSheet }) {
+export async function bakeFinish(elements, { renderer, scene, camera, toSheet, options = {} }) {
   const sheet = await loadSheet();
   scene.updateMatrixWorld(true);
   const size = renderer.getSize(new THREE.Vector2());
@@ -148,6 +155,8 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet })
   const n = new THREE.Vector3();
   const normalMatrix = new THREE.Matrix3();
   for (const element of elements) {
+    // Neutral-grey elements (white fur, grey stone) opt out with { skipNeutral: false }.
+    const skipNeutral = options[element.name]?.skipNeutral ?? true;
     const rootInverse = element.matrixWorld.clone().invert();
     let baked = 0;
     let total = 0;
@@ -178,7 +187,12 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet })
         const [su, sv] = toSheet(x, y);
         const pi = Math.floor(sv) * sheet.width + Math.floor(su);
         if (!sheet.inner[pi]) continue;
-        const albedo = delight(sampleSheet(sheet, su, sv), n, mesh.material);
+        const sample = sampleSheet(sheet, su, sv);
+        // Skip cast-shadow / background samples (neutral to blue grey, darker than the backdrop):
+        // they land where this element's geometry overhangs a gap in the reference (between
+        // willow drips, beside a trunk) and would paint it grey. Neighbor fill covers them.
+        if (skipNeutral && isShadowLike(sheet, pi)) continue;
+        const albedo = delight(sample, n, mesh.material);
         col.setXYZ(i, albedo[0], albedo[1], albedo[2]);
         done[i] = 1;
         baked++;

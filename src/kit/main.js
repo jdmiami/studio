@@ -8,17 +8,20 @@
 //   ?overlay=0.5         show the reference sheet over the render at that opacity (dev server)
 //   ?finish=procedural   pure procedural felt (default: baked, the reference's de-lit colors baked into
 //                        the felt as vertex colors, see src/kit/bake.js)
+//   ?warp=N              silhouette-warp passes (default 2 with the baked finish, 0 skips; src/kit/warp.js)
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
 //   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
+//   ?anchor=id:u,v       override one element's anchor (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
 import * as THREE from 'three';
 import { sharedFurUniforms } from '../fur.js';
 import { rng } from '../world/util.js';
 import { ITEMS, SHEET, anchorOf } from './manifest.js';
-import { bakeFinish } from './bake.js';
+import { bakeFinish, loadSheet } from './bake.js';
 import { addContactShadow, addShadowBlobs } from './contact.js';
 import { createKitRenderer } from './render.js';
+import { warpToReference } from './warp.js';
 import { KIT_STAGE, applyKitLighting, castShadows } from './style.js';
 
 const params = new URLSearchParams(location.search);
@@ -101,11 +104,16 @@ function groundPointAt([u, v]) {
   return ndc.addScaledVector(forward, t);
 }
 
+const anchorArg = params.get('anchor')?.split(':');
+const anchorOverride = anchorArg?.length === 2 ? { id: anchorArg[0], value: anchorArg[1].split(',').map(Number) } : null;
 const fitArg = params.get('fit')?.split(':');
 const fitOverride = fitArg?.length === 2 ? { id: fitArg[0], value: fitArg[1].split(',').map(Number) } : null;
 // ?blobs=id:s,d,rs,rd,strength;s,d,... overrides one element's shadow blobs (for tuning sweeps).
 const blobArg = params.get('blobs')?.split(':');
-const blobOverride = blobArg?.length === 2 ? { id: blobArg[0], blobs: blobArg[1].split(';').map((b) => b.split(',').map(Number)) } : null;
+// A leading "!" also switches off the element's cast shadow (blobs only).
+const blobOverride = blobArg?.length === 2
+  ? { id: blobArg[0], cast: !blobArg[1].startsWith('!'), blobs: blobArg[1].replace(/^!/, '').split(';').map((b) => b.split(',').map(Number)) }
+  : null;
 const contactArg = params.get('contact')?.split(',').map(Number);
 const contactOptions = contactArg?.length === 4
   ? { strength: contactArg[0], softness: contactArg[1], bias: [contactArg[2], contactArg[3]] }
@@ -114,6 +122,7 @@ if (params.has('shadow')) ground.material.opacity = Number(params.get('shadow'))
 
 const items = ITEMS.filter((it) => (!familyFilter || it.family === familyFilter) && (!onlyFilter || onlyFilter.includes(it.id)));
 const errors = [];
+const loadedModules = {};
 await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) => {
   const load = families[`./families/${family}.js`];
   if (!load) { errors.push(`no module for family "${family}"`); return; }
@@ -124,24 +133,26 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
     errors.push(`${family}: ${e.message}`);
     return;
   }
+  loadedModules[family] = mod;
   for (const item of items.filter((it) => it.family === family)) {
     try {
       const object = mod.build(item.variant, rng(item.variant.seed ?? 1), item);
       // A family module may export ANCHORS = { id: [u, v] } to fine-tune where its items stand, and
       // FIT = { id: [sx, sy, sz, ry] }: the per-element scale and turn found by the fit search.
-      object.position.copy(groundPointAt(mod.ANCHORS?.[item.id] ?? anchorOf(item)));
+      const anchor = anchorOverride?.id === item.id ? anchorOverride.value : mod.ANCHORS?.[item.id] ?? anchorOf(item);
+      object.position.copy(groundPointAt(anchor));
       const fit = fitOverride?.id === item.id ? fitOverride.value : mod.FIT?.[item.id];
       if (fit) {
         object.scale.set(fit[0], fit[1], fit[2]);
         object.rotation.y += fit[3] ?? 0;
       }
       object.name = item.id;
-      // A family may export SHADOWS = { id: { cast: false, blobs: [[s, d, rs, rd, strength]] } }
-      // to replace the global cast shadow with hand-placed soft blobs.
-      const shadow = blobOverride?.id === item.id ? { cast: true, blobs: blobOverride.blobs } : mod.SHADOWS?.[item.id];
+      // A family may export SHADOWS = { id: { cast: false, blobs: [[s, d, rs, rd, strength]], contact: 0.3 } }
+      // to drop the global cast shadow, add hand-placed soft blobs, or soften the contact shadow.
+      const shadow = blobOverride?.id === item.id ? blobOverride : mod.SHADOWS?.[item.id];
       scene.add(shadow?.cast === false ? object : castShadows(object));
       if (shadow?.blobs) addShadowBlobs(scene, object, shadow.blobs);
-      addContactShadow(scene, object, contactOptions);
+      addContactShadow(scene, object, shadow?.contact !== undefined ? { ...contactOptions, strength: shadow.contact } : contactOptions);
     } catch (e) {
       errors.push(`${item.id}: ${e.message}`);
     }
@@ -151,7 +162,17 @@ if ((params.get('finish') ?? 'baked') === 'baked') {
   const placed = scene.children.filter((o) => o.name && items.some((it) => it.id === o.name));
   const toSheet = (x, y) => [(x - innerWidth / 2) / view.pxPerRef + SHEET.width / 2, (y - innerHeight / 2) / view.pxPerRef + SHEET.height / 2];
   try {
-    window.__kitBake = await bakeFinish(placed, { renderer, scene, camera, toSheet });
+    // Families may export BAKE = { id: { skipNeutral: false } } for neutral-grey elements.
+    const options = Object.assign({}, ...Object.values(loadedModules).map((m) => m.BAKE ?? {}));
+    window.__kitBake = await bakeFinish(placed, { renderer, scene, camera, toSheet, options });
+    if (params.get('warp') !== '0') {
+      // The warp measures the baked render (the test's masks depend on its colors), then the
+      // finish is baked again so colors register on the moved vertices.
+      const toWindow = (u, v) => [(u - SHEET.width / 2) * view.pxPerRef + innerWidth / 2, (v - SHEET.height / 2) * view.pxPerRef + innerHeight / 2];
+      const passes = Number(params.get('warp') ?? 2);
+      window.__kitWarp = warpToReference(placed, items, await loadSheet(), { renderer, scene, camera, renderFrame: kit.render, toWindow, pxPerRef: view.pxPerRef, passes });
+      window.__kitBake = await bakeFinish(placed, { renderer, scene, camera, toSheet, options });
+    }
   } catch (e) {
     errors.push(`bake: ${e.message}`);
   }
