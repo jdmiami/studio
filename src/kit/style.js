@@ -216,3 +216,46 @@ export function castShadows(object) {
   object.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return object;
 }
+
+/** Radius of a fitted profile at height y (Catmull-Rom through the control radii). */
+export function radiusAt({ height, radii }, y) {
+  const n = radii.length;
+  const t = THREE.MathUtils.clamp((y / height) * (n - 1), 0, n - 1);
+  const i = Math.min(Math.floor(t), n - 2);
+  const f = t - i;
+  const p0 = radii[Math.max(i - 1, 0)]; const p1 = radii[i]; const p2 = radii[i + 1]; const p3 = radii[Math.min(i + 2, n - 1)];
+  const r = 0.5 * ((2 * p1) + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f + (-p0 + 3 * p1 - 3 * p2 + p3) * f * f * f);
+  return Math.max(r, 0);
+}
+
+/**
+ * A lathe through a fitted profile (scripts/kit/lathefit.py: { height, radii, lean? }) from
+ * `bottom` up to `top`, closed with a flat disc at the bottom and, if the profile is still wide at
+ * `top`, a rounded cap. A lean bends the axis along screen-right by lean * (y / height)^2.
+ */
+export function profileLathe(profile, top, { bottom = 0, steps = 48, segments = 96 } = {}) {
+  const pts = [new THREE.Vector2(0, bottom)];
+  for (let k = 0; k <= steps; k++) {
+    const y = bottom + ((top - bottom) * k) / steps;
+    pts.push(new THREE.Vector2(Math.max(radiusAt(profile, y), 0.002), y));
+  }
+  const rTop = radiusAt(profile, top);
+  if (rTop > 0.01) {
+    for (let k = 1; k <= 8; k++) {
+      const a = (k / 8) * (Math.PI / 2);
+      // Nearly flat: the fitted profile already ends at its true height (a slab top projects as an ellipse).
+      pts.push(new THREE.Vector2(Math.max(rTop * Math.cos(a), 0.001), top + rTop * 0.12 * Math.sin(a)));
+    }
+  }
+  const g = prepareTextileGeometry(new THREE.LatheGeometry(pts, segments));
+  if (profile.lean) {
+    const pos = g.getAttribute('position');
+    for (let i = 0; i < pos.count; i++) {
+      const s = profile.lean * (pos.getY(i) / profile.height) ** 2; // screen-right is (1, 0, -1) / sqrt2
+      pos.setX(i, pos.getX(i) + s * Math.SQRT1_2);
+      pos.setZ(i, pos.getZ(i) - s * Math.SQRT1_2);
+    }
+    g.computeVertexNormals();
+  }
+  return g;
+}

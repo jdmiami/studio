@@ -29,6 +29,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from pixel_test import load_items  # noqa: E402
+from lathefit import test_target  # noqa: E402
 from silfit import EL, PX, R, U, reference_object_mask  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -74,13 +75,14 @@ def ground_offsets(us, vs, anchor):
 
 
 def blob_alpha(s, d, blob):
-    bs, bd, rs, rd, strength, turn = blob
+    bs, bd, rs, rd, strength, turn = blob[:6]
+    core = blob[6] if len(blob) > 6 else 0.15
     qs, qd = s - bs, d - bd
     c, sn = math.cos(turn), math.sin(turn)
     a = (c * qs + sn * qd) / rs
     b = (-sn * qs + c * qd) / rd
     r = np.hypot(a, b)
-    t = np.clip((r - 0.15) / 0.85, 0, 1)
+    t = np.clip((r - core) / max(1 - core, 1e-3), 0, 1)
     return strength * (1 - t * t * (3 - 2 * t))
 
 
@@ -103,16 +105,26 @@ def main():
     ap.add_argument('--init')
     ap.add_argument('--out')
     ap.add_argument('--through', default='', help='elements whose ground shows through (willows)')
+    ap.add_argument('--mask', choices=['outline', 'test', 'color'], default='outline',
+                    help="how elements are cut out of the ground ('color': test mask less ground-coloured pixels, for open elements)")
+    ap.add_argument('--core', action='store_true', help='also fit each blob\'s core (edge crispness)')
+    ap.add_argument('--open', default='', help="elements cut out by colour (fences): see --mask color")
+    ap.add_argument('--region-margin', type=int, default=MARGIN, help='px of sheet around the elements that the fit sees')
+    ap.add_argument('--margin', type=int, default=2, help='px cut out around each element (outline, halo)')
+    ap.add_argument('--base-exclude', type=float, default=5, help='px radius left out at each base (contact decal); 0 keeps it')
+    ap.add_argument('--mask-weight', type=float, default=400.0, help='cost of a pixel on the wrong side of the background threshold')
     args = ap.parse_args()
     through = set(args.through.split(','))
+    opened = set(args.open.split(','))
     items = {it['id']: it for it in load_items()}
     anchor_of = anchors()
     ref = np.asarray(Image.open(ROOT / 'docs/reference/asset-kit.jpg').convert('RGB'), dtype=np.float64)
     boxes = [items[i]['box'] for i in args.ids]
-    x0 = max(0, min(b[0] for b in boxes) - MARGIN)
-    y0 = max(0, min(b[1] for b in boxes) - MARGIN)
-    x1 = min(ref.shape[1], max(b[2] for b in boxes) + MARGIN)
-    y1 = min(ref.shape[0], max(b[3] for b in boxes) + MARGIN)
+    rm = args.region_margin
+    x0 = max(0, min(b[0] for b in boxes) - rm)
+    y0 = max(0, min(b[1] for b in boxes) - rm)
+    x1 = min(ref.shape[1], max(b[2] for b in boxes) + rm)
+    y1 = min(ref.shape[0], max(b[3] for b in boxes) + rm)
     keep = np.ones((y1 - y0, x1 - x0), bool)
     # Drop every element in the region (and its halo), and the contact decal at each base.
     for it in items.values():
@@ -120,10 +132,23 @@ def main():
         if bx1 < x0 or bx0 > x1 or by1 < y0 or by0 > y1:
             continue
         pad = 4
-        inner = reference_object_mask(it['box'], pad)
+        # Small elements' faint outlines leak, so their outline mask swallows their own shadow:
+        # --mask test excludes them by pixel_test's mask with the ground shadow peeled off instead.
+        if args.mask == 'outline':
+            inner = reference_object_mask(it['box'], pad)
+        else:
+            inner = test_target(it['box'], erode=0)
+            if args.mask == 'color' or it['id'] in opened:
+                # Open elements (fences): shadow and background seen between their parts are ground.
+                c = ref[by0 - pad:by1 + pad, bx0 - pad:bx1 + pad]
+                cl = c @ np.array([0.299, 0.587, 0.114])
+                cs = c.max(-1) - c.min(-1)
+                groundish = ((c[..., 2] >= c[..., 1] - 1) & (c[..., 2] >= c[..., 0] - 1) & (cs < 24)) | ((np.linalg.norm(c - BACKDROP, axis=-1) <= 20) & (cs <= 14))
+                inner = inner & ~groundish
         m = inner.copy()
-        for _ in range(2):
+        for _ in range(args.margin):
             m = m | np.roll(m, 1, 0) | np.roll(m, -1, 0) | np.roll(m, 1, 1) | np.roll(m, -1, 1)
+        for _ in range(2):
             inner = inner & np.roll(inner, 1, 0) & np.roll(inner, -1, 0) & np.roll(inner, 1, 1) & np.roll(inner, -1, 1)
         # Ground seen through the element (between willow drips, beside a trunk) still counts:
         # well inside the outline, a neutral-to-blue pixel is ground; the felt is green, mint or brown.
@@ -143,18 +168,24 @@ def main():
         if it['id'] in anchor_of:
             au, av = anchor_of[it['id']]
             yy, xx = np.mgrid[y0:y1, x0:x1]
-            keep &= np.hypot(xx - au, (yy - av) * 1.6) > 5
+            if args.base_exclude > 0:
+                keep &= np.hypot(xx - au, (yy - av) * 1.6) > args.base_exclude
     ys, xs = np.nonzero(keep)
     us, vs = xs + x0 + 0.5, ys + y0 + 0.5
     target = ref[ys + y0, xs + x0]
     offsets = {i: ground_offsets(us, vs, anchor_of[i]) for i in args.ids}
+    init_color = None
     if args.init:
-        blobs = {k: [list(b) + [0.0] * (6 - len(b)) for b in v] for k, v in json.loads(Path(args.init).read_text()).items()}
+        init = json.loads(Path(args.init).read_text())
+        init_color = init.pop('_color', None)
+        blobs = {k: [list(b) + [0.0] * max(0, 6 - len(b)) for b in v] for k, v in init.items()}
     else:
         base = [[0.9, -0.9, 0.7, 0.45, 0.45, 0.0], [0.3, -0.2, 0.4, 0.3, 0.35, 0.0]]
         blobs = {i: [list(b) for b in base[:args.blobs]] for i in args.ids}
+    if args.core:  # a seventh parameter per blob: its core
+        blobs = {k: [b + [0.15] if len(b) < 7 else b for b in v] for k, v in blobs.items()}
 
-    color = list(BLOB_COLOR)
+    color = [float(int(init_color[i:i + 2], 16)) for i in (1, 3, 5)] if init_color else list(BLOB_COLOR)
     # Neighbours' shadows that are already fitted (another family's) stay as they are.
     fixed = np.full((len(us), 3), to_linear(np.array([BACKDROP] * 3))[0])
     for item_id, (hexcolor, nblobs) in fitted_shadows().items():
@@ -168,19 +199,29 @@ def main():
                 fixed = fixed * (1 - a) + col * a
     fixed_srgb_lin = fixed
 
+    def non_background(rgb):
+        # pixel_test.py's background test: the masks it scores IoU on include cast shadows.
+        return (np.linalg.norm(rgb - BACKDROP, axis=-1) > 20) | (rgb.max(-1) - rgb.min(-1) > 14)
+
+    ref_shadow = non_background(target)
+
     def cost(b, c=None):
-        diff = model(b, (us,), offsets, color if c is None else c, fixed_srgb_lin) - target
-        return float((diff ** 2).sum() / len(us))
+        mod = model(b, (us,), offsets, color if c is None else c, fixed_srgb_lin)
+        mse = float(((mod - target) ** 2).sum() / len(us))
+        # A shadow pixel on the wrong side of the test's background threshold costs IoU, so it
+        # weighs like a 10-level colour error on every ground pixel's share.
+        miss = float((non_background(mod) != ref_shadow).sum() / len(us))
+        return mse + args.mask_weight * miss
 
     best = cost(blobs)
     print(f'region x {x0}-{x1} y {y0}-{y1}, {len(us)} ground px; start rms {math.sqrt(best):.2f}')
-    steps = [0.12, 0.12, 0.1, 0.1, 0.08, 0.2]
-    lows = [-3, -3, 0.08, 0.08, 0.0, -1.6]
-    highs = [3, 3, 2.5, 2.5, 0.95, 1.6]
+    steps = [0.12, 0.12, 0.1, 0.1, 0.08, 0.2, 0.1]
+    lows = [-3, -3, 0.08, 0.08, 0.0, -1.6, 0.0]
+    highs = [3, 3, 2.5, 2.5, 0.95, 1.6, 0.9]
     for it in range(args.iters):
         for item_id in args.ids:
             for bi in range(len(blobs[item_id])):
-                for k in range(6):
+                for k in range(len(blobs[item_id][bi])):
                     for sign in (1, -1):
                         while True:
                             cand = {kk: [list(b) for b in vv] for kk, vv in blobs.items()}

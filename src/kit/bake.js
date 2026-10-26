@@ -37,15 +37,20 @@ export function loadSheet() {
         const sat = Math.max(r, g, b) - Math.min(r, g, b);
         fg[i] = d > 20 || sat > 14 ? 1 : 0;
       }
-      const inner = new Uint8Array(width * height);
-      for (let y = 2; y < height - 2; y++) {
-        for (let x = 2; x < width - 2; x++) {
-          let all = 1;
-          for (let dy = -2; dy <= 2 && all; dy++) for (let dx = -2; dx <= 2; dx++) if (!fg[(y + dy) * width + x + dx]) { all = 0; break; }
-          inner[y * width + x] = all;
+      // inner: 2 px in (the default); inner1: 1 px in, for thin parts (fence rails, sticks) whose
+      // 2 px margin would leave only their lit centre line to bake.
+      const erode = (r) => {
+        const out = new Uint8Array(width * height);
+        for (let y = r; y < height - r; y++) {
+          for (let x = r; x < width - r; x++) {
+            let all = 1;
+            for (let dy = -r; dy <= r && all; dy++) for (let dx = -r; dx <= r; dx++) if (!fg[(y + dy) * width + x + dx]) { all = 0; break; }
+            out[y * width + x] = all;
+          }
         }
-      }
-      resolve({ data, width, height, inner });
+        return out;
+      };
+      resolve({ data, width, height, inner: erode(2), inner1: erode(1) });
     };
     img.onerror = () => reject(new Error(`could not load ${SHEET_URL}`));
     img.src = SHEET_URL;
@@ -155,8 +160,10 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
   const n = new THREE.Vector3();
   const normalMatrix = new THREE.Matrix3();
   for (const element of elements) {
-    // Neutral-grey elements (white fur, grey stone) opt out with { skipNeutral: false }.
+    // Neutral-grey elements (white fur, grey stone) opt out with { skipNeutral: false }; thin ones
+    // bake closer to their outline with { margin: 1 }.
     const skipNeutral = options[element.name]?.skipNeutral ?? true;
+    const inner = options[element.name]?.margin === 1 ? sheet.inner1 : sheet.inner;
     const rootInverse = element.matrixWorld.clone().invert();
     let baked = 0;
     let total = 0;
@@ -188,7 +195,7 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
         if (ndc.z * 0.5 + 0.5 > depthAt(xi, yi) + 0.0003) continue; // something nearer covers it
         const [su, sv] = toSheet(x, y);
         const pi = Math.floor(sv) * sheet.width + Math.floor(su);
-        if (!sheet.inner[pi]) continue;
+        if (!inner[pi]) continue;
         const sample = sampleSheet(sheet, su, sv);
         // Skip cast-shadow / background samples (neutral to blue grey, darker than the backdrop):
         // they land where this element's geometry overhangs a gap in the reference (between

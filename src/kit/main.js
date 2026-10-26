@@ -12,7 +12,8 @@
 //   ?warp=N              silhouette-warp passes (default 3 with the baked finish, 0 skips; src/kit/warp.js)
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
-//   ?line=side,up        silhouette-line darkening on side- and up-facing edges (for tuning sweeps)
+//   ?line=side,up[,w]    silhouette-line darkening on side- and up-facing edges, and width in
+//                        reference px (for tuning sweeps)
 //   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
 //   ?anchor=id:u,v       override one element's anchor (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
@@ -21,7 +22,7 @@ import { sharedFurUniforms } from '../fur.js';
 import { rng } from '../world/util.js';
 import { ITEMS, SHEET, anchorOf } from './manifest.js';
 import { bakeFinish, loadSheet } from './bake.js';
-import { addContactShadow, addShadowBlobs } from './contact.js';
+import { addContactShadow, addPlanarShadow, addShadowBlobs } from './contact.js';
 import { createKitRenderer } from './render.js';
 import { warpToReference } from './warp.js';
 import { KIT_STAGE, applyKitLighting, castShadows } from './style.js';
@@ -76,7 +77,11 @@ Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, n
 scene.add(sun);
 scene.add(sun.target);
 const kit = createKitRenderer(renderer, scene, camera);
-if (params.has('line')) kit.uniforms.uLine.value.fromArray(params.get('line').split(',').map(Number));
+if (params.has('line')) {
+  const [side, up, width] = params.get('line').split(',').map(Number);
+  kit.uniforms.uLine.value.set(side, up);
+  if (width) kit.uniforms.uLineWidth.value = width;
+}
 
 function layout() {
   // Fit the whole reference sheet in the window, keeping its aspect.
@@ -118,6 +123,9 @@ const blobArg = params.get('blobs')?.split(':');
 const blobOverride = blobArg?.length === 2
   ? { id: blobArg[0], cast: !blobArg[1].startsWith('!'), blobs: blobArg[1].replace(/^!/, '').split(';').map((b) => b.split(',').map(Number)) }
   : null;
+// ?planar=id:s,d,strength,soft overrides one element's planar shadow (for tuning sweeps).
+const planarArg = params.get('planar')?.split(':');
+const planarOverride = planarArg?.length === 2 ? { id: planarArg[0], value: planarArg[1].split(',').map(Number) } : null;
 const contactArg = params.get('contact')?.split(',').map(Number);
 const contactOptions = contactArg?.length === 4
   ? { strength: contactArg[0], softness: contactArg[1], bias: [contactArg[2], contactArg[3]] }
@@ -152,10 +160,15 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
       }
       object.name = item.id;
       // A family may export SHADOWS = { id: { cast: false, blobs: [[s, d, rs, rd, strength, turn]], color, contact: 0.3 } }
-      // to drop the global cast shadow, add hand-placed soft blobs, or soften the contact shadow.
+      // to drop the global cast shadow, add fitted soft blobs, or soften the contact shadow, and
+      // planar: { dir: [s, d], strength, soft } for a shadow of the element's own shape thrown its own way.
       const shadow = blobOverride?.id === item.id ? blobOverride : mod.SHADOWS?.[item.id];
       scene.add(shadow?.cast === false ? object : castShadows(object));
       if (shadow?.blobs) addShadowBlobs(scene, object, shadow.blobs, shadow.color);
+      const planar = planarOverride?.id === item.id
+        ? { dir: planarOverride.value.slice(0, 2), strength: planarOverride.value[2], soft: planarOverride.value[3] }
+        : shadow?.planar;
+      if (planar) addPlanarShadow(renderer, scene, object, { color: shadow?.color, ...planar });
       addContactShadow(scene, object, shadow?.contact !== undefined ? { ...contactOptions, strength: shadow.contact } : contactOptions);
     } catch (e) {
       errors.push(`${item.id}: ${e.message}`);

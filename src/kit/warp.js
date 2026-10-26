@@ -9,7 +9,8 @@
 // mask operator, so the operator's bias (where on a soft dark edge it puts the boundary) cancels.
 // That operator also takes in cast shadows, so a vertex only moves where, in both images, the mask
 // boundary is the element's own outline: within a pixel of the element-only silhouette (the render's
-// depth coverage of just this element; the reference's outline-enclosed region).
+// depth coverage of just this element; on the reference, the test mask with its ground shadow
+// peeled off).
 //
 // Per pass: a vertex projecting to sheet pixel p moves along the reference mask's distance gradient
 // by -(dRef(p) - dOurs(p)), faded by its distance from the element's silhouette. A couple of passes
@@ -25,26 +26,31 @@ const BG = [220, 220, 220];
 
 /** Signed distance (px, positive outside) to the boundary of a w x h boolean mask. */
 function signedDistance(mask, w, h) {
-  const boundary = [];
+  // Edge pixels of each class (those with a 4-neighbour of the other class); a pixel's distance is
+  // to the nearest edge pixel of the other class, less half a pixel, so the boundary sits between
+  // pixel centres and the field is continuous across it.
+  const edges = [[], []];
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const m = mask[y * w + x];
       const edge = (x > 0 && mask[y * w + x - 1] !== m) || (x < w - 1 && mask[y * w + x + 1] !== m)
         || (y > 0 && mask[(y - 1) * w + x] !== m) || (y < h - 1 && mask[(y + 1) * w + x] !== m);
-      if (edge) boundary.push(x, y);
+      if (edge) edges[m ? 1 : 0].push(x, y);
     }
   }
   const out = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
+      const inside = mask[y * w + x];
+      const other = edges[inside ? 0 : 1];
       let best = 1e9;
-      for (let i = 0; i < boundary.length; i += 2) {
-        const dx = boundary[i] - x; const dy = boundary[i + 1] - y;
+      for (let i = 0; i < other.length; i += 2) {
+        const dx = other[i] - x; const dy = other[i + 1] - y;
         const d = dx * dx + dy * dy;
         if (d < best) best = d;
       }
       const d = Math.sqrt(best) - 0.5;
-      out[y * w + x] = mask[y * w + x] ? -d : d;
+      out[y * w + x] = inside ? -d : d;
     }
   }
   return out;
@@ -105,30 +111,6 @@ function testMask(rgb, w, h) {
     passable[i] = d <= 20 && sat <= 14 && g[i] <= 28 ? 1 : 0;
   }
   return unreached(passable, w, h);
-}
-
-/** The reference element alone: what its dark outline encloses (soft shadow edges let the flood through). */
-function outlineMask(rgb, w, h) {
-  const g = edges(rgb, w, h);
-  const thick = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const k = y * w + x;
-      if (g[k] > 22 || (x > 0 && g[k - 1] > 22) || (x < w - 1 && g[k + 1] > 22)
-        || (y > 0 && g[k - w] > 22) || (y < h - 1 && g[k + w] > 22)) thick[k] = 1;
-    }
-  }
-  const passable = thick.map((t) => 1 - t);
-  const mask = unreached(passable, w, h);
-  // Erode back the pixel the barrier was thickened by, so the boundary sits where the test's does.
-  const eroded = new Uint8Array(w * h);
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const k = y * w + x;
-      eroded[k] = mask[k] & mask[k - 1] & mask[k + 1] & mask[k - w] & mask[k + w];
-    }
-  }
-  return eroded;
 }
 
 /** Separable Gaussian blur of a w x h field. */
@@ -194,6 +176,36 @@ function displacementField(ref, oursTest, oursElem, w, h) {
     dv[i] = bw[i] > 1e-3 ? (bv[i] / bw[i]) * confidence : 0;
   }
   return { u: du, v: dv };
+}
+
+/**
+ * The element alone: pixel_test's mask with the ground shadow (a low-saturation blue-grey) peeled
+ * off its edges, ring by ring. Unlike an outline-enclosed region this holds for small elements,
+ * whose faint outlines leak.
+ */
+function elementMask(rgb, w, h) {
+  const mask = testMask(rgb, w, h);
+  const shadow = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const r = rgb[i * 3]; const g = rgb[i * 3 + 1]; const b = rgb[i * 3 + 2];
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    shadow[i] = b >= g - 1 && b >= r - 1 && lum < 205 && Math.max(r, g, b) - Math.min(r, g, b) < 24 ? 1 : 0;
+  }
+  for (let ring = 0; ring < 16; ring++) {
+    const peel = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const k = y * w + x;
+        if (!mask[k] || !shadow[k]) continue;
+        const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1
+          || !mask[k - 1] || !mask[k + 1] || !mask[k - w] || !mask[k + w];
+        if (edge) peel.push(k);
+      }
+    }
+    if (!peel.length) break;
+    for (const k of peel) mask[k] = 0;
+  }
+  return mask;
 }
 
 /** Crop of the reference sheet as float RGB. */
@@ -275,9 +287,10 @@ export function warpToReference(elements, items, sheet, { renderer, scene, camer
       const w = bx1 - bx0 + 2 * PAD; const h = by1 - by0 + 2 * PAD;
       if (!refCache[element.name]) {
         const rgb = sheetCrop(sheet, x0, y0, w, h);
+        if (window.__kitWarpProbe === element.name) window.__kitWarpRef = { w, h, rgb: [...rgb] };
         refCache[element.name] = {
           dTest: signedDistance(testMask(rgb, w, h), w, h),
-          dElem: signedDistance(outlineMask(rgb, w, h), w, h),
+          dElem: signedDistance(elementMask(rgb, w, h), w, h),
         };
       }
       const ref = refCache[element.name];

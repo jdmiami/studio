@@ -10,7 +10,8 @@ const finalShader = {
     uTexel: { value: new THREE.Vector2() },
     uScale: { value: 1 }, // output pixels per reference pixel
     uExposure: { value: 1 },
-    uLine: { value: new THREE.Vector2(0.9, 0.9) }, // silhouette-line darkening: side-facing, up-facing edges
+    uLine: { value: new THREE.Vector2(0.88, 0.85) }, // silhouette-line darkening: side-facing, up-facing edges
+    uLineWidth: { value: 1.25 }, // silhouette-line width, in reference pixels (swept)
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -23,6 +24,7 @@ const finalShader = {
     uniform float uScale;
     uniform float uExposure;
     uniform vec2 uLine;
+    uniform float uLineWidth;
     varying vec2 vUv;
 
     float depthAt(vec2 uv) { return texture2D(tDepth, uv).x; }
@@ -37,7 +39,7 @@ const finalShader = {
       bool inside = d < 0.9999;
       // Scan a small disc: nearest background (for the silhouette line) and nearest object
       // (for the halo), plus the largest depth step to a nearer neighbor (overlap lines).
-      float lineR = 1.0 * uScale;   // line width, in reference pixels times the output scale
+      float lineR = uLineWidth * uScale;   // line width, in reference pixels times the output scale
       float haloR = 1.2 * uScale;
       float nearestBg = 99.0;
       vec2 bgDir = vec2(0.0); // direction to the nearest background pixel
@@ -47,7 +49,7 @@ const finalShader = {
         for (int x = -5; x <= 5; x++) {
           vec2 o = vec2(float(x), float(y));
           float r = length(o);
-          if (r > haloR + 0.5) continue;
+          if (r > max(haloR, lineR) + 0.5) continue;
           float nd = depthAt(vUv + o * uTexel);
           bool nInside = nd < 0.9999;
           if (inside && !nInside && r < nearestBg) { nearestBg = r; bgDir = o / max(r, 1e-3); }

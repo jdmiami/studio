@@ -9,7 +9,7 @@
 // fuzzy rim, lighter where the light hits.
 import * as THREE from 'three';
 import { prepareTextileGeometry } from '../../textile.js';
-import { PASTEL, felt, lumpy, mottle, shadeBottom } from '../style.js';
+import { PASTEL, felt, lumpy, mottle, profileLathe, shadeBottom } from '../style.js';
 
 // Where each element's base center stands on the sheet (reference px).
 export const ANCHORS = {
@@ -23,10 +23,10 @@ export const ANCHORS = {
 // scripts/kit/shadowfit.py (the sheet shows light ground right under these round elements, and a
 // soft blue-grey shadow off to the right), and a light contact line.
 export const SHADOWS = {
-  'dome-knit-teal': { cast: false, color: '#385171', blobs: [[1.678, 0.154, 2.146, 0.891, 0.028, -0.224], [0.441, -0.203, 0.514, 0.339, 0.916, -0.992], [0.631, -0.6, 0.472, 0.304, 0.05, -0.36]], contact: 0.1 },
-  'dome-knit-green': { cast: false, color: '#385171', blobs: [[1.402, -0.637, 0.457, 0.8, 0.519, -0.23], [0.375, -0.263, 0.533, 0.327, 0.949, -0.602], [0.437, -0.659, 0.513, 0.278, 0.06, 0.0]], contact: 0.1 },
-  'bush-round-light': { cast: false, color: '#385171', blobs: [[1.321, -0.2, 0.574, 0.797, 0.384, 0.409], [0.466, -0.131, 0.364, 0.436, 0.652, -0.233], [0.619, 0.086, 2.102, 1.112, 0.04, 0.239]], contact: 0.1 },
-  'bush-round-dark': { cast: false, color: '#385171', blobs: [[-1.721, -2.998, 2.206, 2.499, 0.036, -1.569], [0.54, -0.155, 0.253, 0.424, 0.559, 0.274], [1.2, -0.6, 0.5, 0.4, 0.05, 0.0]], contact: 0.1 },
+  'dome-knit-teal': { cast: false, color: '#3b516e', blobs: [[2.262, 0.034, 2.459, 0.991, 0.028, -0.024], [0.441, -0.187, 0.601, 0.339, 0.945, -1.149], [0.245, -0.485, 0.494, 0.862, 0.949, -0.16]], contact: 0.1 },
+  'dome-knit-green': { cast: false, color: '#3b516e', blobs: [[1.522, -0.397, 0.557, 0.74, 0.949, -0.35], [0.375, -0.263, 0.555, 0.419, 0.949, -1.018], [0.385, -0.557, 0.513, 0.398, 0.157, 0.548]], contact: 0.1 },
+  'bush-round-light': { cast: false, color: '#3b516e', blobs: [[1.441, -0.08, 0.561, 0.676, 0.924, 0.052], [0.492, -0.131, 0.342, 0.436, 0.459, 0.07], [0.928, -0.133, 0.842, 1.162, 0.034, -0.19]], contact: 0.1 },
+  'bush-round-dark': { cast: false, color: '#3b516e', blobs: [[-1.145, -2.998, 0.456, 2.499, 0.126, -1.579], [0.593, -0.155, 0.176, 0.402, 0.397, 0.282], [0.558, -1.427, 2.5, 1.345, 0.015, 0.381]], contact: 0.1 },
 };
 
 // Fitted profiles: radius at heights height * i / (n - 1), from the ground up.
@@ -49,37 +49,6 @@ const COLORS = {
   light: [PASTEL.bushLight, '#93ad5a'],
   dark: [PASTEL.bushDark, '#6a8c3c'],
 };
-
-/** Radius of a fitted profile at height y (Catmull-Rom through the control radii). */
-function radiusAt({ height, radii }, y) {
-  const n = radii.length;
-  const t = THREE.MathUtils.clamp((y / height) * (n - 1), 0, n - 1);
-  const i = Math.min(Math.floor(t), n - 2);
-  const f = t - i;
-  const p0 = radii[Math.max(i - 1, 0)]; const p1 = radii[i]; const p2 = radii[i + 1]; const p3 = radii[Math.min(i + 2, n - 1)];
-  const r = 0.5 * ((2 * p1) + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f + (-p0 + 3 * p1 - 3 * p2 + p3) * f * f * f);
-  return Math.max(r, 0);
-}
-
-/**
- * A lathe through the profile from the ground up to `top`, closed with a flat bottom and, if the
- * profile is still wide at `top`, a rounded cap.
- */
-function profileLathe(profile, top, { steps = 48, segments = 96 } = {}) {
-  const pts = [new THREE.Vector2(0, 0)];
-  for (let k = 0; k <= steps; k++) {
-    const y = (top * k) / steps;
-    pts.push(new THREE.Vector2(Math.max(radiusAt(profile, y), 0.002), y));
-  }
-  const rTop = radiusAt(profile, top);
-  if (rTop > 0.01) {
-    for (let k = 1; k <= 8; k++) {
-      const a = (k / 8) * (Math.PI / 2);
-      pts.push(new THREE.Vector2(Math.max(rTop * Math.cos(a), 0.001), top + rTop * 0.45 * Math.sin(a)));
-    }
-  }
-  return prepareTextileGeometry(new THREE.LatheGeometry(pts, segments));
-}
 
 /** Pushes vertices out along their radius in vertical ribs (the knit's cable columns). */
 function cables(geometry, { count = 14, amount = 0.016, from = 0.12, to = 0.95 } = {}) {
@@ -129,7 +98,7 @@ function bush(id, variant, seed) {
   mottle(g, color, deep, { scale: 4, seed, bias: -0.1 });
   shadeBottom(g, { from: 0, to: 0.25, dark: 0.5 }); // dark underside band, as on the knit domes
   const group = new THREE.Group();
-  group.add(new THREE.Mesh(g, felt('#ffffff', { fuzz: 0.35 })));
+  group.add(new THREE.Mesh(g, felt('#ffffff', { fuzz: 0.15 })));
   return group;
 }
 
