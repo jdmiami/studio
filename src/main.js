@@ -106,8 +106,13 @@ function startCave() {
     if (near.id === 'dog') hud.showToast('The fluffy dog wags its whole body at you!');
   });
 
-  // Read-only handle for automated tests (scripts/fp-walk-test.mjs).
+  // Read-only handles for automated tests (scripts/fp-walk-test.mjs, scripts/fp/trace_blocks.py).
   window.__phluph = { get position() { return controls.position.clone(); } };
+  window.__phluphLayout = Object.fromEntries(cave.columns);
+  window.__phluphCamera = () => ({
+    fov: camera.fov, eye: camera.position.toArray(),
+    yaw: THREE.MathUtils.radToDeg(camera.rotation.y), pitch: THREE.MathUtils.radToDeg(camera.rotation.x), roll: THREE.MathUtils.radToDeg(camera.rotation.z),
+  });
 
   const timerStart = 15 * 60 - 3; // matches the reference frame's 14:57
   return {
