@@ -5,8 +5,9 @@ import { buildCaveLevel, DOOR } from './level.js';
 import placement from './props-placement.json';
 import { loadKitAssets, placeKitModel } from './kit-assets.js';
 import { buildTracedDoor } from './door.js';
+import { buildTracedProps } from './traced-props.js';
 import {
-  buildBroomTree, buildLightShafts, buildScaffold, buildStones,
+  buildLightShafts, buildScaffold,
 } from './props.js';
 
 /** Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag). */
@@ -26,8 +27,8 @@ export function buildCave(scene, { hide = null } = {}) {
   const vec = (p) => new THREE.Vector3(p.x, p.y, p.z);
   const scaled = (object, s) => { object.scale.setScalar(s); return object; };
 
-  for (const p of byName('broom-tree')) scene.add(scaled(buildBroomTree(vec(p), random), p.scale));
-  scene.add(buildStones(byName('stone').map((p) => Object.assign(vec(p), { scale: p.scale })), random));
+  // The stepped felt domes and the broom tree, traced from the reference (src/cave/traced-props.js).
+  scene.add(buildTracedProps());
   for (const p of byName('scaffold')) {
     const scaffold = scaled(buildScaffold(vec(p)), p.scale);
     scaffold.rotation.y = p.yaw;
@@ -53,7 +54,6 @@ export function buildCave(scene, { hide = null } = {}) {
     for (const p of byName('willow')) place('tree-willow-a', p);
     for (const p of byName('knit-shrub')) place('dome-knit-teal', p);
     for (const p of byName('knit-bush')) place('dome-knit-green', p);
-    byName('bush').forEach((p, i) => place(i % 2 ? 'bush-round-dark' : 'bush-round-light', p));
     const shrooms = ['mushroom-pink', 'mushroom-tan', 'mushroom-lilac'];
     byName('mushroom').forEach((p, i) => place(shrooms[i % shrooms.length], p));
     for (const p of byName('fence')) {
