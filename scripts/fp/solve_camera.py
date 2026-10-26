@@ -32,8 +32,7 @@ from scipy.optimize import least_squares, minimize
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from compare_frame import H, MASKS, REFERENCE, W  # noqa: E402
 
-DEFAULT_OUT = os.environ.get(
-    'SOLVE_OUT', '/tmp/claude-0/-home-user-studio/f06c2a48-760d-5fa0-9bee-f8d056789043/scratchpad/wf-camera')
+DEFAULT_OUT = os.environ.get('SOLVE_OUT', str(Path(__file__).resolve().parents[2] / 'screenshots/fp'))
 CX, CY = W / 2, H / 2
 MIN_LEN = 15.0          # px: shorter segments are texture, not block edges
 CAUCHY_PX = 1.5         # robust scale for the vanishing-point residual (px)

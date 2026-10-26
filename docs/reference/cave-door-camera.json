@@ -1,0 +1,13 @@
+{
+ "_": "Camera of docs/reference/cave-door.jpg (1024x572), solved by line tracing (scripts/fp/solve_camera.py, cross-checked by scripts/fp/fit_camera.py). three.js conventions: vertical fov in degrees, Euler YXZ, yaw 0 looks down -z and positive yaw turns toward -x, positive pitch looks up; eye in world units (block (x,y,z) fills [x-0.5,x+0.5] x [y,y+1] x [z-0.5,z+0.5]).",
+ "fov": 58.29,
+ "yaw": 40.43,
+ "pitch": -7.99,
+ "roll": -0.11,
+ "eye": [
+  7.4,
+  3.775,
+  2.261
+ ],
+ "flags": "eye=7.4,3.775,2.261&look=40.43,-7.99,-0.11&fov=58.29"
+}

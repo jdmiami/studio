@@ -178,7 +178,9 @@ export function buildCaveLevel({ hide = null } = {}) {
     const open = !solid.has(key(b.x, b.y + 1, b.z));
     const design = designFor(b);
     const col = columns.get(`${b.x},${b.z}`);
-    if (b.kind === 'wall' && open && b.y < 9) grassCells.push({ x: b.x, z: b.z, y: col.top });
+    // Only a column's real top block carries grass (the door threshold's hidden blocks under the
+    // leaves have open tops too, but they are never seen).
+    if (b.kind === 'wall' && open && b.y < 9 && b.y + 1 === Math.ceil(col.top)) grassCells.push({ x: b.x, z: b.z, y: col.top });
     // Fractional tops (the pool, the half step) sink the whole column.
     const y = b.kind === 'ceiling' ? b.y : b.y + (col.top - Math.ceil(col.top));
     // Soft depth shading: blocks lower in a stack sit in more shadow (no shadow maps needed).

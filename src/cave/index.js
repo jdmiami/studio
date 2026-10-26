@@ -61,14 +61,10 @@ export function buildCave(scene, { hide = null } = {}) {
     heightAt: level.heightAt,
     columns: level.columns,
     interactables,
-    // The reference frame's camera, solved by line tracing (scripts/fp/solve_camera.py): the player
-    // stands at the front-right corner of the room looking 40 degrees left of the door's axis, eye at
-    // y = 3.78 (so the landing under the spawn should be 2.2 high; the eye is EYE_HEIGHT above it).
-    spawn: {
-      position: new THREE.Vector3(7.4, 0, 2.26),
-      yaw: THREE.MathUtils.degToRad(40.43),
-      pitch: THREE.MathUtils.degToRad(-7.99),
-    },
+    // The reference frame's camera (docs/reference/cave-door-camera.json, solved by line tracing)
+    // stands at the room's front-right corner looking 40 degrees left of the door's axis, which this
+    // layout walls in; the spawn moves there when the layout is rebuilt around the reference.
+    spawn: { position: new THREE.Vector3(-5.5, 0, -1.5), yaw: 0, pitch: -0.1 },
     stats: { blocks: level.blockCount, caps: level.capCount },
     update(time) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03;
