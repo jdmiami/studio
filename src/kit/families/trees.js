@@ -15,8 +15,8 @@ import { PASTEL, bulge, felt, lumpy, mottle, shadeBottom, softBox } from '../sty
 // Where each tree's base center stands on the sheet (reference px), from scripts/kit/register.py.
 export const ANCHORS = {
   'tree-cube-large': [49.00, 151.92], // anchor
-  'tree-cube-small': [116.50, 154.92], // anchor
-  'tree-willow-a': [181.00, 149.18], // anchor
+  'tree-cube-small': [116.50, 154.42], // anchor
+  'tree-willow-a': [181.00, 149.68], // anchor
   'tree-willow-b': [247.50, 148.40], // anchor
 };
 
@@ -25,11 +25,15 @@ export const FIT = {
   'tree-cube-large': [1, 0.99, 0.94, 0],
 };
 
-// Extra soft shadow under the canopy (screen-aligned [s, d, rs, rd, strength]): the reference
-// darkens the ground beneath the canopy's right half, which the global shadow light misses.
+// Ground shadows. The sheet's trees throw long soft shadows back and to the right, which the
+// global shadow light (tuned to the blocks' short ones) can't make, so each tree drops its cast
+// shadow for blobs [s, d, rs, rd, strength, turn] and a colour fitted to the reference by
+// scripts/kit/shadowfit.py.
 export const SHADOWS = {
-  'tree-cube-large': { blobs: [[0.45, 0, 0.5, 0.32, 0.55]] },
-  'tree-cube-small': { contact: 0.15 },
+  'tree-cube-large': { cast: false, color: '#5b6b82', blobs: [[0.983, -0.341, 1.829, 1.055, 0.704, -0.101], [0.363, 0.164, 0.825, 0.458, 0.579, -0.08]] },
+  'tree-cube-small': { cast: false, color: '#5b6b82', blobs: [[0.514, -0.431, 0.819, 1.147, 0.584, 1.106], [0.668, -0.064, 0.996, 0.302, 0.463, -0.303]] },
+  'tree-willow-a': { cast: false, color: '#5b6b82', blobs: [[0.771, -0.323, 2.457, 0.954, 0.747, -0.136], [0.218, 0.235, 0.913, 0.287, 0.748, -0.111]] },
+  'tree-willow-b': { cast: false, color: '#5b6b82', blobs: [[1.365, -0.462, 2.498, 0.986, 0.581, -0.087], [0.344, 0.05, 0.953, 0.389, 0.504, -0.195]] },
 };
 
 /** Merge geometries that may differ in indexing/uv into one felt-ready geometry. */
@@ -42,9 +46,11 @@ function merge(parts) {
   }));
 }
 
-function trunk(radius, height, seed) {
+/** A barked trunk; `s`/`d` move its base off the element's anchor (screen-aligned, see worldOf). */
+function trunk({ radius, height, s = 0, d = 0 }, seed) {
   const g = prepareTextileGeometry(new THREE.CylinderGeometry(radius * 0.95, radius, height, 28, 12));
-  g.translate(0, height / 2, 0);
+  const [x, , z] = worldOf(s, 0, d);
+  g.translate(x, height / 2, z);
   lumpy(g, { amount: 0.012, scale: 9, seed });
   mottle(g, PASTEL.bark, '#6e5038', { scale: 7, seed, stretch: [3, 0.4, 3], ridged: true, bias: 0.15 });
   shadeBottom(g, { from: 0, to: 0.12, dark: 0.7 });
@@ -64,7 +70,8 @@ const worldOf = (s, y, d) => [(s + d) * SQRT1_2, y, (d - s) * SQRT1_2];
 // one has a front-left puff, a bigger front-right puff and a top puff behind them.
 const CUBE_TREES = {
   large: {
-    trunk: { radius: 0.215, height: 0.85 },
+    // Trunks measured on the sheet: width, and where the front of the base meets the ground.
+    trunk: { radius: 0.2, height: 0.85, d: 0.04 },
     // Fitted to the reference silhouette with scripts/kit/silfit.py.
     puffs: [
       [-0.474, 0.815, 0.220, 0.694],
@@ -84,7 +91,7 @@ const CUBE_TREES = {
     ],
   },
   small: {
-    trunk: { radius: 0.205, height: 0.91 },
+    trunk: { radius: 0.2, height: 0.91, s: -0.038, d: -0.17 },
     // Fitted to the reference silhouette with scripts/kit/silfit.py.
     puffs: [
       [-0.349, 0.727, 0.200, 0.804],
@@ -99,7 +106,7 @@ const CUBE_TREES = {
 function cubeTree(size, seed, random) {
   const spec = CUBE_TREES[size];
   const group = new THREE.Group();
-  group.add(new THREE.Mesh(trunk(spec.trunk.radius, spec.trunk.height, seed), felt('#ffffff', { fuzz: 0.1 })));
+  group.add(new THREE.Mesh(trunk(spec.trunk, seed), felt('#ffffff', { fuzz: 0.1 })));
   const puffs = spec.puffs.map(([ps, py, pd, sz], i) => {
     const g = softBox(sz, sz * 0.92, sz, { radius: sz * 0.4, res: 40 });
     bulge(g, 0.12);
@@ -173,14 +180,22 @@ function lobe({ s, d, top, r, drop }, random, lengths) {
   return parts;
 }
 
+// Willow trunks, measured on the sheet between the drips: both stand left of the canopy's center.
+const WILLOW_TRUNKS = {
+  'tree-willow-a': { radius: 0.18, height: 0.75, s: -0.1, d: -0.06 },
+  'tree-willow-b': { radius: 0.19, height: 0.75, s: -0.1, d: -0.2 },
+};
+
 function willow(seed, random, id) {
   const group = new THREE.Group();
-  group.add(new THREE.Mesh(trunk(0.15, 0.75, seed), felt('#ffffff', { fuzz: 0.1 })));
+  group.add(new THREE.Mesh(trunk(WILLOW_TRUNKS[id] ?? { radius: 0.18, height: 0.75 }, seed), felt('#ffffff', { fuzz: 0.1 })));
   const parts = WILLOW_LOBES.flatMap((l, i) => lobe(l, random, WILLOW_DRIPS[id]?.[i]));
   const canopy = merge(parts);
   mottle(canopy, PASTEL.willow, '#9fbd80', { scale: 6, seed, stretch: [3, 0.5, 3], bias: -0.1 });
   shadeBottom(canopy, { from: 0.2, to: 1.1, dark: 0.85 });
-  group.add(new THREE.Mesh(canopy, felt('#ffffff', { fuzz: 0.3 })));
+  const drape = new THREE.Mesh(canopy, felt('#ffffff', { fuzz: 0.3 }));
+  drape.userData.noContact = true; // drip tips brush the ground; only the trunk stands on it
+  group.add(drape);
   return group;
 }
 

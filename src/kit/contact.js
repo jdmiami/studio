@@ -41,7 +41,8 @@ export function addContactShadow(scene, element, { strength = 0.65, softness = 0
   const max = new THREE.Vector2(-Infinity, -Infinity);
   const v = new THREE.Vector3();
   element.traverse((o) => {
-    if (!o.isMesh || o.isInstancedMesh) return;
+    // Parts that only brush the ground (willow drip tips) set userData.noContact.
+    if (!o.isMesh || o.isInstancedMesh || o.userData.noContact) return;
     const pos = o.geometry.getAttribute('position');
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
@@ -87,9 +88,11 @@ const blobFragment = /* glsl */ `
   varying vec2 vXZ;
   void main() {
     vec2 p = vXZ - uCenter;
+    // World x/z -> screen-aligned (s: screen-right, d: toward the camera), then the blob's own turn.
+    vec2 q = vec2(p.x - p.y, p.x + p.y) * 0.70710678;
     float c = cos(uAngle); float s = sin(uAngle);
-    p = vec2(c * p.x - s * p.y, s * p.x + c * p.y) / uRadii;
-    float a = uStrength * (1.0 - smoothstep(0.15, 1.0, length(p)));
+    q = vec2(c * q.x + s * q.y, -s * q.x + c * q.y) / uRadii;
+    float a = uStrength * (1.0 - smoothstep(0.15, 1.0, length(q)));
     gl_FragColor = vec4(uColor, a);
   }
 `;
@@ -97,14 +100,16 @@ const blobFragment = /* glsl */ `
 /**
  * Soft elliptical shadow blobs on the ground, for elements whose reference shadow a single
  * directional light can't reproduce (the sheet's shadows are not physically consistent: blocks
- * cast short ones, trees long ones). Each blob is [s, d, rs, rd, strength] in screen-aligned
- * units relative to the element's base: s along screen-right, d toward the camera.
+ * cast short ones, trees long ones). Each blob is [s, d, rs, rd, strength, turn?] in screen-aligned
+ * units relative to the element's base: s along screen-right, d toward the camera, radii along
+ * those axes, and an optional turn (radians, from the s axis toward d). scripts/kit/shadowfit.py
+ * fits them to the reference's ground.
  */
 export function addShadowBlobs(scene, element, blobs, color = '#3a3d55') {
   const k = Math.SQRT1_2;
-  for (const [bs, bd, rs, rd, strength] of blobs) {
+  for (const [bs, bd, rs, rd, strength, turn = 0] of blobs) {
     const center = new THREE.Vector2(element.position.x + (bs + bd) * k, element.position.z + (bd - bs) * k);
-    const size = Math.max(rs, rd) * 2.2;
+    const size = Math.max(rs, rd) * 2.2; // the blob fades to zero at radius 1
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(size, size),
       new THREE.ShaderMaterial({
@@ -115,7 +120,7 @@ export function addShadowBlobs(scene, element, blobs, color = '#3a3d55') {
         uniforms: {
           uCenter: { value: center },
           uRadii: { value: new THREE.Vector2(rs, rd) },
-          uAngle: { value: -Math.PI / 4 }, // screen-aligned axes
+          uAngle: { value: turn },
           uStrength: { value: strength },
           uColor: { value: new THREE.Color(color) },
         },

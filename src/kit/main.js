@@ -11,6 +11,7 @@
 //   ?warp=N              silhouette-warp passes (default 2 with the baked finish, 0 skips; src/kit/warp.js)
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
+//   ?line=side,up        silhouette-line darkening on side- and up-facing edges (for tuning sweeps)
 //   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
 //   ?anchor=id:u,v       override one element's anchor (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
@@ -73,6 +74,7 @@ Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, n
 scene.add(sun);
 scene.add(sun.target);
 const kit = createKitRenderer(renderer, scene, camera);
+if (params.has('line')) kit.uniforms.uLine.value.fromArray(params.get('line').split(',').map(Number));
 
 function layout() {
   // Fit the whole reference sheet in the window, keeping its aspect.
@@ -147,11 +149,11 @@ await Promise.all([...new Set(items.map((it) => it.family))].map(async (family) 
         object.rotation.y += fit[3] ?? 0;
       }
       object.name = item.id;
-      // A family may export SHADOWS = { id: { cast: false, blobs: [[s, d, rs, rd, strength]], contact: 0.3 } }
+      // A family may export SHADOWS = { id: { cast: false, blobs: [[s, d, rs, rd, strength, turn]], color, contact: 0.3 } }
       // to drop the global cast shadow, add hand-placed soft blobs, or soften the contact shadow.
       const shadow = blobOverride?.id === item.id ? blobOverride : mod.SHADOWS?.[item.id];
       scene.add(shadow?.cast === false ? object : castShadows(object));
-      if (shadow?.blobs) addShadowBlobs(scene, object, shadow.blobs);
+      if (shadow?.blobs) addShadowBlobs(scene, object, shadow.blobs, shadow.color);
       addContactShadow(scene, object, shadow?.contact !== undefined ? { ...contactOptions, strength: shadow.contact } : contactOptions);
     } catch (e) {
       errors.push(`${item.id}: ${e.message}`);

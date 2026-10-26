@@ -169,6 +169,8 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
       const col = geometry.getAttribute('color');
       normalMatrix.getNormalMatrix(mesh.matrixWorld);
       const done = new Uint8Array(pos.count);
+      const proc = col.array.slice(); // procedural colours, for the fill's shading transfer
+      const lum = (a, i) => 0.2126 * a[i * 3] + 0.7152 * a[i * 3 + 1] + 0.0722 * a[i * 3 + 2];
       const local = new Float32Array(pos.count * 3); // element-space positions, for mirror fill
       for (let i = 0; i < pos.count; i++) {
         total++;
@@ -215,31 +217,41 @@ export async function bakeFinish(elements, { renderer, scene, camera, toSheet, o
         if (!nearGrid.has(k)) nearGrid.set(k, []);
         nearGrid.get(k).push(i);
       }
-      const filled = new Uint8Array(pos.count);
-      for (let i = 0; i < pos.count; i++) {
-        if (done[i]) continue;
-        const x = wpos[i * 3]; const y = wpos[i * 3 + 1]; const z = wpos[i * 3 + 2];
-        const cx = Math.floor(x / nearCell); const cy = Math.floor(y / nearCell); const cz = Math.floor(z / nearCell);
-        let wsum = 0; let r = 0; let g = 0; let b = 0;
-        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-          const list = nearGrid.get(`${cx + dx},${cy + dy},${cz + dz}`);
-          if (!list) continue;
-          for (const j of list) {
-            const ddx = wpos[j * 3] - x; const ddy = wpos[j * 3 + 1] - y; const ddz = wpos[j * 3 + 2] - z;
-            const dist = Math.hypot(ddx, ddy, ddz);
-            if (dist > nearCell) continue;
-            const facing = wnrm[i * 3] * wnrm[j * 3] + wnrm[i * 3 + 1] * wnrm[j * 3 + 1] + wnrm[i * 3 + 2] * wnrm[j * 3 + 2];
-            if (facing < 0.3) continue;
-            const w = facing * (1 - dist / nearCell);
-            wsum += w; r += col.getX(j) * w; g += col.getY(j) * w; b += col.getZ(j) * w;
+      // Two rounds: close neighbors with similar normals first, then (for silhouette rims, which
+      // face sideways and are too close to the outline to bake) anything baked within twice the
+      // radius whose normal isn't opposite, so no rim keeps the procedural colour.
+      for (const [radius, minFacing] of [[nearCell, 0.3], [nearCell * 2, -0.1]]) {
+        const filled = new Uint8Array(pos.count);
+        for (let i = 0; i < pos.count; i++) {
+          if (done[i]) continue;
+          const x = wpos[i * 3]; const y = wpos[i * 3 + 1]; const z = wpos[i * 3 + 2];
+          const cx = Math.floor(x / nearCell); const cy = Math.floor(y / nearCell); const cz = Math.floor(z / nearCell);
+          const reach = Math.ceil(radius / nearCell);
+          let wsum = 0; let r = 0; let g = 0; let b = 0; let pl = 0;
+          for (let dx = -reach; dx <= reach; dx++) for (let dy = -reach; dy <= reach; dy++) for (let dz = -reach; dz <= reach; dz++) {
+            const list = nearGrid.get(`${cx + dx},${cy + dy},${cz + dz}`);
+            if (!list) continue;
+            for (const j of list) {
+              const ddx = wpos[j * 3] - x; const ddy = wpos[j * 3 + 1] - y; const ddz = wpos[j * 3 + 2] - z;
+              const dist = Math.hypot(ddx, ddy, ddz);
+              if (dist > radius) continue;
+              const facing = wnrm[i * 3] * wnrm[j * 3] + wnrm[i * 3 + 1] * wnrm[j * 3 + 1] + wnrm[i * 3 + 2] * wnrm[j * 3 + 2];
+              if (facing < minFacing) continue;
+              const w = (facing - minFacing + 0.05) * (1 - dist / radius);
+              wsum += w; r += col.getX(j) * w; g += col.getY(j) * w; b += col.getZ(j) * w;
+              pl += lum(proc, j) * w;
+            }
+          }
+          if (wsum > 0) {
+            // Keep this vertex's procedural shading relative to its sources (contact darkening on
+            // a bottom rim), in the reference's colour.
+            const k = Math.min(1.2, Math.max(0.5, lum(proc, i) / Math.max(pl / wsum, 1e-4)));
+            col.setXYZ(i, (r / wsum) * k, (g / wsum) * k, (b / wsum) * k);
+            filled[i] = 1;
           }
         }
-        if (wsum > 0) {
-          col.setXYZ(i, r / wsum, g / wsum, b / wsum);
-          filled[i] = 1;
-        }
+        for (let i = 0; i < pos.count; i++) if (filled[i]) done[i] = 1;
       }
-      for (let i = 0; i < pos.count; i++) if (filled[i]) done[i] = 1;
 
       // Mirror fill: a hidden vertex takes the albedo of the nearest baked vertex at its mirror
       // image across the element's x = 0 and z = 0 planes.

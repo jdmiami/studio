@@ -15,7 +15,7 @@ export const ANCHORS = {
   'block-pink': [173.50, 61.62], // anchor
   'block-water': [236.50, 61.34], // anchor
   'block-stone-plain': [340.50, 61.06], // anchor
-  'block-stone-seam-a': [403.50, 61.34], // anchor
+  'block-stone-seam-a': [403.00, 61.34], // anchor
   'block-stone-seam-b': [466.00, 61.06], // anchor
 };
 

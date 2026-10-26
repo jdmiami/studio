@@ -10,6 +10,7 @@ const finalShader = {
     uTexel: { value: new THREE.Vector2() },
     uScale: { value: 1 }, // output pixels per reference pixel
     uExposure: { value: 1 },
+    uLine: { value: new THREE.Vector2(0.9, 0.9) }, // silhouette-line darkening: side-facing, up-facing edges
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -21,6 +22,7 @@ const finalShader = {
     uniform vec2 uTexel;
     uniform float uScale;
     uniform float uExposure;
+    uniform vec2 uLine;
     varying vec2 vUv;
 
     float depthAt(vec2 uv) { return texture2D(tDepth, uv).x; }
@@ -55,10 +57,10 @@ const finalShader = {
       }
       vec3 srgb = toSRGB(col);
       if (inside && nearestBg <= lineR + 0.5) {
-        // The dark silhouette line takes the element's own hue, and fades out on upward-facing edges:
-        // the reference's top edges are just soft felt against the background.
+        // The dark silhouette line takes the element's own hue. uLine sets its strength on side- and
+        // up-facing edges separately (scripts/kit/edgeprofile.py measures both on the reference).
         float up = smoothstep(0.35, 0.85, bgDir.y);
-        srgb *= mix(0.76, 1.0, up);
+        srgb *= mix(uLine.x, uLine.y, up);
       } else if (inside && step > 0.004) {
         srgb *= mix(1.0, 0.8, smoothstep(0.004, 0.02, step)); // softer crease where parts overlap
       } else if (!inside && nearestObj <= haloR + 0.5) {
@@ -100,5 +102,5 @@ export function createKitRenderer(renderer, scene, camera) {
     renderer.render(quadScene, quadCamera);
   }
 
-  return { render, setSize };
+  return { render, setSize, uniforms: material.uniforms };
 }
