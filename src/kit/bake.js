@@ -28,15 +28,39 @@ export function loadSheet() {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
       const { data, width, height } = ctx.getImageData(0, 0, img.width, img.height);
-      // Foreground (differs from the grey background), then eroded by 2 px so silhouette-edge
-      // pixels (outline, halo, anti-aliasing) never become albedo.
-      const fg = new Uint8Array(width * height);
-      for (let i = 0; i < width * height; i++) {
-        const r = data[i * 4]; const g = data[i * 4 + 1]; const b = data[i * 4 + 2];
-        const d = Math.hypot(r - BG[0], g - BG[1], b - BG[2]);
-        const sat = Math.max(r, g, b) - Math.min(r, g, b);
-        fg[i] = d > 20 || sat > 14 ? 1 : 0;
+      // Foreground as scripts/kit/pixel_test.py sees it: everything the backdrop can't reach by
+      // flooding in from the sheet's border through backdrop-coloured pixels, stopped by strong
+      // edges (the outlines). White fur and pale highlights are backdrop-coloured but enclosed, so
+      // they count. Then eroded by 2 px so silhouette-edge pixels (outline, halo, anti-aliasing)
+      // never become albedo.
+      const lum = new Float32Array(width * height);
+      for (let i = 0; i < width * height; i++) lum[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+      const passable = new Uint8Array(width * height);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = y * width + x;
+          const r = data[i * 4]; const g = data[i * 4 + 1]; const b = data[i * 4 + 2];
+          const gx = x > 0 && x < width - 1 ? lum[i + 1] - lum[i - 1] : 0;
+          const gy = y > 0 && y < height - 1 ? lum[i + width] - lum[i - width] : 0;
+          const bgLike = Math.hypot(r - BG[0], g - BG[1], b - BG[2]) <= 20 && Math.max(r, g, b) - Math.min(r, g, b) <= 14;
+          passable[i] = bgLike && Math.hypot(gx, gy) <= 28 ? 1 : 0;
+        }
       }
+      const reached = new Uint8Array(width * height);
+      const stack = [];
+      const seed = (i) => { if (passable[i] && !reached[i]) { reached[i] = 1; stack.push(i); } };
+      for (let x = 0; x < width; x++) { seed(x); seed((height - 1) * width + x); }
+      for (let y = 0; y < height; y++) { seed(y * width); seed(y * width + width - 1); }
+      while (stack.length) {
+        const i = stack.pop();
+        const x = i % width;
+        if (x > 0) seed(i - 1);
+        if (x < width - 1) seed(i + 1);
+        if (i >= width) seed(i - width);
+        if (i < (height - 1) * width) seed(i + width);
+      }
+      const fg = new Uint8Array(width * height);
+      for (let i = 0; i < width * height; i++) fg[i] = reached[i] ? 0 : 1;
       // inner: 2 px in (the default); inner1: 1 px in, for thin parts (fence rails, sticks) whose
       // 2 px margin would leave only their lit centre line to bake.
       const erode = (r) => {

@@ -12,6 +12,7 @@ const finalShader = {
     uExposure: { value: 1 },
     uLine: { value: new THREE.Vector2(0.88, 0.85) }, // silhouette-line darkening: side-facing, up-facing edges
     uLineWidth: { value: 1.25 }, // silhouette-line width, in reference pixels (swept)
+    uLineDown: { value: 0.88 }, // silhouette-line darkening on down-facing edges (an element's bottom)
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -25,6 +26,7 @@ const finalShader = {
     uniform float uExposure;
     uniform vec2 uLine;
     uniform float uLineWidth;
+    uniform float uLineDown;
     varying vec2 vUv;
 
     float depthAt(vec2 uv) { return texture2D(tDepth, uv).x; }
@@ -62,7 +64,8 @@ const finalShader = {
         // The dark silhouette line takes the element's own hue. uLine sets its strength on side- and
         // up-facing edges separately (scripts/kit/edgeprofile.py measures both on the reference).
         float up = smoothstep(0.35, 0.85, bgDir.y);
-        srgb *= mix(uLine.x, uLine.y, up);
+        float down = smoothstep(0.35, 0.85, -bgDir.y);
+        srgb *= mix(mix(uLine.x, uLine.y, up), uLineDown, down);
       } else if (inside && step > 0.004) {
         srgb *= mix(1.0, 0.8, smoothstep(0.004, 0.02, step)); // softer crease where parts overlap
       } else if (!inside && nearestObj <= haloR + 0.5) {

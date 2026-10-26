@@ -12,8 +12,8 @@
 //   ?warp=N              silhouette-warp passes (default 3 with the baked finish, 0 skips; src/kit/warp.js)
 //   ?contact=s,soft,bx,bz  contact-shadow decal strength, softness, bias x/z (for tuning sweeps)
 //   ?shadow=opacity      cast-shadow opacity (for tuning sweeps)
-//   ?line=side,up[,w]    silhouette-line darkening on side- and up-facing edges, and width in
-//                        reference px (for tuning sweeps)
+//   ?line=side,up[,w,dn] silhouette-line darkening on side-, up- and down-facing edges, and width
+//                        in reference px (for tuning sweeps)
 //   ?fit=id:sx,sy,sz,ry  override one element's fit transform (for tuning sweeps)
 //   ?anchor=id:u,v       override one element's anchor (for tuning sweeps)
 //   ?shot=1              render a few frames, then set window.__phluphReady for screenshots
@@ -78,9 +78,10 @@ scene.add(sun);
 scene.add(sun.target);
 const kit = createKitRenderer(renderer, scene, camera);
 if (params.has('line')) {
-  const [side, up, width] = params.get('line').split(',').map(Number);
+  const [side, up, width, down] = params.get('line').split(',').map(Number);
   kit.uniforms.uLine.value.set(side, up);
   if (width) kit.uniforms.uLineWidth.value = width;
+  if (down) kit.uniforms.uLineDown.value = down;
 }
 
 function layout() {

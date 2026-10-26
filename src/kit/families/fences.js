@@ -10,8 +10,8 @@ import { PASTEL, felt, lumpy, mottle, shadeBottom } from '../style.js';
 
 // Where each fence's center (midway between its posts) stands on the sheet (reference px).
 export const ANCHORS = {
-  'fence-a': [177.87, 204.36], // anchor
-  'fence-b': [226.59, 205.13], // anchor
+  'fence-a': [177.87, 203.86], // anchor
+  'fence-b': [226.59, 204.63], // anchor
   'fence-c': [271.25, 207.19], // anchor
 };
 
@@ -63,7 +63,8 @@ function fence(id, seed) {
     shadeBottom(g, { from: 0, to: 0.15, dark: 0.7 });
     group.add(new THREE.Mesh(g, material));
   }
-  const da = worldOf(...[L.b[0] - L.a[0], 0, L.b[1] - L.a[1]]).normalize().multiplyScalar(L.over);
+  // Rails end inside the posts: their rounded ends never poke out beside a post.
+  const da = worldOf(...[L.b[0] - L.a[0], 0, L.b[1] - L.a[1]]).normalize().multiplyScalar(Math.min(L.over, L.post - L.rail - 0.04));
   for (const [k, y] of L.rails.entries()) {
     const p0 = worldOf(L.a[0], y, L.a[1]).sub(da);
     const p1 = worldOf(L.b[0], y, L.b[1]).add(da);

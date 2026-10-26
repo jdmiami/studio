@@ -23,8 +23,10 @@ reference, so each element can be scored against its own crop.
    the top's light, right faces (+x) about 0.47. Do not add lights: the shared shader uniforms
    (`applyKitLighting`) already give this. Bake contact darkening with `shadeBottom`.
 5. **Outline and shadow come from the stage.** A thin dark line inside each silhouette, a faint
-   light halo outside it, a softer crease where parts overlap, and a soft shadow falling right.
-   Do not model outlines.
+   light halo outside it, a softer crease where parts overlap. Do not model outlines. Shadows are
+   per element: the sheet's are not one light (blocks cast short ones; trees, fences and props
+   long soft ones thrown back and to the right, in a blue-grey), so most elements drop the global
+   cast shadow for fitted ones (see the loop).
 6. **Composition over detail.** Build elements from a few readable primitives (a cube tree is a
    trunk plus a cluster of fuzzy cubes; a grass cap is a slab plus a ring of felt drops). Detail
    below about 2 reference pixels does not survive the sheet's resolution.
@@ -68,28 +70,75 @@ Rules that keep elements correct:
   `mergeGeometries`.
 - Stay within the element's box: the score compares silhouettes.
 
-## The loop
+## The loop (per-pixel, until the element passes)
 
-With the dev server running (`npm run dev`):
+With the dev server running (`npm run dev`). Every element must pass `scripts/kit/pixel_test.py`:
+the render's crop aligned to the reference's (half-pixel steps) and compared at the sheet's own
+resolution, IoU >= 0.95 (hole-filled non-background masks: **the masks include cast shadows**),
+mean CIEDE2000 <= 6, p90 <= 12, worst 6x6 patch <= 14, SSIM >= 0.70, whole-crop dE <= 5. It writes
+`screenshots/kit/progress/<id>.png` (reference | render | dE heat map) and `--board` sheets.
 
 ```bash
-scripts/kit/iterate.sh <family> <label> "<what changed>"
+node scripts/screenshot.mjs out.png --page=kit.html --size=1024x572 --query="family=trees,domes"
+python3 scripts/kit/pixel_test.py out.png --family domes --board board.png
 ```
 
-It renders only that family on the kit sheet (about 5 s), scores each element against its
-reference crop, logs to `docs/kit/history/<family>.json`, and writes
-`screenshots/kit/<label>-sheet.png` (reference | render, enlarged) to read back.
+Render a family **with its neighbours** (`family=a,b`): shadows reach into each other's crops.
 
-Per element: the render crop is aligned to the reference crop (within 6 px), then
-`composite = 0.4 * fidelity + 0.3 * iou + 0.3 * color`:
+### 1. Shape: fit the silhouette, then build it
 
-- **iou**: silhouette overlap, for shape and size.
-- **fidelity**: Divine Eye soft ensemble (pHash, SSIM, edges, tone, objectness) on the
-  isolated crops, for structure and texture.
-- **color**: region color match (ΔE on a 4 x 4 grid).
+Pick the fitter that matches the element's construction; each projects its parts through the
+kit camera in Python and maximizes IoU against the reference silhouette, printing parameters the
+family file stores (with `ANCHORS`):
 
-Change one thing per round, keep it only if the family mean rises, and read the sheet every few
-rounds: the score is a guide, the reference is the judge.
+| Fitter | For |
+|---|---|
+| `silfit.py` | clusters of rounded-cube puffs (cube-tree canopies) |
+| `lathefit.py` | solids of revolution: domes, bushes, mushrooms (`--lean`, `--fixed` for a second part, `--target test` for small elements) |
+| `fencefit.py` | posts and rails (capsules); fits the wood itself, not the hole-filled mask |
+| `lollipopfit.py` | a disc on a stick (`--union` for pale candy whose outline leaks) |
+| `boxfit.py` | world-aligned rounded boxes (arches); removes the enclosed opening; nothing below y = 0 |
+| `ellipsefit.py` | ellipsoid clusters (dog: body, head, tail, legs, ears, scarf; critters) |
+| `dripfit.py` | willow strand lengths per column |
 
-`kit.html?family=trees`, `?only=id1,id2`, and `?overlay=0.5` (the reference drawn over the
-render) help when looking by eye.
+Targets: the test's mask less the ground shadow (`lathefit.test_target`), eroded by about a pixel,
+because the kit's render reads about a pixel wider than its geometry. The ground writes no depth,
+so geometry below y = 0 shows: keep parts above it.
+
+### 2. Finish: bake the reference's colours
+
+The page bakes the reference's de-lit colours into the felt as vertex colours (`src/kit/bake.js`),
+so build enough vertices (about one per sheet pixel where there is detail: faces, swirls, knit),
+and faces as rings, not fans. Per element `BAKE = { id: { skipNeutral: false } }` (white fur,
+dark eyes) or `{ margin: 1 }` (thin rails and sticks). Only felt meshes bake.
+
+### 3. Outline: the warp
+
+`src/kit/warp.js` nudges silhouette vertices (3 passes, at most a few pixels) onto the reference
+outline, measured with the test's own masks on the actual render. It fades out near the ground.
+
+### 4. Shadows: fit them
+
+- `shadowfit.py ids... --mask test --margin 1 --core [--open fences] [--through willows]`
+  fits soft blobs and their colour to the reference ground, jointly (neighbours' fitted blobs are
+  held fixed); `apply_shadows.py <family> fit.json` writes `SHADOWS` (cast: false, colour,
+  blobs). Fit the whole row at once when crops share shadows (`--region-margin 24`).
+- `planarfit.py` fits planar soft shadows (an element's own shape flattened along its own
+  direction: fences) for `SHADOWS[id].planar`.
+- Contact decals are one per part standing on the ground; set `contact` low or 0 where the
+  reference shows light ground under an element, and `userData.noContact` on parts that only brush
+  the ground (willow drips).
+
+### 5. Register, then read the board
+
+`register.py <family> --write --with <neighbours>` moves anchors until the test's offset is 0
+(the bake samples where the element stands). Registering after the warp can oscillate by half a
+pixel; keep the anchor that scored best. Then read the board: the heat map says where, the zoomed
+crops (`maskdiff.py`, `edgeprofile.py`, `--dump=__kitWarp|__kitBake` on screenshot.mjs) say why.
+
+Global settings (line strength and width in `render.js`, warp passes) are chosen by a sweep over
+every built family, never by one element.
+
+URL flags (`kit.html?...`): `family=a,b`, `only=`, `overlay=0.5`, `finish=procedural`, `warp=N`,
+`line=side,up,width,down`, `fit=`, `anchor=`, `blobs=`, `planar=`, `contact=`, `shadow=`,
+`warpprobe=id`.
