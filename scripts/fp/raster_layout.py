@@ -180,19 +180,20 @@ class Rasterizer:
         # The back wall's front face around the door is partitioned by hand below (door, posts,
         # lintel, pillar), so the vectorised +z pass leaves those cells out.
         door_row = (Z == d['z']) & (X >= d['xMin'] - 1) & (X <= d['xMax'] + 2)
-        out_P, out_c, out_k = [], [], []
+        out_P, out_c, out_k, out_xz = [], [], [], []
 
-        def emit(P, c, key):
+        def emit(P, c, key, cx=None, cz=None):
             if len(P):
                 out_P.append(P)
                 out_c.append(np.broadcast_to(c, (len(P),)).astype(np.uint8))
                 out_k.append(key)
+                out_xz.append(np.stack([np.broadcast_to(cx, (len(P),)), np.broadcast_to(cz, (len(P),))], 1))
 
         # Column tops (below the eye) and slab undersides (above it).
         m = exists & (top < ey)
-        emit(_quad_y(top[m], X[m] - 0.5, X[m] + 0.5, Z[m] - 0.5, Z[m] + 0.5), top_class[m], manhattan[m])
+        emit(_quad_y(top[m], X[m] - 0.5, X[m] + 0.5, Z[m] - 0.5, Z[m] + 0.5), top_class[m], manhattan[m], X[m], Z[m])
         m = np.isfinite(slab) & (top < slab) & (slab > ey)
-        emit(_quad_y(slab[m], X[m] - 0.5, X[m] + 0.5, Z[m] - 0.5, Z[m] + 0.5), CEILING, manhattan[m])
+        emit(_quad_y(slab[m], X[m] - 0.5, X[m] + 0.5, Z[m] - 0.5, Z[m] + 0.5), CEILING, manhattan[m], X[m], Z[m])
 
         # Side faces, per direction: the strip above the neighbour's top and below its slab.
         for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -249,9 +250,11 @@ class Rasterizer:
                     ya, yb = max(ya, a), min(yb, b)
                     if yb > ya:
                         emit(_quad_z(np.array([zc + 0.5]), np.array([x - 0.5]), np.array([x + 0.5]), np.array([ya]), np.array([yb])),
-                             c, np.array([abs(x - ex) + abs(zc - ez)]))
+                             c, np.array([abs(x - ex) + abs(zc - ez)]), float(x), float(zc))
         if not out_P:
+            self.quad_cells = np.zeros((0, 2))
             return np.zeros((0, 4, 3)), np.zeros(0, np.uint8), np.zeros(0)
+        self.quad_cells = np.concatenate(out_xz)  # (n, 2): the cell (x, z) each quad belongs to
         return np.concatenate(out_P), np.concatenate(out_c), np.concatenate(out_k)
 
     @staticmethod
@@ -260,7 +263,7 @@ class Rasterizer:
             P = _quad_x(X + 0.5 * di, Z - 0.5, Z + 0.5, ya, yb)
         else:
             P = _quad_z(Z + 0.5 * dj, X - 0.5, X + 0.5, ya, yb)
-        emit(P, cls, key)
+        emit(P, cls, key, X, Z)
 
     # --- projection -----------------------------------------------------------------------------
     def project(self, C):
@@ -282,14 +285,29 @@ class Rasterizer:
                 out.append(a + t * (b - a))
         return np.array(out)
 
-    def render(self, L, want_ids=False):
-        """Rasterizes a Layout: {'classes': uint8 (h, w), 'depth': float32 (h, w), 'quads': n}."""
+    def render(self, L, want_ids=False, window=None):
+        """Rasterizes a Layout: {'classes': uint8 (h, w), 'depth': float32 (h, w), 'quads': n}; with
+        want_ids also 'ids' (uint16, quad index + 1 per pixel, 0 = nothing) and 'cell' (int16
+        (h, w, 2): the cell (x, z) whose quad each pixel shows, -32768 where nothing is drawn).
+        With window = (u0, v0, u1, v1) the arrays are that pixel box only and the quads whose
+        bounding box misses it are skipped; the pixels equal the full render's crop exactly (the
+        drawing still happens in a full-size buffer, because fillPoly re-clips edges that leave
+        the image to integer endpoints, so its boundary pixels depend on the image bounds)."""
         P, cls, key = self.quads(L)
         n = len(P)
         h, w = self.h, self.w
+        if window is None:
+            u0, v0, u1, v1 = 0, 0, w, h
+        else:
+            u0, v0, u1, v1 = window
         ids = np.zeros((h, w), np.uint16)
         if n == 0:
-            return {'classes': ids.astype(np.uint8), 'depth': np.full((h, w), np.inf, np.float32), 'quads': 0}
+            ids = ids[v0:v1, u0:u1]
+            out = {'classes': ids.astype(np.uint8), 'depth': np.full(ids.shape, np.inf, np.float32), 'quads': 0}
+            if want_ids:
+                out['ids'] = ids
+                out['cell'] = np.full(ids.shape + (2,), -32768, np.int16)
+            return out
         assert n < 65535, f'{n} quads'
         C = (P - self.eye) @ self.cam.R  # world -> camera (R is local -> world)
         front = C[..., 2] <= -NEAR
@@ -301,7 +319,7 @@ class Rasterizer:
         uv = np.zeros((n, 4, 2))
         uv[whole] = self.project(C[whole])
         lo, hi = uv.min(1), uv.max(1)
-        visible = whole & (hi[:, 0] >= 0) & (lo[:, 0] <= w) & (hi[:, 1] >= 0) & (lo[:, 1] <= h)
+        visible = whole & (hi[:, 0] >= u0) & (lo[:, 0] <= u1) & (hi[:, 1] >= v0) & (lo[:, 1] <= v1)
         pts = np.rint(uv * (1 << SHIFT)).astype(np.int32)
         depth = np.full(n, np.inf)
         depth[whole] = -C[whole, :, 2].mean(1)
@@ -317,15 +335,19 @@ class Rasterizer:
                 if len(poly) < 3:
                     continue
                 q = self.project(poly)
-                if q[:, 0].max() < 0 or q[:, 0].min() > w or q[:, 1].max() < 0 or q[:, 1].min() > h:
+                if q[:, 0].max() < u0 or q[:, 0].min() > u1 or q[:, 1].max() < v0 or q[:, 1].min() > v1:
                     continue
                 depth[k] = -poly[:, 2].mean()
                 fill(ids, [np.rint(q * scale).astype(np.int32)], k + 1, cv2.LINE_8, SHIFT)
+        if window is not None:
+            ids = ids[v0:v1, u0:u1]
         cls_lut = np.concatenate([[NONE], cls]).astype(np.uint8)
         depth_lut = np.concatenate([[np.inf], depth]).astype(np.float32)
         out = {'classes': cls_lut[ids], 'depth': depth_lut[ids], 'quads': n}
         if want_ids:
             out['ids'] = ids
+            cell_lut = np.concatenate([[[-32768, -32768]], self.quad_cells]).astype(np.int16)
+            out['cell'] = cell_lut[ids]
         return out
 
 
