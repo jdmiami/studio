@@ -73,8 +73,11 @@ async function loadCrop(src) {
  * view, where the painting's own outline ink and grazing compression begin. So the asset is painted
  * all round, without the seams and streaks of per-band fallback colours. `faced`: the back takes the
  * painted side's edge colour instead of the mirrored front (a face would repeat behind).
+ *
+ * `mirror` (a flat asset, a fence: its world plane normal through the object's origin): a vertex
+ * facing away from the painter is reflected through that plane and painted from its front twin.
  */
-export async function projectPaint(object, paint, { revolve = false, faced = false } = {}) {
+export async function projectPaint(object, paint, { revolve = false, faced = false, mirror = null } = {}) {
   const img = await loadCrop(paint.src);
   const cam = camera();
   object.updateWorldMatrix(true, true);
@@ -165,6 +168,14 @@ export async function projectPaint(object, paint, { revolve = false, faced = fal
         }
       } else {
         ok = sampleAt(p, n, 0, mode, cAcc);
+        if (!ok && mirror) {
+          // The back of a flat asset: its twin through the asset's plane.
+          const off = toEye.subVectors(p, axis).dot(mirror);
+          const nOff = n.dot(mirror);
+          const pr = p.clone().addScaledVector(mirror, -2 * off);
+          const nr = n.clone().addScaledVector(mirror, -2 * nOff);
+          ok = sampleAt(pr, nr, 0, mode, cAcc);
+        }
       }
       if (!ok) continue;
       col.setXYZ(i, cAcc.r, cAcc.g, cAcc.b);

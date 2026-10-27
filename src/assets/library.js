@@ -12,6 +12,8 @@ import { buildTracedProp } from '../cave/traced-props.js';
 import { loadKitAssets, placeKitModel } from '../cave/kit-assets.js';
 import { buildNpc, buildRailing } from '../cave/npc.js';
 import lathes from './lathe-fits.json';
+import fences from './fence-fits.json';
+import { buildFence, fencePlacement } from './fence.js';
 import { buildLathe } from './lathe.js';
 
 let kit = null;
@@ -21,6 +23,8 @@ const kitModels = () => (kit ??= loadKitAssets());
 const KIT = {
   'cube-tree': ['tree-cube-large'],
   willow: ['tree-willow-a'],
+  // The big mossy tree top right: the painting shows its moss drips (its canopy is under the HUD).
+  'willow-2': ['tree-willow-a'],
   'knit-shrub': ['dome-knit-teal'],
   'knit-bush': ['dome-knit-green'],
   mushroom: ['mushroom-pink', 'mushroom-tan', 'mushroom-lilac'],
@@ -50,6 +54,12 @@ export async function buildAsset(ref, { height = ref.height } = {}) {
     const t = traced.props.find((p) => p.box.join() === ref.box.join());
     const object = buildLathe(fit, { grooves: t?.grooves ?? [] });
     return { object, kind: 'lathe', place: fit.place, paint: fit.paint, faced: FACED.has(family) };
+  }
+  const fence = fences.fits[ref.id];
+  if (fence) {
+    const { position, rotationY } = fencePlacement(fence);
+    const normal = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotationY);
+    return { object: buildFence(fence), kind: 'fence', place: position.toArray(), rotationY, paint: fence.paint, mirror: normal };
   }
   if (KIT[family]) {
     const models = await kitModels();

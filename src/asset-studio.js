@@ -55,6 +55,10 @@ if (kind === 'kit') {
   object.rotation.y += THREE.MathUtils.degToRad(c.yaw - 45);
   paint = kitPaint.paints.find((k) => k.name === ref.name && k.base.join() === ref.base.join());
   if (paint?.shift) at.add(new THREE.Vector3(paint.shift[0], 0, paint.shift[1]));
+} else if (kind === 'fence') {
+  at.fromArray(built.place);
+  object.rotation.y = built.rotationY;
+  paint = built.paint;
 } else if (kind === 'lathe') {
   at.fromArray(built.place);
   object.rotation.y = facing;
@@ -70,7 +74,7 @@ object.position.copy(at);
 scene.add(object);
 
 if (!mask && params.get('paint') !== '0' && paint) {
-  await (kind === 'kit' ? paintKitModel(object, paint) : projectPaint(object, paint, { revolve: kind === 'lathe', faced: built.faced }));
+  await (kind === 'kit' ? paintKitModel(object, paint) : projectPaint(object, paint, { revolve: kind === 'lathe', faced: built.faced, mirror: built.mirror }));
 }
 
 // The turntable (?turn=<degrees>): a close orbit round the asset's vertical axis, starting from the
