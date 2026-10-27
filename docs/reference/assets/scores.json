@@ -9,9 +9,9 @@
   },
   "willow-0": {
    "status": "built",
-   "kind": "kit",
-   "iou": 0.517,
-   "dE": 6.1
+   "kind": "fence",
+   "iou": 0.847,
+   "dE": 6.51
   },
   "willow-2-0": {
    "status": "built",

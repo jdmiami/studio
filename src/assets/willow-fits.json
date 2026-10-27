@@ -1,0 +1,49 @@
+{
+ "_": "Willows fitted from their painted cut-outs (scripts/assets/fit_willows.py): canopy top, the caps' rim height and half-width, the drips' ends across the rim (left to right as the painter sees it), the trunk; world units in the tree's frame (x across, y up).",
+ "fits": {
+  "willow-0": {
+   "family": "willow",
+   "top": 2.938,
+   "rimY": 2.034,
+   "halfWidth": 0.943,
+   "canopyX": -0.002,
+   "drips": [
+    1.18,
+    1.159,
+    1.261,
+    1.117,
+    1.075,
+    1.075,
+    1.074,
+    1.073,
+    1.073,
+    1.093,
+    1.113,
+    1.359,
+    1.338,
+    1.317,
+    1.337,
+    1.418
+   ],
+   "trunk": {
+    "x": -0.172,
+    "width": 0.579,
+    "top": 1.073
+   },
+   "place": [
+    0.239,
+    2.0,
+    -5.5
+   ],
+   "facing": [
+    0.6781,
+    0.7349
+   ],
+   "paint": {
+    "src": "/assets/ref/willow-0.png",
+    "x": 430,
+    "y": 152
+   }
+  }
+ }
+}

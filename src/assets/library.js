@@ -16,6 +16,8 @@ import fences from './fence-fits.json';
 import { buildFence, fencePlacement } from './fence.js';
 import cubetrees from './cubetree-fits.json';
 import { buildCubeTree } from './cubetree.js';
+import willows from './willow-fits.json';
+import { buildWillow } from './willow.js';
 import { buildLathe } from './lathe.js';
 
 let kit = null;
@@ -61,6 +63,11 @@ export async function buildAsset(ref, { height = ref.height } = {}) {
   if (tree) {
     const facing = Math.atan2(tree.facing[0], tree.facing[1]);
     return { object: buildCubeTree(tree), kind: 'fence', place: tree.place, rotationY: facing, paint: tree.paint, revolve: true };
+  }
+  const willow = willows.fits[ref.id];
+  if (willow) {
+    const facing = Math.atan2(willow.facing[0], willow.facing[1]);
+    return { object: buildWillow(willow), kind: 'fence', place: willow.place, rotationY: facing, paint: willow.paint, revolve: true };
   }
   const fence = fences.fits[ref.id];
   if (fence) {
