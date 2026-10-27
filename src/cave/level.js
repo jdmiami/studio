@@ -13,6 +13,7 @@ import { build as buildKitBlock } from '../kit/families/blocks.js';
 import { rng } from '../world/util.js';
 import { buildGrassBlankets } from './grass.js';
 import { createTextile } from '../textile.js';
+import cellTones from './cell-tones.json';
 
 export const CAVE_PALETTE = {
   wall: ['#d6b4a8', '#cfab9f', '#dcbcb1', '#c9a59a', '#d3b0a4'],
@@ -220,21 +221,30 @@ export function buildCaveLevel({ hide = null } = {}) {
     }
     const id = `${design}:${variant}`;
     if (!placed.has(id)) placed.set(id, []);
-    placed.get(id).push({ x: b.x, y, z: b.z, shade, ceiling: b.kind === 'ceiling' });
+    placed.get(id).push({ x: b.x, y, z: b.z, by: b.y, kind: b.kind, shade, ceiling: b.kind === 'ceiling' });
   });
   // Each cell its own tone, as the painting shades its blocks: a little lighter or darker and a
   // little warmer or cooler than its neighbours (measured: the painting's earth faces vary more in
   // value and warmth from block to block than one shade per stack depth gives). Keyed on the
   // cell's position, so it does not disturb the variant draw. The ceiling stays even, as painted.
+  // Blocks the painting shows take the tone fitted to it (src/cave/cell-tones.json,
+  // scripts/fp/fit_cell_tones.py); ?tones=0 renders without them.
+  const off = new URLSearchParams(location.search).get('tones') === '0';
+  const fitted = off ? {} : cellTones.tones;
+  const classOf = { wall: 2, water: 3, stream: 3, floor: 4, step: 4, ceiling: 7 };
+  const gainOf = (kind) => (off ? null : cellTones.gains?.[classOf[kind]]) ?? [1, 1, 1];
   const cellTone = (cell, color) => {
-    if (cell.ceiling) return color.setScalar(cell.shade);
+    const g = gainOf(cell.kind);
+    const t = fitted[`${cell.x},${cell.by},${cell.z}`];
+    if (t) return color.setRGB(cell.shade * g[0] * t[0], cell.shade * g[1] * t[1], cell.shade * g[2] * t[2]);
+    if (cell.ceiling) return color.setRGB(cell.shade * g[0], cell.shade * g[1], cell.shade * g[2]);
     const h = (k) => {
       const v = Math.sin(cell.x * 127.1 + cell.y * 311.7 + cell.z * 74.7 + k * 19.19) * 43758.5453;
       return v - Math.floor(v) - 0.5;
     };
     const value = cell.shade * (1 + h(1) * 0.12);
     const warm = h(2) * 0.08;
-    return color.setRGB(value * (1 + warm), value, value * (1 - warm));
+    return color.setRGB(value * (1 + warm) * g[0], value * g[1], value * (1 - warm) * g[2]);
   };
   for (const [id, cells] of placed) {
     const [design, variant] = id.split(':');
