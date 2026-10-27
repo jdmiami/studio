@@ -6,6 +6,7 @@ import placement from './props-placement.json';
 import { loadKitAssets, placeKitModel } from './kit-assets.js';
 import { buildTracedDoor } from './door.js';
 import { buildTracedProps } from './traced-props.js';
+import { contactShadow } from './contact-shadows.js';
 import {
   buildLightShafts, buildScaffold,
 } from './props.js';
@@ -28,7 +29,9 @@ export function buildCave(scene, { hide = null } = {}) {
   const scaled = (object, s) => { object.scale.setScalar(s); return object; };
 
   // The stepped felt domes and the broom tree, traced from the reference (src/cave/traced-props.js).
-  scene.add(buildTracedProps());
+  const traced = buildTracedProps();
+  scene.add(traced);
+  for (const object of traced.children) if (object.userData.grounded) scene.add(contactShadow(object));
   for (const p of byName('scaffold')) {
     const scaffold = scaled(buildScaffold(vec(p)), p.scale);
     scaffold.rotation.y = p.yaw;
@@ -49,7 +52,13 @@ export function buildCave(scene, { hide = null } = {}) {
   const critters = new THREE.Group();
   scene.add(critters);
   const propsReady = loadKitAssets().then((kit) => {
-    const place = (id, p, parent = scene, at = vec(p)) => parent.add(placeKitModel(kit, id, { position: at, height: p.height, yaw: VIEW_TURN }));
+    const grounded = []; // small props and creatures get a contact shadow (not trees or fences)
+    const place = (id, p, parent = scene, at = vec(p)) => {
+      const model = placeKitModel(kit, id, { position: at, height: p.height, yaw: VIEW_TURN });
+      parent.add(model);
+      if (!id.startsWith('tree') && !id.startsWith('fence')) grounded.push(model);
+      return model;
+    };
     for (const p of byName('cube-tree')) place('tree-cube-large', p);
     for (const p of byName('willow')) place('tree-willow-a', p);
     for (const p of byName('knit-shrub')) place('dome-knit-teal', p);
@@ -67,6 +76,7 @@ export function buildCave(scene, { hide = null } = {}) {
     place('dog-a', dogSpec, dog, new THREE.Vector3());
     const critterIds = ['critter-a', 'critter-b', 'critter-c'];
     byName('critter').forEach((p, i) => place(critterIds[i % critterIds.length], p, critters));
+    for (const model of grounded) scene.add(contactShadow(model));
   });
 
   scene.add(buildLightShafts(placement.lights.map((l) => ({ x: l.x, y: l.y, z: l.z, width: l.width, length: 9, twist: 0.6 }))));

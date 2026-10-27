@@ -143,6 +143,7 @@ export function buildTracedProps() {
   traced.props.forEach((p, i) => {
     const object = p.family === 'lathe' ? broom(p, material) : dome(p, 100 + i * 7, material);
     object.position.set(p.x, p.y, p.z);
+    object.userData.grounded = p.family !== 'lathe'; // domes sit on the felt; the broom stands on its handle
     group.add(object);
   });
   return group;

@@ -2,7 +2,7 @@
 // sharing the scene's golden-hour lighting and aerial haze with the fur shader.
 // Supports vertex colors, instancing (with per-instance color), and hanging-strand sway.
 import * as THREE from 'three';
-import { sharedFurUniforms } from './fur.js';
+import { CEL_GLSL, sharedFurUniforms } from './fur.js';
 
 const MODES = { felt: 0, knit: 1, velvet: 2, yarn: 3 };
 
@@ -70,6 +70,8 @@ const fragmentShader = /* glsl */ `
   uniform float uEmissive;
   uniform float uGrain;
   uniform float uShadeSat;
+  uniform float uCel;
+  ${CEL_GLSL}
 
   varying vec3 vWorld;
   varying vec3 vNormalW;
@@ -163,7 +165,7 @@ const fragmentShader = /* glsl */ `
     }
 
     // Shared soft lighting: wrapped sun, sky/ground ambient.
-    float wrap = clamp((dot(n, l) + 0.4) / 1.4, 0.0, 1.0);
+    float wrap = celRamp(clamp((dot(n, l) + 0.4) / 1.4, 0.0, 1.0), uCel);
     vec3 ambient = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
     vec3 col;
     if (uMode == 2) {
@@ -176,10 +178,14 @@ const fragmentShader = /* glsl */ `
       // uShadeSat deepens and saturates the albedo where the sun doesn't reach (a painterly
       // shadow side, as in the kit's reference sheet; 0 = plain ambient, the world's default).
       float baseLuma = max(dot(base, vec3(0.2126, 0.7152, 0.0722)), 0.02);
-      vec3 shadeTint = mix(vec3(1.0), base / baseLuma, uShadeSat * (1.0 - wrap));
+      // Cel shading paints its shadow side as a deeper tone of the colour, not a grey.
+      float shadeSat = max(uShadeSat, 0.45 * uCel);
+      vec3 shadeTint = mix(vec3(1.0), base / baseLuma, shadeSat * (1.0 - wrap));
       col = base * shade * (ambient * 0.7 * shadeTint + uSunColor * wrap * 0.8);
       // Fiber fuzz catches light at the silhouette.
-      col += uSheenColor * pow(1.0 - ndv, 2.5) * fuzz * (0.4 + 0.6 * wrap);
+      // Under cel shading it is a faint halo of the felt's own colour, not a white plastic rim.
+      vec3 sheen = mix(uSheenColor, base * 1.15, uCel);
+      col += sheen * pow(1.0 - ndv, 2.5) * fuzz * (0.4 + 0.6 * wrap) * (1.0 - 0.6 * uCel);
     }
     col += base * uEmissive;
 
@@ -240,6 +246,7 @@ export function createTextile(mode, {
       uEmissive: { value: emissive },
       uGrain: { value: grain },
       uShadeSat: { value: shadeSat },
+      uCel: sharedFurUniforms.uCel,
     },
   });
 }

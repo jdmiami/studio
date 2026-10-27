@@ -214,15 +214,29 @@ export function buildCaveLevel({ hide = null } = {}) {
     const variant = Math.floor(random() * VARIANTS);
     const id = `${design}:${variant}`;
     if (!placed.has(id)) placed.set(id, []);
-    placed.get(id).push({ x: b.x, y, z: b.z, shade });
+    placed.get(id).push({ x: b.x, y, z: b.z, shade, ceiling: b.kind === 'ceiling' });
   });
+  // Each cell its own tone, as the painting shades its blocks: a little lighter or darker and a
+  // little warmer or cooler than its neighbours (measured: the painting's earth faces vary more in
+  // value and warmth from block to block than one shade per stack depth gives). Keyed on the
+  // cell's position, so it does not disturb the variant draw. The ceiling stays even, as painted.
+  const cellTone = (cell, color) => {
+    if (cell.ceiling) return color.setScalar(cell.shade);
+    const h = (k) => {
+      const v = Math.sin(cell.x * 127.1 + cell.y * 311.7 + cell.z * 74.7 + k * 19.19) * 43758.5453;
+      return v - Math.floor(v) - 0.5;
+    };
+    const value = cell.shade * (1 + h(1) * 0.12);
+    const warm = h(2) * 0.08;
+    return color.setRGB(value * (1 + warm), value, value * (1 - warm));
+  };
   for (const [id, cells] of placed) {
     const [design, variant] = id.split(':');
     for (const part of blockParts(design, Number(variant))) {
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, cells.length);
       cells.forEach((cell, i) => {
         mesh.setMatrixAt(i, m.makeTranslation(cell.x, cell.y, cell.z));
-        mesh.setColorAt(i, c.setScalar(cell.shade));
+        mesh.setColorAt(i, cellTone(cell, c));
       });
       mesh.frustumCulled = false;
       group.add(mesh);

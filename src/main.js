@@ -19,6 +19,8 @@ import { createHud } from './fp/hud.js';
 //   ?eye=x,y,z         camera position, overriding the spawn and eye height
 //   ?look=yaw,pitch[,roll]  camera angles in degrees (yaw 0 looks down -z, pitch up is positive)
 //   ?fov=<degrees>     vertical field of view (default 58.3, the reference frame's)
+//   ?exposure= ?sat= ?contrast=  grade overrides (tone-mapping exposure; the cave's grade)
+//   ?cel=0..1          cel shading amount in the cave (default 1); ?outline=0 drops the ink lines
 //   ?nohud=1 ?nohands=1  hide the HUD / the hands, for comparing the world alone
 //   ?clear=x0,x1,z0,z1 hide the level's blocks in that cell box (to look from a solved camera that
 //                      the current layout walls in; scripts/fp/solve_camera.py)
@@ -33,7 +35,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 // Khronos PBR Neutral keeps hues true; ACES greyed bright front-lit colors into a milky wash.
 renderer.toneMapping = THREE.NeutralToneMapping;
-renderer.toneMappingExposure = 0.85;
+renderer.toneMappingExposure = params.has('exposure') ? Number(params.get('exposure')) : 0.85;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -85,6 +87,12 @@ function startCave() {
   sharedFurUniforms.uGroundColor.value.set('#dcb4a4');
   sharedFurUniforms.uFogColor.value.set('#f2dfd2');
   sharedFurUniforms.uFogDensity.value = 0.004;
+  // The painting is cel shaded: flat tones per face, no plastic highlights (?cel=0 for smooth).
+  sharedFurUniforms.uCel.value = params.has('cel') ? Number(params.get('cel')) : 1;
+  // Grade fitted to the painting's Lab statistics (scripts: compare_frame.py; lightness mean,
+  // spread and 10th/90th percentiles within 1, chroma 18 against 17): brighter, flatter and with
+  // warm shadows; the painting lifts its dark sides into pastel instead of crushing them.
+  if (!params.has('exposure')) renderer.toneMappingExposure = 1.25;
   const u = sky.material.uniforms;
   u.uZenith.value.set('#9cc2ec');
   u.uHorizon.value.set('#fbe8d6');
@@ -130,7 +138,14 @@ function startCave() {
   return {
     camera,
     ready: cave.ready,
-    postOptions: { godRays: false, tiltShift: false, saturation: 0.72 }, // the reference's muted chalky colors
+    // The reference's chalky pastel grade, and its ink outlines (?outline=0 turns them off).
+    postOptions: {
+      godRays: false, tiltShift: false,
+      saturation: params.has('sat') ? Number(params.get('sat')) : 0.85,
+      contrast: params.has('contrast') ? Number(params.get('contrast')) : 0.75,
+      shadowTint: params.has('stint') ? `#${params.get('stint')}` : '#c0957a',
+      outline: params.get('outline') === '0' ? null : true,
+    },
     update(time, dt) {
       controls.update(dt);
       fixedPose();

@@ -7,7 +7,8 @@ import { sharedFurUniforms } from '../fur.js';
 import { createTextile, prepareTextileGeometry } from '../textile.js';
 import { DOOR } from './level.js';
 
-const RELIEF = 0.07; // how far a panel stands out of its seams (world units)
+const RELIEF = 0.035; // how far a panel stands out of its seams (world units; low, so under cel shading the
+// bevels stay thin seams as painted instead of falling into the shadow band as dark grooves)
 
 async function pixels(url) {
   const bitmap = await createImageBitmap(await (await fetch(url)).blob());

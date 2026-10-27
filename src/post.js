@@ -1,10 +1,11 @@
-// Post-processing chain: god rays → bloom → tilt-shift → filmic grade → output.
+// Post-processing chain: [ink outlines] → god rays → bloom → tilt-shift → filmic grade → output.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 
 const fullscreenVertex = /* glsl */ `
   varying vec2 vUv;
@@ -136,11 +137,98 @@ const gradeShader = {
   `,
 };
 
+/**
+ * Ink outlines, as the cave painting draws them: a thin line of a darker tone of the local colour
+ * around every silhouette and step. Found in the scene's depth buffer: inverse view depth is linear
+ * in screen space on any plane, so its Laplacian is zero on flat faces (the floor at a grazing
+ * angle included) and spikes where one surface passes behind another or at a sharp crease.
+ * Normalized by the depth itself, so a line has the same weight near and far.
+ */
+class InkPass extends Pass {
+  constructor(camera, { strength = 0.4, threshold = 0.05, tint = '#6a4a46' } = {}) {
+    super();
+    this.camera = camera;
+    this.fsQuad = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: null },
+        tDepth: { value: null },
+        uTexel: { value: new THREE.Vector2(1 / 1024, 1 / 576) },
+        uNear: { value: camera.near },
+        uFar: { value: camera.far },
+        uStrength: { value: strength },
+        uThreshold: { value: threshold },
+        uTint: { value: new THREE.Color(tint) },
+      },
+      vertexShader: fullscreenVertex,
+      fragmentShader: /* glsl */ `
+        #include <packing>
+        uniform sampler2D tDiffuse;
+        uniform sampler2D tDepth;
+        uniform vec2 uTexel;
+        uniform float uNear;
+        uniform float uFar;
+        uniform float uStrength;
+        uniform float uThreshold;
+        uniform vec3 uTint;
+        varying vec2 vUv;
+        float invDepth(vec2 uv) {
+          float d = texture2D(tDepth, uv).x;
+          return -1.0 / perspectiveDepthToViewZ(d, uNear, uFar);
+        }
+        void main() {
+          vec4 c = texture2D(tDiffuse, vUv);
+          float w = invDepth(vUv);
+          float lap = invDepth(vUv + vec2(uTexel.x, 0.0)) + invDepth(vUv - vec2(uTexel.x, 0.0))
+                    + invDepth(vUv + vec2(0.0, uTexel.y)) + invDepth(vUv - vec2(0.0, uTexel.y)) - 4.0 * w;
+          float e = abs(lap) / max(w, 1e-4);
+          float ink = smoothstep(uThreshold, uThreshold * 2.5, e) * uStrength;
+          // A darker, warmer tone of what is there, never black.
+          vec3 line = c.rgb * mix(vec3(1.0), uTint * 1.4, 0.6) * 0.55;
+          gl_FragColor = vec4(mix(c.rgb, line, ink), c.a);
+        }
+      `,
+    }));
+  }
+
+  setSize(width, height) {
+    this.fsQuad.material.uniforms.uTexel.value.set(1 / width, 1 / height);
+  }
+
+  render(renderer, writeBuffer, readBuffer) {
+    const u = this.fsQuad.material.uniforms;
+    u.tDiffuse.value = readBuffer.texture;
+    u.tDepth.value = readBuffer.depthTexture;
+    u.uNear.value = this.camera.near;
+    u.uFar.value = this.camera.far;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    if (this.clear) renderer.clear();
+    this.fsQuad.render(renderer);
+  }
+}
+
 export function createPost(renderer, scene, camera, {
   lowfx = false, bloomStrength = 0.35, godRays: useGodRays = true, tiltShift: useTiltShift = true, saturation = 1.0,
+  outline = null, contrast, shadowTint,
 } = {}) {
-  const composer = new EffectComposer(renderer);
+  // Ink outlines read the scene's depth, so the composer's targets carry a depth texture then.
+  let composer;
+  let ink = null;
+  if (outline) {
+    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType });
+    target.depthTexture = new THREE.DepthTexture(size.x, size.y);
+    composer = new EffectComposer(renderer, target);
+    // The composer clones the target for its ping-pong buffer; give each its own depth texture so
+    // the ink pass never samples the depth of the buffer it writes.
+    composer.renderTarget2.depthTexture = new THREE.DepthTexture(size.x, size.y);
+  } else {
+    composer = new EffectComposer(renderer);
+  }
   composer.addPass(new RenderPass(scene, camera));
+  if (outline) {
+    ink = new InkPass(camera, outline === true ? {} : outline);
+    composer.addPass(ink);
+  }
 
   const godRays = new ShaderPass(godRaysShader);
   if (!lowfx && useGodRays) composer.addPass(godRays);
@@ -158,6 +246,8 @@ export function createPost(renderer, scene, camera, {
 
   const grade = new ShaderPass(gradeShader);
   grade.uniforms.uSaturation.value = saturation;
+  if (contrast !== undefined) grade.uniforms.uContrast.value = contrast;
+  if (shadowTint !== undefined) grade.uniforms.uShadowTint.value.set(shadowTint);
   composer.addPass(grade);
   composer.addPass(new OutputPass());
 

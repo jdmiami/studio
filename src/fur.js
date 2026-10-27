@@ -56,6 +56,18 @@ const vertexShader = /* glsl */ `
   }
 `;
 
+/**
+ * The cel light ramp, shared by the fur and textile shaders: a light factor in 0..1 stepped into
+ * three tones (shadow, half, lit) with soft edges, mixed with the smooth value by uCel.
+ */
+export const CEL_GLSL = /* glsl */ `
+  float celRamp(float x, float cel) {
+    float w = 0.05;
+    float stepped = 0.3 * smoothstep(0.18 - w, 0.18 + w, x) + 0.7 * smoothstep(0.5 - w, 0.5 + w, x);
+    return mix(x, stepped, cel);
+  }
+`;
+
 const fragmentShader = /* glsl */ `
   uniform float uTime;
   uniform float uDensity;
@@ -72,6 +84,8 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uFlow;
   uniform vec3 uFogColor;
   uniform float uFogDensity;
+  uniform float uCel;
+  ${CEL_GLSL}
 
   varying vec3 vBase;
   varying vec3 vWorld;
@@ -144,7 +158,10 @@ const fragmentShader = /* glsl */ `
     float wrap = clamp((dot(n, l) + 0.5) / 1.5, 0.0, 1.0);
     vec3 ambient = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
     float occlusion = mix(0.5, 1.0, pow(vLayer, 0.6));
-    vec3 col = base * (ambient * 0.78 + uSunColor * wrap) * occlusion;
+    float celWrap = celRamp(wrap, uCel);
+    // Under cel shading the shell occlusion flattens too: the fluff reads as one soft tone.
+    occlusion = mix(occlusion, mix(0.8, 1.0, step(0.35, vLayer)), uCel);
+    vec3 col = base * (ambient * 0.78 + uSunColor * celWrap) * occlusion;
 
     // Silky sheen sliding along the fibers: white primary lobe, dye-tinted secondary lobe.
     vec3 h = normalize(l + v);
@@ -153,7 +170,7 @@ const fragmentShader = /* glsl */ `
     float spec1 = strandSpec(t1, h, 90.0) * 0.55;
     float spec2 = strandSpec(t2, h, 18.0) * 0.35;
     float sheenMask = smoothstep(-0.2, 0.4, dot(n, l)) * vLayer;
-    col += (uSunColor * spec1 + dyed * uSunColor * spec2) * uSheen * sheenMask;
+    col += (uSunColor * spec1 + dyed * uSunColor * spec2) * uSheen * sheenMask * (1.0 - uCel);
 
     // Backlit glow: light leaks through thin tips when the sun is behind the fluff.
     float back = pow(clamp(dot(-v, l), 0.0, 1.0), 3.0);
@@ -161,7 +178,7 @@ const fragmentShader = /* glsl */ `
 
     // Rim light on fiber edges.
     float rim = pow(1.0 - ndv, 3.0) * uRim * vLayer;
-    col += mix(uSkyColor, uTipTint, 0.5) * rim;
+    col += mix(uSkyColor, uTipTint, 0.5) * rim * (1.0 - 0.7 * uCel);
 
     // Glitter fibers: a few strands twinkle in HDR so bloom turns them into sparkles.
     if (uGlitter > 0.0 && vLayer > 0.55 && hash(cell + 42.0) > 1.0 - uGlitter * 0.05) {
@@ -193,7 +210,13 @@ export const sharedFurUniforms = {
   uWind: { value: new THREE.Vector3(0.18, 0, 0.08) },
   uFogColor: { value: new THREE.Color('#cfe2f3') },
   uFogDensity: { value: 0.0045 },
+  // Cel shading, 0..1 (the cave turns it on; the kit page and the island keep the smooth light):
+  // light falls in flat bands instead of a smooth gradient, shadow sides take a deeper, more
+  // saturated tone of the colour, and specular / white rim highlights fade out, as in the cave
+  // painting, where each face is one flat pastel tone.
+  uCel: { value: 0 },
 };
+
 
 /**
  * Wraps a geometry (with a `color` attribute) in shell fur.
