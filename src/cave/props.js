@@ -250,7 +250,7 @@ export function buildLightShafts(sources) {
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
-    uniforms: { uTime: sharedFurUniforms.uTime, uColor: { value: new THREE.Color('#ffe2b8') } },
+    uniforms: { uTime: sharedFurUniforms.uTime, uColor: { value: new THREE.Color('#ffe2b8') }, uStrength: { value: 0.34 } },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
       void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -258,12 +258,13 @@ export function buildLightShafts(sources) {
     fragmentShader: /* glsl */ `
       uniform float uTime;
       uniform vec3 uColor;
+      uniform float uStrength;
       varying vec2 vUv;
       void main() {
         float across = sin(vUv.x * 3.14159);              // soft edges
         float along = smoothstep(0.0, 0.15, vUv.y) * smoothstep(1.0, 0.5, vUv.y);
         float dust = 0.85 + 0.15 * sin(vUv.y * 40.0 + uTime * 0.7 + vUv.x * 9.0);
-        gl_FragColor = vec4(uColor * across * across * along * dust * 0.22, 1.0);
+        gl_FragColor = vec4(uColor * across * across * along * dust * uStrength, 1.0);
       }
     `,
   });
@@ -275,13 +276,24 @@ export function buildLightShafts(sources) {
     plane.translate(0, -length / 2, 0); // hang from the opening
     const beam = new THREE.Mesh(plane, material);
     beam.position.set(s.x, s.y, s.z);
-    // Point the beam's length along the incoming light, facing the camera's general direction.
-    beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.clone().negate());
-    beam.rotateY(s.twist ?? 0.6);
+    // Point the beam's length along the incoming light (or at its target on the floor, as the
+    // painting's shafts fall from the openings toward the viewer), facing the camera's direction.
+    const along = s.target ? s.target.clone().sub(beam.position).normalize() : dir.clone().negate();
+    if (s.faceToward) {
+      // Turn the plane about the beam's axis so its broad side faces the viewer.
+      const yAxis = along.clone().negate();
+      const toView = s.faceToward.clone().sub(beam.position);
+      const zAxis = toView.sub(yAxis.clone().multiplyScalar(toView.dot(yAxis))).normalize();
+      const xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis);
+      beam.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis));
+    } else {
+      beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), along);
+      beam.rotateY(s.twist ?? 0.6);
+    }
     group.add(beam);
     // A crossed second plane so the shaft has volume from any angle.
     const cross = beam.clone();
-    cross.rotateY(Math.PI / 2);
+    cross.rotateY(s.faceToward ? 0.9 : Math.PI / 2);
     group.add(cross);
   }
   return group;

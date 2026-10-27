@@ -97,7 +97,16 @@ export function buildCave(scene, { hide = null } = {}) {
     for (const model of grounded) scene.add(contactShadow(model));
   });
 
-  scene.add(buildLightShafts(placement.lights.map((l) => ({ x: l.x, y: l.y, z: l.z, width: l.width, length: 9, twist: 0.6 }))));
+  // The painting's shafts fall from the ceiling openings down toward the viewer: the door's skylight
+  // onto the willow and the door steps, the upper-left opening down and to the right.
+  const shafts = [
+    { from: [-0.6, 9.5, -15.2], target: new THREE.Vector3(0.5, 0, -10), width: 3.6 },
+    { from: [-9.5, 9.5, -1.2], target: new THREE.Vector3(-5, 2, -1.5), width: 4.2 },
+  ];
+  const viewer = new THREE.Vector3(7.4, 3.775, 2.261); // the spawn eye: the shafts' broad side faces the room
+  scene.add(buildLightShafts(shafts.map((s) => ({
+    x: s.from[0], y: s.from[1], z: s.from[2], width: s.width, length: 12, target: s.target, faceToward: viewer,
+  }))));
 
   // Lights only affect the glossy button eyes and the compass; textiles and fur light themselves.
   scene.add(new THREE.HemisphereLight('#fff1e6', '#d9b3a3', 1.3));
