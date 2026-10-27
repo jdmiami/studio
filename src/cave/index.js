@@ -101,7 +101,8 @@ export function buildCave(scene, { hide = null } = {}) {
     // land on the spawn terrace (top 2) and the eye is EYE_HEIGHT 1.775 above: the solved 3.775.
     spawn: { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
     stats: { blocks: level.blockCount, caps: level.capCount },
-    ready: Promise.all([propsReady, doorReady]), // resolves when the kit models and the door are in
+    // Resolves when the kit models, the door and the traced props' projection paint are in.
+    ready: Promise.all([propsReady, doorReady, traced.userData.painted]),
     update(time) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03 * dogSpec.scale;
       dog.rotation.z = Math.sin(time * 1.3) * 0.03;

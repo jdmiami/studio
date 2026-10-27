@@ -9,6 +9,8 @@ import { sharedFurUniforms } from '../fur.js';
 import { bulge, lumpy, softBox } from '../kit/style.js';
 import { createTextile, prepareTextileGeometry } from '../textile.js';
 import traced from './traced-props.json';
+import { projectPaint } from './projection-paint.js';
+import layout from './layout.json';
 
 /** The painting's colours are lit; divide out the scene light's response on a side face. */
 function albedo(hex) {
@@ -104,25 +106,40 @@ function slabDome(p, seed, material) {
   return group;
 }
 
-/** The broom tree: a felt handle up to its head, the head a lathe of the traced radius bands. */
+/**
+ * The broom tree: a felt handle up to its head, the head turned from the traced outline row by row
+ * (the bristle flare, the ferrule's lip and its rounded box all come from the painted silhouette)
+ * with a rounded-square cross-section, as painted (a flat front, not a cone), its front facing the
+ * reference camera. Dense, so projection painting carries the painted bristle stripes. Instances
+ * traced before the profile existed keep the radius bands.
+ */
 function broom(p, material) {
   const group = new THREE.Group();
   const handle = new THREE.CylinderGeometry(0.07, 0.08, p.lift + 0.1, 14, 4);
   handle.translate(0, (p.lift + 0.1) / 2, 0);
-  group.add(new THREE.Mesh(prepareTextileGeometry(paint(handle, albedo('#8ea489'))), material));
-  const points = [new THREE.Vector2(0.001, 0)];
-  for (const b of p.parts) points.push(new THREE.Vector2(b.r, b.y0), new THREE.Vector2(b.r, b.y1));
-  points.push(new THREE.Vector2(0.001, p.parts.at(-1).y1));
-  const head = new THREE.LatheGeometry(points, 40);
-  // Bristle grooves: the painting's head is fluted top to bottom.
+  const handleMesh = new THREE.Mesh(prepareTextileGeometry(paint(handle, albedo('#8ea489'))), material);
+  handleMesh.userData.noPaint = true; // the painted crop is the head; the handle keeps its green
+  group.add(handleMesh);
+  const prof = p.profile?.length ? p.profile : p.parts.flatMap((b) => [[b.y0, b.r], [b.y1, b.r]]);
+  const top = prof.at(-1)[0];
+  const points = [new THREE.Vector2(0.001, prof[0][0])];
+  for (const [y, r] of prof) points.push(new THREE.Vector2(Math.max(0.01, r), y));
+  // A soft rounded top over the bristle tips.
+  const rTop = prof.at(-1)[1];
+  for (let i = 1; i <= 4; i++) points.push(new THREE.Vector2(rTop * Math.cos((i / 4) * Math.PI / 2) + 0.001, top + 0.04 * Math.sin((i / 4) * Math.PI / 2)));
+  const head = new THREE.LatheGeometry(points, 96);
+  // Rounded square: push each ring out to a superellipse (exponent 5), flat faces on +-x and +-z.
   const pos = head.getAttribute('position');
   for (let i = 0; i < pos.count; i++) {
-    const a = Math.atan2(pos.getZ(i), pos.getX(i));
-    const k = 1 + 0.035 * Math.sin(a * 22);
-    pos.setX(i, pos.getX(i) * k);
-    pos.setZ(i, pos.getZ(i) * k);
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const a = Math.atan2(z, x);
+    const k = (Math.abs(Math.cos(a)) ** 5 + Math.abs(Math.sin(a)) ** 5) ** (-1 / 5);
+    pos.setX(i, x * k);
+    pos.setZ(i, z * k);
   }
   head.computeVertexNormals();
+  // Band colours until the projection paint lands (and for the hidden back).
   const colors = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
     const y = pos.getY(i);
@@ -133,18 +150,28 @@ function broom(p, material) {
   head.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   head.translate(0, p.lift, 0);
   group.add(new THREE.Mesh(prepareTextileGeometry(head), material));
+  // Front (+z) toward the painter, so the traced width is the face's width.
+  const eye = layout.camera.eye;
+  group.rotation.y = Math.atan2(eye[0] - p.x, eye[2] - p.z);
   return group;
 }
 
-/** Builds every traced prop at its placed position. */
+/**
+ * Builds every traced prop at its placed position. Returns the group at once (band colours) and
+ * repaints each prop from the painting's own pixels when its crop has loaded: `group.userData.painted`
+ * resolves then, with the fraction of vertices each painting covered.
+ */
 export function buildTracedProps() {
   const group = new THREE.Group();
   const material = createTextile('felt', { fuzz: 0.4, grain: 1.5 });
+  const jobs = [];
   traced.props.forEach((p, i) => {
     const object = p.family === 'lathe' ? broom(p, material) : dome(p, 100 + i * 7, material);
     object.position.set(p.x, p.y, p.z);
     object.userData.grounded = p.family !== 'lathe'; // domes sit on the felt; the broom stands on its handle
     group.add(object);
+    if (p.paint && !new URLSearchParams(location.search).has('nopaint')) jobs.push(projectPaint(object, p.paint));
   });
+  group.userData.painted = Promise.all(jobs);
   return group;
 }

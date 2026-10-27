@@ -17,7 +17,8 @@ For each prop instance in docs/reference/cave-door-props.json of a traced family
      heights as grooves, so the game turns the painted outline (a beehive, not stacked slabs);
    - 'lathe' (the broom tree's head, band and handle): a radius profile from the row widths, with
      the painted colour per band of rows.
-Writes src/cave/traced-props.json (read by src/cave/traced-props.js) and screenshots/fp/props-trace.png
+Writes src/cave/traced-props.json (read by src/cave/traced-props.js), public/cave/props/prop-<i>.png (each
+prop's painted pixels, alpha = its silhouette, for projection painting) and screenshots/fp/props-trace.png
 (each prop: reference crop | mask | fitted outline over the crop).
 """
 import argparse
@@ -112,7 +113,7 @@ def rows_profile(fg):
     return out
 
 
-def fit_tiers(crop, fg, ppu):
+def fit_tiers(crop, fg, ppu, ppu_w=None):
     """Tiers from the lines traced inside the silhouette: the painted domes are smooth outside,
     their steps drawn as dark horizontal lines across them. A black-hat (closing minus image) on
     luma, averaged over the middle 60% of each row of the mask, peaks on those lines; peaks at least
@@ -145,12 +146,12 @@ def fit_tiers(crop, fg, ppu):
         px = crop[t0:t1][sel]
         if len(px) < 6:
             continue
-        out.append({'w': round(float(np.median(widths[t0:t1])) / ppu, 3), 'h': round((t1 - t0) / ppu, 3),
+        out.append({'w': round(float(np.median(widths[t0:t1])) / (ppu_w or ppu), 3), 'h': round((t1 - t0) / ppu, 3),
                     'color': '#%02x%02x%02x' % tuple(int(v) for v in np.median(px, axis=0)), 'rows': [int(t0), int(t1 - 1)]})
     return out[::-1]  # bottom tier first
 
 
-def fit_profile(fg, ppu, points=28):
+def fit_profile(fg, ppu, points=28, ppu_w=None):
     """The silhouette as a lathe profile: per row from the bottom up, (y, r) in world units, r the
     row's half-width (a round prop seen from the side shows its diameter), median-smoothed over 3
     rows and resampled to at most `points` rows."""
@@ -163,10 +164,10 @@ def fit_profile(fg, ppu, points=28):
     half = np.array([np.median(half[max(0, i - 1):i + 2]) for i in range(len(half))])
     ys = (bottom + 1 - np.arange(top, bottom + 1) - 0.5) / ppu  # row centres, world units above the base
     pick = np.unique(np.linspace(0, len(half) - 1, min(points, len(half))).round().astype(int))
-    return [[round(float(ys[i]), 3), round(float(half[i] / ppu), 3)] for i in pick[::-1]]  # bottom first
+    return [[round(float(ys[i]), 3), round(float(half[i] / (ppu_w or ppu)), 3)] for i in pick[::-1]]  # bottom first
 
 
-def fit_lathe(crop, fg, ppu, bands=8):
+def fit_lathe(crop, fg, ppu, ppu_w=None, bands=8):
     prof = rows_profile(fg)
     rows = [i for i, p in enumerate(prof) if p]
     if not rows:
@@ -180,7 +181,7 @@ def fit_lathe(crop, fg, ppu, bands=8):
         px = crop[a:b][sel]
         if not ws or len(px) < 5:
             continue
-        out.append({'r': round(float(np.median(ws)) / 2 / ppu, 3), 'y0': round((bottom + 1 - b) / ppu, 3),
+        out.append({'r': round(float(np.median(ws)) / 2 / (ppu_w or ppu), 3), 'y0': round((bottom + 1 - b) / ppu, 3),
                     'y1': round((bottom + 1 - a) / ppu, 3),
                     'color': '#%02x%02x%02x' % tuple(int(v) for v in np.median(px, axis=0))})
     return out[::-1]  # bottom band first
@@ -211,6 +212,14 @@ def main():
         P = np.array([place['x'], place['y'], place['z']])
         a, b = cam.project(P), cam.project(P + np.array([0, 1.0, 0]))
         ppu = float(a[1] - b[1])
+        # Widths are measured across the viewing ray: off the optical axis, perspective stretches a
+        # round prop sideways by 1/cos(angle) (the broom, near the frame's right edge, by 27%), so
+        # widths use the horizontal px per unit at the prop's centre, heights the vertical.
+        eye = np.array(cam.eye)
+        ray = P - eye
+        right = np.array([-ray[2], 0.0, ray[0]]) / np.hypot(ray[0], ray[2])
+        mid = P + np.array([0, max(0.3, p['heightPx'] / ppu / 2), 0])
+        ppu_w = float(np.linalg.norm(cam.project(mid + right * 0.5) - cam.project(mid - right * 0.5)))
         disp = crop_disparity(sess, ref, p['box']) if sess else None
         crop, fg, (X0, Y0) = grabcut(ref, classes, p['box'], disp)
         if fg.sum() < 30:  # GrabCut lost it: fall back to the segmentation's prop pixels
@@ -223,7 +232,7 @@ def main():
         if fam == 'tiers' and touches >= 2:
             print(f"  {p['name']:10s} {p['box']}: silhouette runs into {touches} crop sides; skipped")
             continue
-        parts = fit_tiers(crop, fg, ppu) if fam == 'tiers' else fit_lathe(crop, fg, ppu)
+        parts = fit_tiers(crop, fg, ppu, ppu_w) if fam == 'tiers' else fit_lathe(crop, fg, ppu, ppu_w)
         if not parts:
             print(f"  {p['name']:10s} {p['box']}: no fit (mask {int(fg.sum())} px); skipped")
             continue
@@ -231,10 +240,34 @@ def main():
         # handle; a dome sits on its base, lift ~0).
         mask_rows = np.nonzero(fg.any(1))[0]
         lift = max(0.0, (p['base'][1] - (Y0 + int(mask_rows[-1]) + 1)) / ppu)
-        entry = {'name': p['name'], 'family': fam, 'x': place['x'], 'y': place['y'], 'z': place['z'],
-                 'lift': round(lift, 3), 'parts': parts, 'box': p['box']}
+        # The traced silhouette's centre at its middle row against where the prop's vertical axis
+        # projects at that height (a vertical axis leans in the frame, so the base pixel is not the
+        # centre higher up): shift the prop across the viewing ray by the difference.
+        rows_fg = np.nonzero(fg.any(1))[0]
+        mid_row = int(rows_fg[len(rows_fg) // 2])
+        xs = np.nonzero(fg[mid_row])[0]
+        mask_u = X0 + (xs[0] + xs[-1] + 1) / 2
+        mid_h = (p['base'][1] - (Y0 + mid_row)) / ppu
+        axis_u = cam.project(P + np.array([0, mid_h, 0]))[0]
+        shift_px = mask_u - axis_u
+        sx, sz = right[0] * shift_px / ppu_w, right[2] * shift_px / ppu_w
+        entry = {'name': p['name'], 'family': fam, 'x': round(place['x'] + sx, 3), 'y': place['y'],
+                 'z': round(place['z'] + sz, 3), 'lift': round(lift, 3), 'parts': parts, 'box': p['box']}
+        # Projection paint: the painting's own pixels of this prop (alpha = its silhouette, eroded
+        # a pixel so edge pixels mixed with the background are not sampled). The game projects each
+        # vertex through the reference camera into this crop (src/cave/projection-paint.js).
+        paint_dir = ROOT / 'public/cave/props'
+        paint_dir.mkdir(parents=True, exist_ok=True)
+        alpha = cv2.erode(fg, np.ones((3, 3), np.uint8)) * 255
+        name = f'prop-{len(out)}.png'
+        Image.fromarray(np.dstack([crop, alpha]).astype(np.uint8), 'RGBA').save(paint_dir / name)
+        entry['paint'] = {'src': f'/cave/props/{name}', 'x': int(X0), 'y': int(Y0)}
+        if fam == 'lathe':
+            # The broom head turned from its outline row by row (dense, so the projected bristle
+            # stripes and the ferrule's lip land on their own rows of vertices).
+            entry['profile'] = fit_profile(fg, ppu, points=90, ppu_w=ppu_w)
         if fam == 'tiers':
-            entry['profile'] = fit_profile(fg, ppu)
+            entry['profile'] = fit_profile(fg, ppu, points=40, ppu_w=ppu_w)
             # Tier boundaries (groove heights) in world units above the base, from the traced lines.
             bottom = int(np.nonzero(fg.any(1))[0][-1]) + 1
             entry['grooves'] = [round((bottom - t['rows'][0]) / ppu, 3) for t in parts[:-1]]
@@ -249,7 +282,7 @@ def main():
         tile = np.concatenate([crop, np.dstack([fg * 255] * 3), over], axis=1)
         z = max(2, min(6, 150 // max(tile.shape[0], 1)))
         tiles.append(cv2.resize(tile, (tile.shape[1] * z, tile.shape[0] * z), interpolation=cv2.INTER_NEAREST))
-        print(f"  {p['name']:10s} at ({place['x']:.2f},{place['y']:.2f},{place['z']:.2f}) ppu {ppu:.0f}: "
+        print(f"  {p['name']:10s} at ({place['x']:.2f},{place['y']:.2f},{place['z']:.2f}) ppu {ppu:.0f}/{ppu_w:.0f}: "
               + ', '.join(f"{t.get('w', t.get('r'))}x{t.get('h', t.get('y1'))} {t['color']}" for t in parts))
     (ROOT / 'src/cave/traced-props.json').write_text(json.dumps({
         '_': 'Props traced from docs/reference/cave-door.jpg by scripts/fp/trace_props.py: per instance, the '
