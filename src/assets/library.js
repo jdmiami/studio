@@ -14,6 +14,8 @@ import { buildNpc, buildRailing } from '../cave/npc.js';
 import lathes from './lathe-fits.json';
 import fences from './fence-fits.json';
 import { buildFence, fencePlacement } from './fence.js';
+import cubetrees from './cubetree-fits.json';
+import { buildCubeTree } from './cubetree.js';
 import { buildLathe } from './lathe.js';
 
 let kit = null;
@@ -55,6 +57,11 @@ export async function buildAsset(ref, { height = ref.height } = {}) {
     const object = buildLathe(fit, { grooves: t?.grooves ?? [] });
     return { object, kind: 'lathe', place: fit.place, paint: fit.paint, faced: FACED.has(family) };
   }
+  const tree = cubetrees.fits[ref.id];
+  if (tree) {
+    const facing = Math.atan2(tree.facing[0], tree.facing[1]);
+    return { object: buildCubeTree(tree), kind: 'fence', place: tree.place, rotationY: facing, paint: tree.paint, revolve: true };
+  }
   const fence = fences.fits[ref.id];
   if (fence) {
     const { position, rotationY } = fencePlacement(fence);
@@ -75,9 +82,13 @@ export async function buildAsset(ref, { height = ref.height } = {}) {
   }
   if (family === 'npc') {
     const npc = buildNpc();
-    npc.group.scale.setScalar(height);
+    // The painted girl's feet are hidden behind her railing: her height runs from the base pixel to
+    // the box's top (the cut-out lost the top of her hair).
+    npc.group.scale.setScalar(ref.boxHeight ?? height);
+    // Modelled colours, not projection paint: her head's geometry is not the painted one's, so the
+    // painted face smears over it (dE 22 -> 7 but the crisp eyes and smile are lost).
     return { object: npc.group, kind: 'procedural', update: npc.update };
   }
-  if (family === 'scaffold') return { object: buildRailing(1.7, 0.9), kind: 'procedural' };
+  if (family === 'scaffold') return { object: buildRailing(1.7, 0.9), kind: 'procedural' }; // without a fit
   throw new Error(`no builder for the "${family}" family yet`);
 }

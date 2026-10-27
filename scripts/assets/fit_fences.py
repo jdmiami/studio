@@ -25,7 +25,7 @@ from trace_blocks import Camera  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 REF = ROOT / 'docs/reference/assets'
-FAMILIES = {'fence', 'wood-fence'}
+FAMILIES = {'fence', 'wood-fence', 'scaffold'}
 POST = 0.86
 
 
@@ -55,8 +55,19 @@ def main():
         top = {j: int(np.nonzero(alpha[:, j])[0][0]) for j in cols}
         # Ends: a few columns in from each side (the rounded caps), their bottom on the ground.
         jl, jr = cols[min(2, len(cols) - 1)], cols[max(-3, -len(cols))]
-        E0 = ground_hit(cam, x0 + jl + 0.5, y0 + bottom[jl] + 1, Y)
-        E1 = ground_hit(cam, x0 + jr + 0.5, y0 + bottom[jr] + 1, Y)
+        if r['family'] == 'scaffold':
+            # Its posts hang down a terrace face, so its bottom is not on one ground: take the line
+            # on the vertical plane through its spot facing the painter, at its base height.
+            P = np.array(r['position'], float)
+            nf = np.array(cam.eye) - P
+            nf[1] = 0
+            nf /= np.linalg.norm(nf)
+            E0 = plane_hit(cam, x0 + jl + 0.5, y0 + bottom[jl] + 1, P, nf)
+            E1 = plane_hit(cam, x0 + jr + 0.5, y0 + bottom[jr] + 1, P, nf)
+            E0[1] = E1[1] = Y
+        else:
+            E0 = ground_hit(cam, x0 + jl + 0.5, y0 + bottom[jl] + 1, Y)
+            E1 = ground_hit(cam, x0 + jr + 0.5, y0 + bottom[jr] + 1, Y)
         along = E1 - E0
         along[1] = 0
         L = float(np.linalg.norm(along))
@@ -85,7 +96,7 @@ def main():
                 i = k + 1
             else:
                 i += 1
-        if r['family'] == 'wood-fence':
+        if r['family'] in ('wood-fence', 'scaffold'):
             # A small wooden fence is two end posts and rails: the outline's end columns are trimmed
             # by the fit, so take each post's height as the highest top near its end.
             near = lambda a, b: hs[(ts >= a) & (ts <= b)]

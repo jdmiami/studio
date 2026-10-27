@@ -3,9 +3,9 @@
  "assets": {
   "cube-tree-0": {
    "status": "built",
-   "kind": "kit",
-   "iou": 0.415,
-   "dE": 4.21
+   "kind": "fence",
+   "iou": 0.805,
+   "dE": 4.72
   },
   "willow-0": {
    "status": "built",
@@ -14,8 +14,10 @@
    "dE": 6.1
   },
   "willow-2-0": {
-   "status": "missing",
-   "why": "no builder for the \"willow-2\" family yet"
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.0,
+   "dE": null
   },
   "broom-tree-0": {
    "status": "built",
@@ -37,9 +39,9 @@
   },
   "fence-0": {
    "status": "built",
-   "kind": "kit",
-   "iou": 0.263,
-   "dE": 10.62
+   "kind": "fence",
+   "iou": 0.815,
+   "dE": 6.27
   },
   "mushroom-0": {
    "status": "built",
@@ -144,12 +146,16 @@
    "dE": 5.06
   },
   "crate-0": {
-   "status": "missing",
-   "why": "no builder for the \"wood-fence\" family yet"
+   "status": "built",
+   "kind": "fence",
+   "iou": 0.676,
+   "dE": 8.14
   },
   "bench-0": {
-   "status": "missing",
-   "why": "no builder for the \"wood-fence\" family yet"
+   "status": "built",
+   "kind": "fence",
+   "iou": 0.767,
+   "dE": 9.98
   },
   "dog-0": {
    "status": "built",
@@ -178,14 +184,14 @@
   "npc-0": {
    "status": "built",
    "kind": "procedural",
-   "iou": 0.138,
-   "dE": 16.53
+   "iou": 0.479,
+   "dE": 19.63
   },
   "scaffold-0": {
    "status": "built",
-   "kind": "procedural",
-   "iou": 0.21,
-   "dE": 18.18
+   "kind": "fence",
+   "iou": 0.672,
+   "dE": 9.44
   }
  }
 }

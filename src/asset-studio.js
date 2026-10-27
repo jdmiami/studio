@@ -69,12 +69,14 @@ if (kind === 'kit') {
   paint = built.traced.paint;
 } else {
   object.rotation.y = facing;
+  paint = built.paint ?? null;
 }
 object.position.copy(at);
 scene.add(object);
 
+built.update?.(shotTime ?? 0); // pose an animated asset before painting it
 if (!mask && params.get('paint') !== '0' && paint) {
-  await (kind === 'kit' ? paintKitModel(object, paint) : projectPaint(object, paint, { revolve: kind === 'lathe', faced: built.faced, mirror: built.mirror }));
+  await (kind === 'kit' ? paintKitModel(object, paint) : projectPaint(object, paint, { revolve: kind === 'lathe' || built.revolve, faced: built.faced, mirror: built.mirror }));
 }
 
 // The turntable (?turn=<degrees>): a close orbit round the asset's vertical axis, starting from the

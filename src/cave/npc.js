@@ -8,11 +8,11 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createTextile, prepareTextileGeometry } from '../textile.js';
 
 const COLORS = {
-  skin: '#f1cdb6',
+  skin: '#fff1e8', // the painting's pale peach (the cel light and grade darken a warmer one to tan)
   blush: '#f2a9a0',
-  hair: '#8c6b57',
+  hair: '#957768',
   top: '#5d5862',
-  collar: '#f4eee8',
+  collar: '#d3dbe2', // the sailor collar, pale blue-grey
   scarf: '#a9c6da',
   legs: '#4f4a52',
   shoes: '#6e5547',
@@ -56,11 +56,12 @@ function head() {
     let x = p.getX(i);
     let y = p.getY(i);
     let z = p.getZ(i);
-    const front = z > 0.06 && Math.abs(x) < 0.17;
-    if (front && y < 0.06) { x *= 0.7; y *= 0.7; z *= 0.6; } // the face's opening, tucked in
-    if (y < -0.13) y = -0.13 + (y + 0.13) * 0.15; // the bob's hem, flat
-    // The bob flares a little at the hem.
-    if (y < 0) { const k = 1 + (-y) * 0.5; x *= k; z *= front ? 1 : k; }
+    const front = z > 0.06 && Math.abs(x) < 0.15;
+    if (front && y < 0.045) { x *= 0.7; y *= 0.7; z *= 0.6; } // the face's opening, under the bangs
+    // A bob to the shoulders, as painted: the sides and back hang past the chin to a flat hem.
+    if (y < -0.05) y = -0.05 + (y + 0.05) * 1.35;
+    if (y < -0.24) y = -0.24 + (y + 0.24) * 0.12;
+    if (y < 0) { const k = 1 + (-y) * 0.45; x *= k; z *= front ? 1 : k; }
     p.setXYZ(i, x, y, z);
   }
   hair.computeVertexNormals();

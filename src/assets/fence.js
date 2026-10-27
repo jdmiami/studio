@@ -12,6 +12,8 @@ const STYLE = {
   // The fit measures a post's width on its part above the rails, where the round cap narrows it.
   fence: { color: '#d2b6c4', depth: 0.75, round: 0.48, postScale: 1.35, material: () => createTextile('felt', { fuzz: 0.45, grain: 1.6 }) },
   'wood-fence': { color: '#d6ac8f', depth: 1, round: 0.18, postScale: 1, material: () => createTextile('felt', { fuzz: 0.15, grain: 1 }) },
+  // The girl's railing: the same wooden build, taller.
+  scaffold: { color: '#c79f86', depth: 1, round: 0.15, postScale: 1, material: () => createTextile('felt', { fuzz: 0.15, grain: 1 }) },
 };
 const materials = new Map();
 
@@ -36,7 +38,8 @@ export function buildFence(fit) {
     g.translate(p.t, p.h / 2, 0);
     parts.push(g);
   }
-  // Rails in each gap between neighbouring posts: two, stacked up to the rails' top.
+  // Rails in each gap between neighbouring posts: two, stacked up to the rails' top (the railing's
+  // painted boards are dense: two thick planks match it better than three thin rails).
   const railH = (fit.railTop - 0.04) / 2;
   for (let i = 0; i + 1 < posts.length; i++) {
     const a = posts[i].t + posts[i].w / 2;

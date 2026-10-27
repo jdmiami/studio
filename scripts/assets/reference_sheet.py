@@ -30,6 +30,12 @@ PUBLIC = ROOT / 'public/assets/ref'  # the cut-outs served to the studio (projec
 DROP = {'bush-4', 'bush-5', 'bush-6', 'sprout-0', 'bush-7'}  # bush-7: hidden behind a fence
 # What stands in front of an object in the painting, cut out of its silhouette.
 IN_FRONT = {'willow-2-0': ['broom-tree-0'], 'bush-7': ['bench-0'], 'knit-shrub-0': ['pom-0']}
+# Traced boxes corrected by eye on the painting: the cube tree's box stopped at its canopy (the
+# trunk and its footing on the grass at y 277 were left out).
+BOX_FIX = {'cube-tree-0': {'box': [290, 98, 447, 279], 'base': [372, 277]}}
+# Parts GrabCut drops against a background of the same colour, added back by eye (x0, y0, x1, y1):
+# the cube tree's trunk against the brown wall.
+ADD = {'cube-tree-0': [[357, 208, 393, 277]]}
 # Objects GrabCut mostly misses (it locks onto what stands in front): start from the whole box and
 # keep its green felt (GREEN below) instead.
 CLASS_CUT = {'willow-2-0', 'bush-7'}
@@ -37,6 +43,11 @@ CLASS_CUT = {'willow-2-0', 'bush-7'}
 # pixels, the green one its green pixels.
 WOOD = {'wood-fence', 'scaffold'}
 GREEN = {'bush-7', 'willow-2-0'}
+# Objects cut by GrabCut from a rectangle alone (the segmentation's prop pixels miss most of them):
+# the girl, whose hair and face sit on terrace pinks of the same tones.
+RECT_CUT = {'npc-0': [150, 162, 214, 230]}
+# Objects that stand just in front of another: (other, how much nearer the painter).
+IN_FRONT_OF = {'scaffold-0': ('npc-0', 0.45)}
 # Objects the HUD is drawn over.
 HUD_OVER = {'willow-2-0'}
 # The asset family each traced name belongs to (the crate and the bench are the same small fence).
@@ -60,9 +71,20 @@ def main():
         k = count.get(p['name'], 0)
         count[p['name']] = k + 1
         aid = f"{p['name']}-{k}"
+        if aid in BOX_FIX:
+            p = {**p, **BOX_FIX[aid], 'tracedBase': p['base']}
         crop, fg, (X0, Y0) = grabcut(ref, classes, p['box'], crop_disparity(sess, ref, p['box']))
         if fg.sum() < 20:
             fg = (classes[Y0:Y0 + crop.shape[0], X0:X0 + crop.shape[1]] == 9).astype(np.uint8)
+        if aid in RECT_CUT:
+            rx0, ry0, rx1, ry1 = RECT_CUT[aid]
+            X0, Y0 = rx0 - 6, ry0 - 6
+            crop = ref[Y0:ry1 + 6, X0:rx1 + 6].copy()
+            mask = np.zeros(crop.shape[:2], np.uint8)
+            bgd, fgd = np.zeros((1, 65), np.float64), np.zeros((1, 65), np.float64)
+            cv2.grabCut(cv2.cvtColor(crop, cv2.COLOR_RGB2BGR), mask, (6, 6, rx1 - rx0, ry1 - ry0), bgd, fgd, 8,
+                        cv2.GC_INIT_WITH_RECT)
+            fg = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8)
         cut[aid] = (p, crop, fg, X0, Y0)
     for aid, (p, crop, fg, X0, Y0) in cut.items():
         if aid in DROP:
@@ -87,10 +109,12 @@ def main():
             full = np.zeros(classes.shape, np.uint8)
             full[oy:oy + ofg.shape[0], ox:ox + ofg.shape[1]] = cv2.dilate(ofg, np.ones((5, 5), np.uint8))
             fg[full[Y0:Y0 + h, X0:X0 + w] > 0] = 0
+        for ax0, ay0, ax1, ay1 in ADD.get(aid, []):
+            fg[max(0, ay0 - Y0):ay1 - Y0, max(0, ax0 - X0):ax1 - X0] = 1
         n, lab, st, _ = cv2.connectedComponentsWithStats(fg)
         if n > 2:
             fg = (lab == 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))).astype(np.uint8)
-        q = next((q for q in placed if q['name'] == p['name'] and q['base'] == p['base']), None)
+        q = next((q for q in placed if q['name'] == p['name'] and q['base'] == p.get('tracedBase', p['base'])), None)
         rgba = np.dstack([crop, fg * 255]).astype(np.uint8)
         Image.fromarray(rgba, 'RGBA').save(OUT / f'{aid}.png')
         Image.fromarray(rgba, 'RGBA').save(PUBLIC / f'{aid}.png')
@@ -113,6 +137,7 @@ def main():
             right = np.array([-ray[2], 0.0, ray[0]]) / np.hypot(ray[0], ray[2])
             C = P + np.array([0, (rows[-1] - rows[0]) / ppu / 2, 0])
             ppu_w = float(np.linalg.norm(cam.project(C + right * 0.5) - cam.project(C - right * 0.5)))
+            entry['boxHeight'] = round((p['base'][1] - p['box'][1]) / ppu, 3)  # base pixel to the box's top
             entry.update({'position': [round(float(v), 3) for v in P], 'ppu': round(ppu, 2), 'ppuW': round(ppu_w, 2),
                           'height': round((rows[-1] - rows[0] + 1) / ppu, 3), 'width': round((cols[-1] - cols[0] + 1) / ppu_w, 3)})
         index.append(entry)
@@ -120,6 +145,21 @@ def main():
         s = max(1, min(4, 140 // max(tile.shape)))
         tile = cv2.resize(tile, (tile.shape[1] * s, tile.shape[0] * s), interpolation=cv2.INTER_NEAREST)
         tiles.append((aid, tile))
+    # Objects that stand just in front of another (the railing in front of the girl): on their base
+    # ray at the other's distance from the painter, less a step.
+    by_id = {e['id']: e for e in index}
+    for aid, (other, step) in IN_FRONT_OF.items():
+        e, o = by_id.get(aid), by_id.get(other)
+        if not e or not o or 'position' not in o:
+            continue
+        eye = np.array(cam.eye)
+        d = cam.ray(*e['base'])
+        target = np.hypot(o['position'][0] - eye[0], o['position'][2] - eye[2]) - step
+        t = target / np.hypot(d[0], d[2])
+        P = eye + t * d
+        ppu = float(cam.project(P)[1] - cam.project(P + np.array([0, 1.0, 0]))[1])
+        e.update({'position': [round(float(v), 3) for v in P], 'ppu': round(ppu, 2),
+                  'boxHeight': round((e['base'][1] - e['box'][1]) / ppu, 3)})
     (OUT / 'index.json').write_text(json.dumps({
         '_': 'The cave painting\'s assets cut out (scripts/assets/reference_sheet.py): per object its crop '
              '(RGBA, alpha = silhouette), box and base pixel, placed world position, px per unit and painted size.',
