@@ -11,6 +11,8 @@ import traced from '../cave/traced-props.json';
 import { buildTracedProp } from '../cave/traced-props.js';
 import { loadKitAssets, placeKitModel } from '../cave/kit-assets.js';
 import { buildNpc, buildRailing } from '../cave/npc.js';
+import lathes from './lathe-fits.json';
+import { buildLathe } from './lathe.js';
 
 let kit = null;
 const kitModels = () => (kit ??= loadKitAssets());
@@ -39,6 +41,8 @@ export const familyOf = (ref) => ref.family ?? ref.name;
 export async function buildAsset(ref, { height = ref.height } = {}) {
   const family = familyOf(ref);
   const index = Number(ref.id.split('-').pop());
+  const fit = lathes.fits[ref.id];
+  if (fit) return { object: buildLathe(fit), kind: 'lathe', place: fit.place, paint: fit.paint };
   if (KIT[family]) {
     const models = await kitModels();
     const ids = KIT[family];

@@ -100,13 +100,20 @@ def main():
         if q is None:  # never placed: stand it where its base pixel's ray meets the painted ground
             q = {'x': None}
         if q.get('x') is not None and len(rows):
+            # Stand it where the base pixel's ray meets its ground height: the scene's placement may
+            # have snapped it onto our layout's terrace, a few pixels off the painted base.
             P = np.array([q['x'], q['y'], q['z']])
+            d = cam.ray(*p['base'])
+            if d[1] < -1e-3:
+                t = (q['y'] - cam.eye[1]) / d[1]
+                if t > 0:
+                    P = np.array(cam.eye) + t * d
             ppu = float(cam.project(P)[1] - cam.project(P + np.array([0, 1.0, 0]))[1])
             ray = P - np.array(cam.eye)
             right = np.array([-ray[2], 0.0, ray[0]]) / np.hypot(ray[0], ray[2])
             C = P + np.array([0, (rows[-1] - rows[0]) / ppu / 2, 0])
             ppu_w = float(np.linalg.norm(cam.project(C + right * 0.5) - cam.project(C - right * 0.5)))
-            entry.update({'position': [q['x'], q['y'], q['z']], 'ppu': round(ppu, 2), 'ppuW': round(ppu_w, 2),
+            entry.update({'position': [round(float(v), 3) for v in P], 'ppu': round(ppu, 2), 'ppuW': round(ppu_w, 2),
                           'height': round((rows[-1] - rows[0] + 1) / ppu, 3), 'width': round((cols[-1] - cols[0] + 1) / ppu_w, 3)})
         index.append(entry)
         tile = np.where(fg[..., None] > 0, crop, 245).astype(np.uint8)

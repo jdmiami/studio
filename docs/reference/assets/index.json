@@ -22,9 +22,9 @@
    "file": "cube-tree-0.png",
    "src": "/assets/ref/cube-tree-0.png",
    "position": [
-    -2.394,
+    -2.393,
     3.0,
-    -4.167
+    -4.166
    ],
    "ppu": 46.19,
    "ppuW": 48.29,
@@ -52,14 +52,14 @@
    "file": "willow-0.png",
    "src": "/assets/ref/willow-0.png",
    "position": [
-    -0.6,
+    0.239,
     2.0,
-    -6.4
+    -5.5
    ],
-   "ppu": 43.08,
-   "ppuW": 43.87,
-   "height": 3.064,
-   "width": 2.143
+   "ppu": 47.93,
+   "ppuW": 48.86,
+   "height": 2.754,
+   "width": 1.924
   },
   {
    "id": "willow-2-0",
@@ -84,12 +84,12 @@
    "position": [
     7.418,
     2.0,
-    -7.051
+    -7.044
    ],
-   "ppu": 70.33,
-   "ppuW": 94.43,
-   "height": 1.891,
-   "width": 1.874
+   "ppu": 70.38,
+   "ppuW": 94.5,
+   "height": 1.89,
+   "width": 1.873
   },
   {
    "id": "broom-tree-0",
@@ -142,14 +142,14 @@
    "file": "pom-0.png",
    "src": "/assets/ref/pom-0.png",
    "position": [
-    6.825,
+    6.826,
     2.0,
-    -7.665
+    -7.647
    ],
-   "ppu": 63.1,
-   "ppuW": 79.39,
-   "height": 0.444,
-   "width": 0.542
+   "ppu": 63.21,
+   "ppuW": 79.53,
+   "height": 0.443,
+   "width": 0.541
   },
   {
    "id": "knit-shrub-0",
@@ -172,14 +172,14 @@
    "file": "knit-shrub-0.png",
    "src": "/assets/ref/knit-shrub-0.png",
    "position": [
-    6.987,
+    6.988,
     2.0,
-    -5.158
+    -5.152
    ],
-   "ppu": 83.33,
-   "ppuW": 105.92,
+   "ppu": 83.39,
+   "ppuW": 106.01,
    "height": 0.588,
-   "width": 1.02
+   "width": 1.019
   },
   {
    "id": "fence-0",
@@ -202,14 +202,14 @@
    "file": "fence-0.png",
    "src": "/assets/ref/fence-0.png",
    "position": [
-    7.035,
+    7.038,
     2.0,
-    -3.746
+    -3.742
    ],
-   "ppu": 101.13,
-   "ppuW": 128.95,
-   "height": 0.534,
-   "width": 1.016
+   "ppu": 101.22,
+   "ppuW": 129.12,
+   "height": 0.533,
+   "width": 1.015
   },
   {
    "id": "mushroom-0",
@@ -232,14 +232,14 @@
    "file": "mushroom-0.png",
    "src": "/assets/ref/mushroom-0.png",
    "position": [
-    0.1,
+    2.223,
     3.0,
-    -1.6
+    -0.421
    ],
-   "ppu": 67.48,
-   "ppuW": 71.74,
-   "height": 0.252,
-   "width": 0.279
+   "ppu": 95.51,
+   "ppuW": 101.74,
+   "height": 0.178,
+   "width": 0.197
   },
   {
    "id": "mushroom-1",
@@ -262,14 +262,14 @@
    "file": "mushroom-1.png",
    "src": "/assets/ref/mushroom-1.png",
    "position": [
-    0.4,
+    1.925,
     3.0,
-    -2.0
+    -1.041
    ],
-   "ppu": 66.53,
-   "ppuW": 69.26,
-   "height": 0.316,
-   "width": 0.39
+   "ppu": 85.16,
+   "ppuW": 88.67,
+   "height": 0.247,
+   "width": 0.304
   },
   {
    "id": "mushroom-2",
@@ -292,14 +292,14 @@
    "file": "mushroom-2.png",
    "src": "/assets/ref/mushroom-2.png",
    "position": [
-    0.4,
+    2.224,
     3.0,
-    -2.2
+    -1.052
    ],
-   "ppu": 65.27,
-   "ppuW": 67.4,
-   "height": 0.153,
-   "width": 0.223
+   "ppu": 87.81,
+   "ppuW": 90.51,
+   "height": 0.114,
+   "width": 0.166
   },
   {
    "id": "mushroom-3",
@@ -322,14 +322,14 @@
    "file": "mushroom-3.png",
    "src": "/assets/ref/mushroom-3.png",
    "position": [
-    1.4,
+    2.09,
     2.0,
-    -1.7
+    -1.257
    ],
-   "ppu": 71.95,
-   "ppuW": 75.47,
-   "height": 0.195,
-   "width": 0.305
+   "ppu": 80.65,
+   "ppuW": 84.76,
+   "height": 0.174,
+   "width": 0.271
   },
   {
    "id": "mushroom-4",
@@ -354,11 +354,11 @@
    "position": [
     6.289,
     2.0,
-    -5.398
+    -5.394
    ],
-   "ppu": 75.67,
-   "ppuW": 90.17,
-   "height": 0.41,
+   "ppu": 75.71,
+   "ppuW": 90.22,
+   "height": 0.409,
    "width": 0.466
   },
   {
@@ -382,12 +382,12 @@
    "file": "mushroom-5.png",
    "src": "/assets/ref/mushroom-5.png",
    "position": [
-    7.84,
+    7.839,
     2.0,
-    -3.368
+    -3.356
    ],
-   "ppu": 119.87,
-   "ppuW": 173.04,
+   "ppu": 120.1,
+   "ppuW": 173.37,
    "height": 0.4,
    "width": 0.335
   },
@@ -412,14 +412,14 @@
    "file": "stone-0.png",
    "src": "/assets/ref/stone-0.png",
    "position": [
-    -0.4,
+    -0.293,
     2.0,
-    -2.6
+    -2.399
    ],
-   "ppu": 57.34,
-   "ppuW": 60.46,
-   "height": 0.366,
-   "width": 0.48
+   "ppu": 58.78,
+   "ppuW": 62.24,
+   "height": 0.357,
+   "width": 0.466
   },
   {
    "id": "stone-1",
@@ -442,13 +442,13 @@
    "file": "stone-1.png",
    "src": "/assets/ref/stone-1.png",
    "position": [
-    0.43,
+    0.44,
     2.0,
-    -2.912
+    -2.904
    ],
-   "ppu": 59.3,
-   "ppuW": 61.22,
-   "height": 0.405,
+   "ppu": 59.38,
+   "ppuW": 61.3,
+   "height": 0.404,
    "width": 0.457
   },
   {
@@ -472,12 +472,12 @@
    "file": "stone-2.png",
    "src": "/assets/ref/stone-2.png",
    "position": [
-    0.721,
+    0.724,
     2.0,
-    -3.251
+    -3.249
    ],
-   "ppu": 58.84,
-   "ppuW": 60.22,
+   "ppu": 58.86,
+   "ppuW": 60.25,
    "height": 0.646,
    "width": 0.631
   },
@@ -502,14 +502,14 @@
    "file": "stone-3.png",
    "src": "/assets/ref/stone-3.png",
    "position": [
-    -4.4,
+    -4.643,
     2.0,
-    -7.7
+    -7.882
    ],
-   "ppu": 33.54,
-   "ppuW": 33.97,
-   "height": 0.477,
-   "width": 1.06
+   "ppu": 32.91,
+   "ppuW": 33.33,
+   "height": 0.486,
+   "width": 1.08
   },
   {
    "id": "stone-4",
@@ -532,14 +532,14 @@
    "file": "stone-4.png",
    "src": "/assets/ref/stone-4.png",
    "position": [
-    0.6,
+    -0.135,
     1.0,
-    -3.6
+    -3.883
    ],
-   "ppu": 54.93,
-   "ppuW": 56.82,
-   "height": 0.528,
-   "width": 0.563
+   "ppu": 51.21,
+   "ppuW": 53.1,
+   "height": 0.566,
+   "width": 0.603
   },
   {
    "id": "stone-5",
@@ -562,14 +562,14 @@
    "file": "stone-5.png",
    "src": "/assets/ref/stone-5.png",
    "position": [
-    1.4,
+    1.516,
     1.0,
-    -4.4
+    -4.841
    ],
-   "ppu": 54.42,
-   "ppuW": 55.51,
-   "height": 0.257,
-   "width": 0.342
+   "ppu": 52.98,
+   "ppuW": 53.99,
+   "height": 0.264,
+   "width": 0.352
   },
   {
    "id": "bush-0",
@@ -592,14 +592,14 @@
    "file": "bush-0.png",
    "src": "/assets/ref/bush-0.png",
    "position": [
-    2.179,
+    2.186,
     1.0,
-    -2.575
+    -2.568
    ],
-   "ppu": 67.75,
-   "ppuW": 70.32,
-   "height": 0.561,
-   "width": 0.512
+   "ppu": 67.83,
+   "ppuW": 70.41,
+   "height": 0.56,
+   "width": 0.511
   },
   {
    "id": "bush-1",
@@ -622,14 +622,14 @@
    "file": "bush-1.png",
    "src": "/assets/ref/bush-1.png",
    "position": [
-    0.945,
+    0.953,
     1.0,
-    -4.131
+    -4.123
    ],
-   "ppu": 53.91,
-   "ppuW": 55.22,
-   "height": 0.427,
-   "width": 0.489
+   "ppu": 53.97,
+   "ppuW": 55.29,
+   "height": 0.426,
+   "width": 0.488
   },
   {
    "id": "bush-2",
@@ -652,14 +652,14 @@
    "file": "bush-2.png",
    "src": "/assets/ref/bush-2.png",
    "position": [
-    1.813,
+    1.823,
     0.0,
-    -4.596
+    -4.583
    ],
-   "ppu": 53.45,
-   "ppuW": 55.69,
-   "height": 1.01,
-   "width": 0.934
+   "ppu": 53.53,
+   "ppuW": 55.78,
+   "height": 1.009,
+   "width": 0.932
   },
   {
    "id": "bush-3",
@@ -682,14 +682,14 @@
    "file": "bush-3.png",
    "src": "/assets/ref/bush-3.png",
    "position": [
-    1.4,
+    1.735,
     1.0,
-    -4.2
+    -3.889
    ],
-   "ppu": 55.29,
-   "ppuW": 56.48,
-   "height": 0.307,
-   "width": 0.584
+   "ppu": 58.07,
+   "ppuW": 59.4,
+   "height": 0.293,
+   "width": 0.556
   },
   {
    "id": "knit-bush-0",
@@ -712,14 +712,14 @@
    "file": "knit-bush-0.png",
    "src": "/assets/ref/knit-bush-0.png",
    "position": [
-    5.831,
+    5.834,
     2.0,
-    -4.896
+    -4.883
    ],
-   "ppu": 76.61,
-   "ppuW": 87.55,
+   "ppu": 76.75,
+   "ppuW": 87.7,
    "height": 0.261,
-   "width": 0.411
+   "width": 0.41
   },
   {
    "id": "crate-0",
@@ -742,14 +742,14 @@
    "file": "crate-0.png",
    "src": "/assets/ref/crate-0.png",
    "position": [
-    -0.45,
+    -3.696,
     0.0,
-    -6.703
+    -10.346
    ],
-   "ppu": 40.7,
-   "ppuW": 41.71,
-   "height": 0.393,
-   "width": 0.456
+   "ppu": 29.51,
+   "ppuW": 29.96,
+   "height": 0.542,
+   "width": 0.634
   },
   {
    "id": "bench-0",
@@ -772,14 +772,14 @@
    "file": "bench-0.png",
    "src": "/assets/ref/bench-0.png",
    "position": [
-    4.6,
+    4.358,
     1.0,
-    -7.8
+    -8.31
    ],
-   "ppu": 51.67,
-   "ppuW": 57.99,
-   "height": 0.426,
-   "width": 0.517
+   "ppu": 49.03,
+   "ppuW": 54.72,
+   "height": 0.449,
+   "width": 0.548
   },
   {
    "id": "dog-0",
@@ -802,14 +802,14 @@
    "file": "dog-0.png",
    "src": "/assets/ref/dog-0.png",
    "position": [
-    0.897,
+    0.902,
     0.0,
-    -8.343
+    -8.334
    ],
-   "ppu": 39.55,
-   "ppuW": 41.28,
-   "height": 1.745,
-   "width": 1.647
+   "ppu": 39.58,
+   "ppuW": 41.31,
+   "height": 1.743,
+   "width": 1.646
   },
   {
    "id": "critter-0",
@@ -832,14 +832,14 @@
    "file": "critter-0.png",
    "src": "/assets/ref/critter-0.png",
    "position": [
-    3.177,
+    3.179,
     0.0,
-    -7.999
+    -7.994
    ],
-   "ppu": 45.53,
-   "ppuW": 49.39,
+   "ppu": 45.55,
+   "ppuW": 49.41,
    "height": 0.659,
-   "width": 0.628
+   "width": 0.627
   },
   {
    "id": "critter-1",
@@ -862,12 +862,12 @@
    "file": "critter-1.png",
    "src": "/assets/ref/critter-1.png",
    "position": [
-    3.03,
+    3.034,
     0.0,
-    -5.729
+    -5.722
    ],
-   "ppu": 53.05,
-   "ppuW": 56.23,
+   "ppu": 53.1,
+   "ppuW": 56.28,
    "height": 0.452,
    "width": 0.498
   },
@@ -892,14 +892,14 @@
    "file": "critter-2.png",
    "src": "/assets/ref/critter-2.png",
    "position": [
-    4.734,
+    4.74,
     1.0,
-    -5.851
+    -5.833
    ],
-   "ppu": 61.14,
-   "ppuW": 67.64,
+   "ppu": 61.27,
+   "ppuW": 67.79,
    "height": 0.245,
-   "width": 0.222
+   "width": 0.221
   },
   {
    "id": "npc-0",
@@ -922,14 +922,14 @@
    "file": "npc-0.png",
    "src": "/assets/ref/npc-0.png",
    "position": [
-    -7.575,
+    -7.559,
     3.0,
-    -2.391
+    -2.386
    ],
-   "ppu": 39.23,
-   "ppuW": 46.08,
-   "height": 0.994,
-   "width": 0.89
+   "ppu": 39.27,
+   "ppuW": 46.13,
+   "height": 0.993,
+   "width": 0.889
   },
   {
    "id": "scaffold-0",
@@ -952,14 +952,14 @@
    "file": "scaffold-0.png",
    "src": "/assets/ref/scaffold-0.png",
    "position": [
-    -2.7,
+    -2.622,
     2.5,
-    -0.777
+    -0.746
    ],
-   "ppu": 57.58,
-   "ppuW": 68.79,
-   "height": 1.355,
-   "width": 1.134
+   "ppu": 58.06,
+   "ppuW": 69.39,
+   "height": 1.343,
+   "width": 1.124
   }
  ]
 }

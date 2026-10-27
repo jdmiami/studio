@@ -55,6 +55,10 @@ if (kind === 'kit') {
   object.rotation.y += THREE.MathUtils.degToRad(c.yaw - 45);
   paint = kitPaint.paints.find((k) => k.name === ref.name && k.base.join() === ref.base.join());
   if (paint?.shift) at.add(new THREE.Vector3(paint.shift[0], 0, paint.shift[1]));
+} else if (kind === 'lathe') {
+  at.fromArray(built.place);
+  object.rotation.y = facing;
+  paint = built.paint;
 } else if (kind === 'traced') {
   at.set(built.traced.x, built.traced.y, built.traced.z);
   object.rotation.y = facing;
