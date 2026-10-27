@@ -12,6 +12,7 @@ import layout from './layout.json';
 const W = 1024;
 const H = 572;
 const BANDS = 12;
+const REVOLVE_LIMIT = THREE.MathUtils.degToRad(62); // how far round from the view a revolved vertex samples
 
 let referenceCamera = null;
 function camera() {
@@ -39,8 +40,10 @@ function response(n, out, mode = 0) {
   const l = u.uSunDir.value.clone().normalize();
   const wrap = celRamp(THREE.MathUtils.clamp((n.dot(l) + 0.4) / 1.4, 0, 1), u.uCel.value);
   const velvet = mode === 2;
+  // Knit (mode 1) shades each stitch (lobes 0.38..1, ply 0.88..1): about 0.74 on average.
+  const stitch = mode === 1 ? 0.74 : 1;
   const ambient = u.uGroundColor.value.clone().lerp(u.uSkyColor.value, n.y * 0.5 + 0.5).multiplyScalar(velvet ? 0.45 * 0.85 : 0.7);
-  return out.copy(ambient).add(u.uSunColor.value.clone().multiplyScalar((velvet ? 0.55 * 0.85 : 0.8) * wrap));
+  return out.copy(ambient).add(u.uSunColor.value.clone().multiplyScalar((velvet ? 0.55 * 0.85 : 0.8) * wrap)).multiplyScalar(stitch);
 }
 
 const crops = new Map();
@@ -63,11 +66,49 @@ async function loadCrop(src) {
  * Paints every mesh under `object` (already placed in the world, vertex colours present) from the
  * painted crop `paint` = { src, x, y } (the crop's top-left in reference pixels). Returns the
  * fraction of vertices the painting covered.
+ *
+ * `revolve` (round assets, turned about the object's vertical axis): every vertex is first rotated
+ * about that axis into the painted front, a back vertex to its mirror point (the side away from the
+ * painter repeats the side toward it), a vertex near the outline to within REVOLVE_LIMIT of the
+ * view, where the painting's own outline ink and grazing compression begin. So the asset is painted
+ * all round, without the seams and streaks of per-band fallback colours. `faced`: the back takes the
+ * painted side's edge colour instead of the mirrored front (a face would repeat behind).
  */
-export async function projectPaint(object, paint) {
+export async function projectPaint(object, paint, { revolve = false, faced = false } = {}) {
   const img = await loadCrop(paint.src);
   const cam = camera();
   object.updateWorldMatrix(true, true);
+  const axis = object.getWorldPosition(new THREE.Vector3());
+  const toCam = Math.atan2(cam.position.x - axis.x, cam.position.z - axis.z);
+  const up = new THREE.Vector3(0, 1, 0);
+  const cA = new THREE.Color();
+  const cB = new THREE.Color();
+  const cAcc = new THREE.Color();
+  const q = new THREE.Vector3();
+  const m = new THREE.Vector3();
+  /**
+   * The de-lit painted colour at world point p0 with normal n0, turned by `turn` about the asset's
+   * axis first; false when that point faces away from the painter or misses the silhouette.
+   */
+  const sampleAt = (p0, n0, turn, mode, out) => {
+    q.copy(p0);
+    m.copy(n0);
+    if (turn) {
+      q.sub(axis).applyAxisAngle(up, turn).add(axis);
+      m.applyAxisAngle(up, turn);
+    }
+    if (m.dot(toEye.subVectors(cam.position, q)) <= 0) return false;
+    const ndc = q.clone().project(cam);
+    const u = Math.floor(((ndc.x + 1) / 2) * W) - paint.x;
+    const v = Math.floor(((1 - ndc.y) / 2) * H) - paint.y;
+    if (u < 0 || v < 0 || u >= img.width || v >= img.height) return false;
+    const k = (v * img.width + u) * 4;
+    if (img.data[k + 3] < 128) return false; // off the traced silhouette
+    c.setRGB(img.data[k] / 255, img.data[k + 1] / 255, img.data[k + 2] / 255, THREE.SRGBColorSpace);
+    response(m, resp, mode);
+    out.setRGB(c.r / resp.r, c.g / resp.g, c.b / resp.b);
+    return true;
+  };
   const p = new THREE.Vector3();
   const n = new THREE.Vector3();
   const toEye = new THREE.Vector3();
@@ -100,16 +141,33 @@ export async function projectPaint(object, paint) {
       total++;
       p.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
       n.fromBufferAttribute(nor, i).applyMatrix3(normalMatrix).normalize();
-      if (n.dot(toEye.subVectors(cam.position, p)) <= 0) continue; // faces away from the painter
-      const ndc = p.clone().project(cam);
-      const u = Math.floor(((ndc.x + 1) / 2) * W) - paint.x;
-      const v = Math.floor(((1 - ndc.y) / 2) * H) - paint.y;
-      if (u < 0 || v < 0 || u >= img.width || v >= img.height) continue;
-      const k = (v * img.width + u) * 4;
-      if (img.data[k + 3] < 128) continue; // off the traced silhouette
-      c.setRGB(img.data[k] / 255, img.data[k + 1] / 255, img.data[k + 2] / 255, THREE.SRGBColorSpace);
-      response(n, resp, mesh.material?.uniforms?.uMode?.value ?? 0);
-      col.setXYZ(i, c.r / resp.r, c.g / resp.g, c.b / resp.b);
+      const mode = mesh.material?.uniforms?.uMode?.value ?? 0;
+      let ok;
+      if (revolve) {
+        const a = Math.atan2(p.x - axis.x, p.z - axis.z);
+        const d = Math.atan2(Math.sin(a - toCam), Math.cos(a - toCam)); // -pi..pi from the view
+        if (Math.abs(d) <= Math.PI / 2 || !faced) {
+          // The back mirrors the front; near the outline, clamp inside it.
+          let f = Math.abs(d) > Math.PI / 2 ? Math.sign(d) * (Math.PI - Math.abs(d)) : d;
+          f = THREE.MathUtils.clamp(f, -REVOLVE_LIMIT, REVOLVE_LIMIT);
+          ok = sampleAt(p, n, f - d, mode, cAcc);
+        } else {
+          // A face's back: the painted side's two edge colours, blended across the back (a face
+          // would repeat if mirrored, and one edge alone leaves a seam behind).
+          const own = Math.sign(d) * REVOLVE_LIMIT;
+          const w = 0.5 + 0.5 * ((Math.PI - Math.abs(d)) / (Math.PI / 2));
+          const okA = sampleAt(p, n, own - d, mode, cA);
+          const okB = sampleAt(p, n, -own - d, mode, cB);
+          ok = okA || okB;
+          if (okA && okB) cAcc.setRGB(cA.r * w + cB.r * (1 - w), cA.g * w + cB.g * (1 - w), cA.b * w + cB.b * (1 - w));
+          else if (okA) cAcc.copy(cA);
+          else if (okB) cAcc.copy(cB);
+        }
+      } else {
+        ok = sampleAt(p, n, 0, mode, cAcc);
+      }
+      if (!ok) continue;
+      col.setXYZ(i, cAcc.r, cAcc.g, cAcc.b);
       got[i] = 1;
       painted++;
       const s = sums[band(ys[i])];

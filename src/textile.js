@@ -64,6 +64,7 @@ const fragmentShader = /* glsl */ `
   uniform float uStitch;
   uniform vec3 uStitchColor;
   uniform vec2 uKnit;
+  uniform float uKnitLean;
   uniform float uStripeCount;
   uniform vec3 uStripes[4];
   uniform float uWraps;
@@ -146,8 +147,8 @@ const fragmentShader = /* glsl */ `
       // Knit stockinette: columns of V stitches, each two leaning plied lobes.
       vec2 uv = vUv * uKnit;
       vec2 f = fract(uv);
-      vec2 a = lobe(f, vec2(0.29, 0.5), 0.5);
-      vec2 b = lobe(f, vec2(0.71, 0.5), -0.5);
+      vec2 a = lobe(f, vec2(0.29, 0.5), uKnitLean);
+      vec2 b = lobe(f, vec2(0.71, 0.5), -uKnitLean);
       vec2 s = a.x < b.x ? a : b;
       float h = clamp(1.0 - s.x, 0.0, 1.0);
       float ply = 0.5 + 0.5 * sin(s.y * 26.0 + (a.x < b.x ? 1.0 : -1.0) * f.y * 8.0);
@@ -211,6 +212,7 @@ export function createTextile(mode, {
   stitch = 0,
   stitchColor = '#fffaf2',
   knit = [24, 16],
+  knitLean = 0.5, // the V stitch's arms' lean (radians); steeper reads as leaf-like cable columns
   stripes = null,
   wraps = 30,
   sway = 0,
@@ -239,6 +241,7 @@ export function createTextile(mode, {
       uStitch: { value: stitch },
       uStitchColor: { value: new THREE.Color(stitchColor) },
       uKnit: { value: new THREE.Vector2(...knit) },
+      uKnitLean: { value: knitLean },
       uStripeCount: { value: stripes ? stripes.length * 2 : 0 },
       uStripes: { value: stripeColors },
       uWraps: { value: wraps },

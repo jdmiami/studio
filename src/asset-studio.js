@@ -6,7 +6,7 @@
 // its projection paint. scripts/assets/score.py compares the shot with the painted cut-out.
 //
 // Flags: ?ref=<id> (default the first)  ?mask=1 white silhouette on black, no post (for scoring)
-//        ?turn=<degrees> orbit the camera round the asset (its hidden sides)  ?paint=0 no projection
+//        ?turn=<degrees> a close orbit round the asset, from the painter's side (its hidden sides)  ?paint=0 no projection
 //        paint  ?shot=<s> freeze time and signal window.__phluphReady  ?bg=<hex> background
 import * as THREE from 'three';
 import { sharedFurUniforms } from './fur.js';
@@ -70,15 +70,21 @@ object.position.copy(at);
 scene.add(object);
 
 if (!mask && params.get('paint') !== '0' && paint) {
-  await (kind === 'kit' ? paintKitModel(object, paint) : projectPaint(object, paint));
+  await (kind === 'kit' ? paintKitModel(object, paint) : projectPaint(object, paint, { revolve: kind === 'lathe', faced: built.faced }));
 }
 
-// The turntable: orbit the eye round the asset's vertical axis, looking at its middle.
+// The turntable (?turn=<degrees>): a close orbit round the asset's vertical axis, starting from the
+// painter's side, framed on the asset (its hidden sides are what the painting cannot show).
 const box = new THREE.Box3().setFromObject(object);
 const mid = box.getCenter(new THREE.Vector3());
-if (turn) {
-  const offset = camera.position.clone().sub(mid).applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(turn));
-  camera.position.copy(mid).add(offset);
+if (params.has('turn')) {
+  const size = box.getSize(new THREE.Vector3());
+  const radius = Math.max(size.x, size.y, size.z) * 0.6;
+  const dist = radius / Math.tan(THREE.MathUtils.degToRad(c.fov / 2)) * 1.3;
+  const fromPainter = new THREE.Vector3(c.eye[0] - mid.x, 0, c.eye[2] - mid.z).normalize();
+  const dir = fromPainter.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(turn));
+  dir.y = 0.35;
+  camera.position.copy(mid).add(dir.normalize().multiplyScalar(dist));
   camera.lookAt(mid);
 }
 

@@ -27,7 +27,7 @@ from trace_blocks import Camera  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 REF = ROOT / 'docs/reference/assets'
-FAMILIES = {'mushroom', 'knit-shrub', 'knit-bush', 'pom', 'critter'}
+FAMILIES = {'mushroom', 'knit-shrub', 'knit-bush', 'pom', 'critter', 'stone', 'bush'}
 POINTS = 48
 
 
@@ -57,7 +57,10 @@ def main():
             else:
                 half.append(half[-1] if half else 0)
                 centre.append(centre[-1] if centre else x0)
-        half = np.array([np.median(half[max(0, i - 1):i + 2]) for i in range(len(half))])
+        # Median over 5 rows (drops single-row jags of the cut-out), then a 3-row mean: lathes of a
+        # jagged outline show rings all round.
+        half = np.array([np.median(half[max(0, i - 2):i + 3]) for i in range(len(half))])
+        half = np.array([np.mean(half[max(0, i - 1):i + 2]) for i in range(len(half))])
         ys = (bottom + 1 - np.arange(top, bottom + 1) - 0.5) / ppu
         # Lift: the outline's bottom above the base pixel.
         lift = max(0.0, (r['base'][1] - (y0 + bottom + 1)) / ppu)

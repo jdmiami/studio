@@ -26,14 +26,14 @@
   "pom-0": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.917,
-   "dE": 5.0
+   "iou": 0.898,
+   "dE": 5.07
   },
   "knit-shrub-0": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.814,
-   "dE": 14.22
+   "iou": 0.822,
+   "dE": 10.62
   },
   "fence-0": {
    "status": "built",
@@ -44,104 +44,104 @@
   "mushroom-0": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.942,
-   "dE": 4.99
+   "iou": 0.883,
+   "dE": 4.76
   },
   "mushroom-1": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.922,
-   "dE": 4.42
+   "iou": 0.915,
+   "dE": 4.29
   },
   "mushroom-2": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.915,
-   "dE": 5.77
+   "iou": 0.865,
+   "dE": 5.26
   },
   "mushroom-3": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.855,
-   "dE": 4.3
+   "iou": 0.807,
+   "dE": 4.1
   },
   "mushroom-4": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.902,
-   "dE": 5.25
+   "iou": 0.891,
+   "dE": 5.3
   },
   "mushroom-5": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.789,
-   "dE": 9.91
+   "iou": 0.782,
+   "dE": 10.04
   },
   "stone-0": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.847,
-   "dE": 5.24
+   "kind": "lathe",
+   "iou": 0.869,
+   "dE": 3.86
   },
   "stone-1": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.767,
-   "dE": 5.07
+   "kind": "lathe",
+   "iou": 0.884,
+   "dE": 3.97
   },
   "stone-2": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.701,
-   "dE": 5.72
+   "kind": "lathe",
+   "iou": 0.868,
+   "dE": 4.6
   },
   "stone-3": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.602,
-   "dE": 4.95
+   "kind": "lathe",
+   "iou": 0.755,
+   "dE": 4.55
   },
   "stone-4": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.4,
-   "dE": 5.43
+   "kind": "lathe",
+   "iou": 0.906,
+   "dE": 3.93
   },
   "stone-5": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.394,
-   "dE": 7.46
+   "kind": "lathe",
+   "iou": 0.812,
+   "dE": 5.9
   },
   "bush-0": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.87,
-   "dE": 4.31
+   "kind": "lathe",
+   "iou": 0.895,
+   "dE": 3.77
   },
   "bush-1": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.496,
-   "dE": 5.46
+   "kind": "lathe",
+   "iou": 0.854,
+   "dE": 4.52
   },
   "bush-2": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.9,
-   "dE": 4.69
+   "kind": "lathe",
+   "iou": 0.899,
+   "dE": 4.5
   },
   "bush-3": {
    "status": "built",
-   "kind": "traced",
-   "iou": 0.732,
-   "dE": 6.14
+   "kind": "lathe",
+   "iou": 0.738,
+   "dE": 4.99
   },
   "knit-bush-0": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.81,
-   "dE": 14.6
+   "iou": 0.762,
+   "dE": 5.06
   },
   "crate-0": {
    "status": "missing",
@@ -160,20 +160,20 @@
   "critter-0": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.86,
-   "dE": 4.8
+   "iou": 0.824,
+   "dE": 4.87
   },
   "critter-1": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.86,
-   "dE": 4.44
+   "iou": 0.826,
+   "dE": 4.45
   },
   "critter-2": {
    "status": "built",
    "kind": "lathe",
-   "iou": 0.795,
-   "dE": 5.34
+   "iou": 0.781,
+   "dE": 5.2
   },
   "npc-0": {
    "status": "built",

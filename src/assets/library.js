@@ -31,6 +31,9 @@ const KIT = {
 
 export const references = reference.assets;
 
+/** Round families with a face: their painted front must not repeat on their back. */
+const FACED = new Set(['critter']);
+
 /** The family of a reference ('stone-2' -> 'stone'). */
 export const familyOf = (ref) => ref.family ?? ref.name;
 
@@ -42,7 +45,12 @@ export async function buildAsset(ref, { height = ref.height } = {}) {
   const family = familyOf(ref);
   const index = Number(ref.id.split('-').pop());
   const fit = lathes.fits[ref.id];
-  if (fit) return { object: buildLathe(fit), kind: 'lathe', place: fit.place, paint: fit.paint };
+  if (fit) {
+    // A stepped dome keeps its traced tier lines as grooves.
+    const t = traced.props.find((p) => p.box.join() === ref.box.join());
+    const object = buildLathe(fit, { grooves: t?.grooves ?? [] });
+    return { object, kind: 'lathe', place: fit.place, paint: fit.paint, faced: FACED.has(family) };
+  }
   if (KIT[family]) {
     const models = await kitModels();
     const ids = KIT[family];
