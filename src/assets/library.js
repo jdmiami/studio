@@ -30,7 +30,7 @@ const KIT = {
 export const references = reference.assets;
 
 /** The family of a reference ('stone-2' -> 'stone'). */
-export const familyOf = (ref) => ref.name;
+export const familyOf = (ref) => ref.family ?? ref.name;
 
 /**
  * Builds the asset for a reference: { object, kind } with the object standing at the origin,

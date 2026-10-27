@@ -25,6 +25,22 @@ from trace_props import crop_disparity, grabcut  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'docs/reference/assets'
+PUBLIC = ROOT / 'public/assets/ref'  # the cut-outs served to the studio (projection paint)
+# Traced boxes that are not props (terrace edges, floor and fur, a speck).
+DROP = {'bush-4', 'bush-5', 'bush-6', 'sprout-0', 'bush-7'}  # bush-7: hidden behind a fence
+# What stands in front of an object in the painting, cut out of its silhouette.
+IN_FRONT = {'willow-2-0': ['broom-tree-0'], 'bush-7': ['bench-0'], 'knit-shrub-0': ['pom-0']}
+# Objects GrabCut mostly misses (it locks onto what stands in front): start from the whole box and
+# keep its green felt (GREEN below) instead.
+CLASS_CUT = {'willow-2-0', 'bush-7'}
+# Split by colour where a green felt object and a wooden one share a box: the wood keeps its non-green
+# pixels, the green one its green pixels.
+WOOD = {'wood-fence', 'scaffold'}
+GREEN = {'bush-7', 'willow-2-0'}
+# Objects the HUD is drawn over.
+HUD_OVER = {'willow-2-0'}
+# The asset family each traced name belongs to (the crate and the bench are the same small fence).
+FAMILY = {'crate': 'wood-fence', 'bench': 'wood-fence'}
 
 
 def main():
@@ -36,21 +52,54 @@ def main():
     placed = json.load(open(ROOT / 'src/cave/props-placement.json'))['props']
     cam = Camera(json.load(open(ROOT / 'docs/reference/cave-door-camera.json')), 1024, 572)
     OUT.mkdir(parents=True, exist_ok=True)
+    PUBLIC.mkdir(parents=True, exist_ok=True)
     index, tiles = [], []
     count = {}
+    cut = {}  # id -> (p, crop, fg, X0, Y0) for every traced object, before the exclusions
     for p in props:
         k = count.get(p['name'], 0)
         count[p['name']] = k + 1
         aid = f"{p['name']}-{k}"
-        q = next((q for q in placed if q['name'] == p['name'] and q['base'] == p['base']), None)
         crop, fg, (X0, Y0) = grabcut(ref, classes, p['box'], crop_disparity(sess, ref, p['box']))
         if fg.sum() < 20:
             fg = (classes[Y0:Y0 + crop.shape[0], X0:X0 + crop.shape[1]] == 9).astype(np.uint8)
-        Image.fromarray(np.dstack([crop, fg * 255]).astype(np.uint8), 'RGBA').save(OUT / f'{aid}.png')
-        entry = {'id': aid, 'name': p['name'], 'box': p['box'], 'base': p['base'], 'crop': [int(X0), int(Y0)],
-                 'file': f'{aid}.png'}
+        cut[aid] = (p, crop, fg, X0, Y0)
+    for aid, (p, crop, fg, X0, Y0) in cut.items():
+        if aid in DROP:
+            continue
+        h, w = fg.shape
+        fg = fg.copy()
+        if aid in CLASS_CUT:  # every pixel of the box; the green split below keeps the felt
+            fg = np.zeros_like(fg)
+            bx0, by0, bx1, by1 = p['box']
+            fg[max(0, by0 - Y0):by1 - Y0, max(0, bx0 - X0):bx1 - X0] = 1
+        # Green felt by Lab a* (muted sage has red and green nearly equal in RGB).
+        green = cv2.cvtColor(crop, cv2.COLOR_RGB2LAB)[..., 1].astype(int) - 128 < -4
+        if FAMILY.get(p['name'], p['name']) in WOOD:
+            fg[green] = 0
+        if aid in GREEN:
+            fg[~green] = 0
+        fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        if aid in HUD_OVER:  # the HUD panel drawn over it (the mask class elsewhere is a coarse box)
+            fg[classes[Y0:Y0 + h, X0:X0 + w] == 10] = 0
+        for other in IN_FRONT.get(aid, []):
+            _, _, ofg, ox, oy = cut[other]
+            full = np.zeros(classes.shape, np.uint8)
+            full[oy:oy + ofg.shape[0], ox:ox + ofg.shape[1]] = cv2.dilate(ofg, np.ones((5, 5), np.uint8))
+            fg[full[Y0:Y0 + h, X0:X0 + w] > 0] = 0
+        n, lab, st, _ = cv2.connectedComponentsWithStats(fg)
+        if n > 2:
+            fg = (lab == 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))).astype(np.uint8)
+        q = next((q for q in placed if q['name'] == p['name'] and q['base'] == p['base']), None)
+        rgba = np.dstack([crop, fg * 255]).astype(np.uint8)
+        Image.fromarray(rgba, 'RGBA').save(OUT / f'{aid}.png')
+        Image.fromarray(rgba, 'RGBA').save(PUBLIC / f'{aid}.png')
+        entry = {'id': aid, 'name': p['name'], 'family': FAMILY.get(p['name'], p['name']), 'box': p['box'],
+                 'base': p['base'], 'crop': [int(X0), int(Y0)], 'file': f'{aid}.png', 'src': f'/assets/ref/{aid}.png'}
         rows, cols = np.nonzero(fg.any(1))[0], np.nonzero(fg.any(0))[0]
-        if q is not None and len(rows):
+        if q is None:  # never placed: stand it where its base pixel's ray meets the painted ground
+            q = {'x': None}
+        if q.get('x') is not None and len(rows):
             P = np.array([q['x'], q['y'], q['z']])
             ppu = float(cam.project(P)[1] - cam.project(P + np.array([0, 1.0, 0]))[1])
             ray = P - np.array(cam.eye)

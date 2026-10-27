@@ -4,6 +4,7 @@
   {
    "id": "cube-tree-0",
    "name": "cube-tree",
+   "family": "cube-tree",
    "box": [
     292,
     100,
@@ -19,6 +20,7 @@
     94
    ],
    "file": "cube-tree-0.png",
+   "src": "/assets/ref/cube-tree-0.png",
    "position": [
     -2.394,
     3.0,
@@ -32,6 +34,7 @@
   {
    "id": "willow-0",
    "name": "willow",
+   "family": "willow",
    "box": [
     436,
     158,
@@ -47,6 +50,7 @@
     152
    ],
    "file": "willow-0.png",
+   "src": "/assets/ref/willow-0.png",
    "position": [
     -0.6,
     2.0,
@@ -60,6 +64,7 @@
   {
    "id": "willow-2-0",
    "name": "willow-2",
+   "family": "willow-2",
    "box": [
     798,
     55,
@@ -75,19 +80,21 @@
     49
    ],
    "file": "willow-2-0.png",
+   "src": "/assets/ref/willow-2-0.png",
    "position": [
     7.418,
     2.0,
     -7.051
    ],
    "ppu": 70.33,
-   "ppuW": 95.3,
-   "height": 2.631,
-   "width": 1.857
+   "ppuW": 94.43,
+   "height": 1.891,
+   "width": 1.874
   },
   {
    "id": "broom-tree-0",
    "name": "broom-tree",
+   "family": "broom-tree",
    "box": [
     846,
     140,
@@ -103,6 +110,7 @@
     134
    ],
    "file": "broom-tree-0.png",
+   "src": "/assets/ref/broom-tree-0.png",
    "position": [
     6.968,
     2.0,
@@ -116,6 +124,7 @@
   {
    "id": "pom-0",
    "name": "pom",
+   "family": "pom",
    "box": [
     870,
     290,
@@ -131,6 +140,7 @@
     284
    ],
    "file": "pom-0.png",
+   "src": "/assets/ref/pom-0.png",
    "position": [
     6.825,
     2.0,
@@ -144,6 +154,7 @@
   {
    "id": "knit-shrub-0",
    "name": "knit-shrub",
+   "family": "knit-shrub",
    "box": [
     835,
     312,
@@ -159,6 +170,7 @@
     306
    ],
    "file": "knit-shrub-0.png",
+   "src": "/assets/ref/knit-shrub-0.png",
    "position": [
     6.987,
     2.0,
@@ -172,6 +184,7 @@
   {
    "id": "fence-0",
    "name": "fence",
+   "family": "fence",
    "box": [
     820,
     343,
@@ -187,6 +200,7 @@
     337
    ],
    "file": "fence-0.png",
+   "src": "/assets/ref/fence-0.png",
    "position": [
     7.035,
     2.0,
@@ -200,6 +214,7 @@
   {
    "id": "mushroom-0",
    "name": "mushroom",
+   "family": "mushroom",
    "box": [
     292,
     257,
@@ -215,6 +230,7 @@
     251
    ],
    "file": "mushroom-0.png",
+   "src": "/assets/ref/mushroom-0.png",
    "position": [
     0.1,
     3.0,
@@ -228,6 +244,7 @@
   {
    "id": "mushroom-1",
    "name": "mushroom",
+   "family": "mushroom",
    "box": [
     325,
     252,
@@ -243,6 +260,7 @@
     246
    ],
    "file": "mushroom-1.png",
+   "src": "/assets/ref/mushroom-1.png",
    "position": [
     0.4,
     3.0,
@@ -256,6 +274,7 @@
   {
    "id": "mushroom-2",
    "name": "mushroom",
+   "family": "mushroom",
    "box": [
     349,
     268,
@@ -271,6 +290,7 @@
     262
    ],
    "file": "mushroom-2.png",
+   "src": "/assets/ref/mushroom-2.png",
    "position": [
     0.4,
     3.0,
@@ -284,6 +304,7 @@
   {
    "id": "mushroom-3",
    "name": "mushroom",
+   "family": "mushroom",
    "box": [
     354,
     337,
@@ -299,6 +320,7 @@
     331
    ],
    "file": "mushroom-3.png",
+   "src": "/assets/ref/mushroom-3.png",
    "position": [
     1.4,
     2.0,
@@ -312,6 +334,7 @@
   {
    "id": "mushroom-4",
    "name": "mushroom",
+   "family": "mushroom",
    "box": [
     803,
     310,
@@ -327,6 +350,7 @@
     304
    ],
    "file": "mushroom-4.png",
+   "src": "/assets/ref/mushroom-4.png",
    "position": [
     6.289,
     2.0,
@@ -340,6 +364,7 @@
   {
    "id": "mushroom-5",
    "name": "mushroom",
+   "family": "mushroom",
    "box": [
     965,
     378,
@@ -355,6 +380,7 @@
     372
    ],
    "file": "mushroom-5.png",
+   "src": "/assets/ref/mushroom-5.png",
    "position": [
     7.84,
     2.0,
@@ -368,6 +394,7 @@
   {
    "id": "stone-0",
    "name": "stone",
+   "family": "stone",
    "box": [
     327,
     296,
@@ -383,6 +410,7 @@
     290
    ],
    "file": "stone-0.png",
+   "src": "/assets/ref/stone-0.png",
    "position": [
     -0.4,
     2.0,
@@ -396,6 +424,7 @@
   {
    "id": "stone-1",
    "name": "stone",
+   "family": "stone",
    "box": [
     382,
     295,
@@ -411,6 +440,7 @@
     289
    ],
    "file": "stone-1.png",
+   "src": "/assets/ref/stone-1.png",
    "position": [
     0.43,
     2.0,
@@ -424,6 +454,7 @@
   {
    "id": "stone-2",
    "name": "stone",
+   "family": "stone",
    "box": [
     405,
     273,
@@ -439,6 +470,7 @@
     267
    ],
    "file": "stone-2.png",
+   "src": "/assets/ref/stone-2.png",
    "position": [
     0.721,
     2.0,
@@ -452,6 +484,7 @@
   {
    "id": "stone-3",
    "name": "stone",
+   "family": "stone",
    "box": [
     410,
     250,
@@ -467,6 +500,7 @@
     244
    ],
    "file": "stone-3.png",
+   "src": "/assets/ref/stone-3.png",
    "position": [
     -4.4,
     2.0,
@@ -480,6 +514,7 @@
   {
    "id": "stone-4",
    "name": "stone",
+   "family": "stone",
    "box": [
     402,
     330,
@@ -495,6 +530,7 @@
     324
    ],
    "file": "stone-4.png",
+   "src": "/assets/ref/stone-4.png",
    "position": [
     0.6,
     1.0,
@@ -508,6 +544,7 @@
   {
    "id": "stone-5",
    "name": "stone",
+   "family": "stone",
    "box": [
     510,
     350,
@@ -523,6 +560,7 @@
     344
    ],
    "file": "stone-5.png",
+   "src": "/assets/ref/stone-5.png",
    "position": [
     1.4,
     1.0,
@@ -536,6 +574,7 @@
   {
    "id": "bush-0",
    "name": "bush",
+   "family": "bush",
    "box": [
     437,
     371,
@@ -551,6 +590,7 @@
     365
    ],
    "file": "bush-0.png",
+   "src": "/assets/ref/bush-0.png",
    "position": [
     2.179,
     1.0,
@@ -564,6 +604,7 @@
   {
    "id": "bush-1",
    "name": "bush",
+   "family": "bush",
    "box": [
     455,
     340,
@@ -579,6 +620,7 @@
     334
    ],
    "file": "bush-1.png",
+   "src": "/assets/ref/bush-1.png",
    "position": [
     0.945,
     1.0,
@@ -592,6 +634,7 @@
   {
    "id": "bush-2",
    "name": "bush",
+   "family": "bush",
    "box": [
     497,
     362,
@@ -607,6 +650,7 @@
     356
    ],
    "file": "bush-2.png",
+   "src": "/assets/ref/bush-2.png",
    "position": [
     1.813,
     0.0,
@@ -620,6 +664,7 @@
   {
    "id": "bush-3",
    "name": "bush",
+   "family": "bush",
    "box": [
     475,
     350,
@@ -635,6 +680,7 @@
     344
    ],
    "file": "bush-3.png",
+   "src": "/assets/ref/bush-3.png",
    "position": [
     1.4,
     1.0,
@@ -646,120 +692,9 @@
    "width": 0.584
   },
   {
-   "id": "bush-4",
-   "name": "bush",
-   "box": [
-    440,
-    300,
-    474,
-    336
-   ],
-   "base": [
-    457,
-    338
-   ],
-   "crop": [
-    434,
-    294
-   ],
-   "file": "bush-4.png",
-   "position": [
-    1.4,
-    2.0,
-    -3.3
-   ],
-   "ppu": 61.63,
-   "ppuW": 62.42,
-   "height": 0.276,
-   "width": 0.336
-  },
-  {
-   "id": "bush-5",
-   "name": "bush",
-   "box": [
-    529,
-    320,
-    565,
-    358
-   ],
-   "base": [
-    547,
-    361
-   ],
-   "crop": [
-    523,
-    314
-   ],
-   "file": "bush-5.png",
-   "position": [
-    -0.283,
-    0.0,
-    -8.151
-   ],
-   "ppu": 37.78,
-   "ppuW": 38.9,
-   "height": 1.323,
-   "width": 1.234
-  },
-  {
-   "id": "bush-6",
-   "name": "bush",
-   "box": [
-    495,
-    325,
-    521,
-    347
-   ],
-   "base": [
-    508,
-    347
-   ],
-   "crop": [
-    489,
-    319
-   ],
-   "file": "bush-6.png",
-   "position": [
-    1.4,
-    1.0,
-    -4.4
-   ],
-   "ppu": 54.42,
-   "ppuW": 55.59,
-   "height": 0.459,
-   "width": 0.342
-  },
-  {
-   "id": "bush-7",
-   "name": "bush",
-   "box": [
-    733,
-    317,
-    762,
-    346
-   ],
-   "base": [
-    747,
-    346
-   ],
-   "crop": [
-    727,
-    311
-   ],
-   "file": "bush-7.png",
-   "position": [
-    4.325,
-    1.0,
-    -9.022
-   ],
-   "ppu": 46.57,
-   "ppuW": 52.27,
-   "height": 0.58,
-   "width": 0.612
-  },
-  {
    "id": "knit-bush-0",
    "name": "knit-bush",
+   "family": "knit-bush",
    "box": [
     760,
     324,
@@ -775,6 +710,7 @@
     318
    ],
    "file": "knit-bush-0.png",
+   "src": "/assets/ref/knit-bush-0.png",
    "position": [
     5.831,
     2.0,
@@ -788,6 +724,7 @@
   {
    "id": "crate-0",
    "name": "crate",
+   "family": "wood-fence",
    "box": [
     488,
     298,
@@ -803,6 +740,7 @@
     292
    ],
    "file": "crate-0.png",
+   "src": "/assets/ref/crate-0.png",
    "position": [
     -0.45,
     0.0,
@@ -816,6 +754,7 @@
   {
    "id": "bench-0",
    "name": "bench",
+   "family": "wood-fence",
    "box": [
     722,
     318,
@@ -831,19 +770,21 @@
     312
    ],
    "file": "bench-0.png",
+   "src": "/assets/ref/bench-0.png",
    "position": [
     4.6,
     1.0,
     -7.8
    ],
    "ppu": 51.67,
-   "ppuW": 58.08,
-   "height": 0.658,
-   "width": 0.551
+   "ppuW": 57.99,
+   "height": 0.426,
+   "width": 0.517
   },
   {
    "id": "dog-0",
    "name": "dog",
+   "family": "dog",
    "box": [
     552,
     296,
@@ -859,6 +800,7 @@
     290
    ],
    "file": "dog-0.png",
+   "src": "/assets/ref/dog-0.png",
    "position": [
     0.897,
     0.0,
@@ -872,6 +814,7 @@
   {
    "id": "critter-0",
    "name": "critter",
+   "family": "critter",
    "box": [
     657,
     357,
@@ -887,6 +830,7 @@
     351
    ],
    "file": "critter-0.png",
+   "src": "/assets/ref/critter-0.png",
    "position": [
     3.177,
     0.0,
@@ -900,6 +844,7 @@
   {
    "id": "critter-1",
    "name": "critter",
+   "family": "critter",
    "box": [
     598,
     393,
@@ -915,6 +860,7 @@
     387
    ],
    "file": "critter-1.png",
+   "src": "/assets/ref/critter-1.png",
    "position": [
     3.03,
     0.0,
@@ -928,6 +874,7 @@
   {
    "id": "critter-2",
    "name": "critter",
+   "family": "critter",
    "box": [
     706,
     373,
@@ -943,6 +890,7 @@
     367
    ],
    "file": "critter-2.png",
+   "src": "/assets/ref/critter-2.png",
    "position": [
     4.734,
     1.0,
@@ -954,36 +902,9 @@
    "width": 0.222
   },
   {
-   "id": "sprout-0",
-   "name": "sprout",
-   "box": [
-    689,
-    400,
-    708,
-    413
-   ],
-   "base": [
-    698,
-    412
-   ],
-   "crop": [
-    683,
-    394
-   ],
-   "file": "sprout-0.png",
-   "position": [
-    4.902,
-    1.0,
-    -4.722
-   ],
-   "ppu": 68.93,
-   "ppuW": 75.79,
-   "height": 0.073,
-   "width": 0.079
-  },
-  {
    "id": "npc-0",
    "name": "npc",
+   "family": "npc",
    "box": [
     156,
     168,
@@ -999,6 +920,7 @@
     162
    ],
    "file": "npc-0.png",
+   "src": "/assets/ref/npc-0.png",
    "position": [
     -7.575,
     3.0,
@@ -1012,6 +934,7 @@
   {
    "id": "scaffold-0",
    "name": "scaffold",
+   "family": "scaffold",
    "box": [
     150,
     206,
@@ -1027,6 +950,7 @@
     200
    ],
    "file": "scaffold-0.png",
+   "src": "/assets/ref/scaffold-0.png",
    "position": [
     -2.7,
     2.5,

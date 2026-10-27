@@ -30,8 +30,8 @@
   "knit-shrub-0": {
    "status": "built",
    "kind": "kit",
-   "iou": 0.325,
-   "dE": 6.83
+   "iou": 0.319,
+   "dE": 6.81
   },
   "fence-0": {
    "status": "built",
@@ -135,28 +135,6 @@
    "iou": 0.734,
    "dE": 6.16
   },
-  "bush-4": {
-   "status": "built",
-   "kind": "traced",
-   "iou": 0.532,
-   "dE": 6.42
-  },
-  "bush-5": {
-   "status": "missing",
-   "why": "no builder for the \"bush\" family yet"
-  },
-  "bush-6": {
-   "status": "built",
-   "kind": "traced",
-   "iou": 0.126,
-   "dE": 7.23
-  },
-  "bush-7": {
-   "status": "built",
-   "kind": "traced",
-   "iou": 0.721,
-   "dE": 6.29
-  },
   "knit-bush-0": {
    "status": "built",
    "kind": "kit",
@@ -165,11 +143,11 @@
   },
   "crate-0": {
    "status": "missing",
-   "why": "no builder for the \"crate\" family yet"
+   "why": "no builder for the \"wood-fence\" family yet"
   },
   "bench-0": {
    "status": "missing",
-   "why": "no builder for the \"bench\" family yet"
+   "why": "no builder for the \"wood-fence\" family yet"
   },
   "dog-0": {
    "status": "built",
@@ -195,10 +173,6 @@
    "iou": 0.614,
    "dE": 14.39
   },
-  "sprout-0": {
-   "status": "missing",
-   "why": "no builder for the \"sprout\" family yet"
-  },
   "npc-0": {
    "status": "built",
    "kind": "procedural",
@@ -208,8 +182,8 @@
   "scaffold-0": {
    "status": "built",
    "kind": "procedural",
-   "iou": 0.216,
-   "dE": 19.04
+   "iou": 0.207,
+   "dE": 18.58
   }
  }
 }
