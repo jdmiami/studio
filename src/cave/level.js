@@ -12,6 +12,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { build as buildKitBlock } from '../kit/families/blocks.js';
 import { rng } from '../world/util.js';
 import { buildGrassBlankets } from './grass.js';
+import { createTextile } from '../textile.js';
 
 export const CAVE_PALETTE = {
   wall: ['#d6b4a8', '#cfab9f', '#dcbcb1', '#c9a59a', '#d3b0a4'],
@@ -191,12 +192,13 @@ export function buildCaveLevel({ hide = null } = {}) {
   const designFor = (b) => {
     if (b.kind === 'water' || b.kind === 'stream') return 'water';
     if (b.kind === 'floor' || b.kind === 'step') return 'stone';
-    if (b.kind === 'frame') return 'stone-seam';
+    if (b.kind === 'frame') return 'stone';
     return 'pink';
   };
   // The right side of the cave sits in the overhang's shadow, darkening toward the outer wall.
   const sideShade = (x) => 1 - Math.min(0.45, Math.max(0, x + 2) * 0.06);
   const placed = new Map(); // `${design}:${variant}` -> [{ x, y, z, shade }]
+  const frameCells = []; // the door frame's stones: one mesh each, painted from the reference
   const grassCells = []; // { x, z, y: the column's top }
   visible.forEach((b) => {
     const open = !solid.has(key(b.x, b.y + 1, b.z));
@@ -212,6 +214,10 @@ export function buildCaveLevel({ hide = null } = {}) {
     // The slabs' undersides face away from the light; the reference paints them as bright as the walls.
     const shade = b.kind === 'ceiling' ? 1.3 : (1 - depth * 0.06) * sideShade(b.x);
     const variant = Math.floor(random() * VARIANTS);
+    if (b.kind === 'frame') { // built one by one below, to be projection painted
+      frameCells.push({ x: b.x, y, z: b.z, variant });
+      return;
+    }
     const id = `${design}:${variant}`;
     if (!placed.has(id)) placed.set(id, []);
     placed.get(id).push({ x: b.x, y, z: b.z, shade, ceiling: b.kind === 'ceiling' });
@@ -243,6 +249,26 @@ export function buildCaveLevel({ hide = null } = {}) {
     }
   }
 
+  // The door frame: plain stone blocks, each its own mesh with the design's colours baked into its
+  // vertices and a white felt, so projection painting (src/cave/projection-paint.js, from
+  // public/cave/paint-frame.png) can give each stone the painting's own tone.
+  const paintable = [];
+  const frameMaterial = createTextile('felt', { fuzz: 0.25, grain: 1 });
+  for (const cell of frameCells) {
+    for (const part of blockParts('stone', cell.variant)) {
+      const g = part.geometry.clone();
+      const base = part.material.uniforms.uColor.value;
+      const col = g.getAttribute('color');
+      for (let i = 0; i < col.count; i++) col.setXYZ(i, col.getX(i) * base.r, col.getY(i) * base.g, col.getZ(i) * base.b);
+      g.translate(cell.x, cell.y, cell.z);
+      if (!g.getAttribute('normal')) g.computeVertexNormals();
+      const mesh = new THREE.Mesh(g, frameMaterial);
+      mesh.userData.paint = { src: '/cave/paint-frame.png', x: 0, y: 0 };
+      group.add(mesh);
+      paintable.push(mesh);
+    }
+  }
+
   // The grass: one draped felt blanket per terrace, shaded like the cubes under it (a grass cell
   // is always a column's top block, so only the side shade applies).
   const blankets = buildGrassBlankets(grassCells, {
@@ -264,6 +290,7 @@ export function buildCaveLevel({ hide = null } = {}) {
 
   return {
     group, heightAt, columns, ceilingAt,
+    paintable, // meshes to projection paint (mesh.userData.paint)
     blockCount: visible.length,
     capCount: grassCells.length,
     blanketRegions: blankets.userData.regions,

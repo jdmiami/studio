@@ -7,6 +7,7 @@ import { loadKitAssets, placeKitModel } from './kit-assets.js';
 import { buildTracedDoor } from './door.js';
 import { buildTracedProps } from './traced-props.js';
 import { contactShadow } from './contact-shadows.js';
+import { projectPaint } from './projection-paint.js';
 import {
   buildLightShafts, buildScaffold,
 } from './props.js';
@@ -16,6 +17,10 @@ export function buildCave(scene, { hide = null } = {}) {
   const random = rng(20261026);
   const level = buildCaveLevel({ hide });
   scene.add(level.group);
+  // The door frame's stones take the painting's own tones (projection painting).
+  const levelPainted = new URLSearchParams(location.search).has('nopaint')
+    ? Promise.resolve()
+    : Promise.all(level.paintable.map((mesh) => projectPaint(mesh, mesh.userData.paint)));
 
   // The door is the reference's own mosaic, traced (src/cave/door.js).
   const doorReady = buildTracedDoor().then((door) => scene.add(door));
@@ -102,7 +107,7 @@ export function buildCave(scene, { hide = null } = {}) {
     spawn: { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
     stats: { blocks: level.blockCount, caps: level.capCount },
     // Resolves when the kit models, the door and the traced props' projection paint are in.
-    ready: Promise.all([propsReady, doorReady, traced.userData.painted]),
+    ready: Promise.all([propsReady, doorReady, traced.userData.painted, levelPainted]),
     update(time) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03 * dogSpec.scale;
       dog.rotation.z = Math.sin(time * 1.3) * 0.03;
