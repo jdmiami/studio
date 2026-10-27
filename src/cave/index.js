@@ -79,7 +79,12 @@ export function buildCave(scene, { hide = null } = {}) {
       const model = placeKitModel(kit, id, { position: at, height: p.height, yaw: VIEW_TURN });
       parent.add(model);
       const paint = paintFor(p);
-      if (paint) painting.push(paintKitModel(model, paint));
+      if (paint) {
+        // Align the model's axis with the painted silhouette (scripts/fp/paint_props.py), then paint.
+        model.position.x += paint.shift?.[0] ?? 0;
+        model.position.z += paint.shift?.[1] ?? 0;
+        painting.push(paintKitModel(model, paint));
+      }
       if (!id.startsWith('tree') && !id.startsWith('fence')) grounded.push(model);
       return model;
     };
