@@ -78,7 +78,11 @@ const SHARED = ['uTime', 'uSunDir', 'uSunColor', 'uSkyColor', 'uGroundColor', 'u
  */
 export function paintKitModel(model, paint) {
   model.traverse((o) => {
-    if (!o.isMesh || !o.material?.uniforms?.uColor) return;
+    if (!o.isMesh) return;
+    if (!o.material?.uniforms?.uColor) { // fur shells and the like: keep the kit's colours
+      o.userData.noPaint = true;
+      return;
+    }
     o.geometry = o.geometry.clone();
     const material = o.material.clone();
     for (const k of SHARED) if (sharedFurUniforms[k]) material.uniforms[k] = sharedFurUniforms[k];

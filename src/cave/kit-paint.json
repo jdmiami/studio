@@ -168,48 +168,6 @@
     -0.036,
     0.022
    ]
-  },
-  {
-   "name": "critter",
-   "base": [
-    673,
-    392
-   ],
-   "src": "/cave/props/kit-12.png",
-   "x": 651,
-   "y": 351,
-   "shift": [
-    -0.022,
-    0.009
-   ]
-  },
-  {
-   "name": "critter",
-   "base": [
-    614,
-    423
-   ],
-   "src": "/cave/props/kit-13.png",
-   "x": 592,
-   "y": 387,
-   "shift": [
-    0.016,
-    -0.009
-   ]
-  },
-  {
-   "name": "critter",
-   "base": [
-    714,
-    389
-   ],
-   "src": "/cave/props/kit-14.png",
-   "x": 700,
-   "y": 367,
-   "shift": [
-    0.015,
-    -0.005
-   ]
   }
  ]
 }

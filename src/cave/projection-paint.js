@@ -30,13 +30,17 @@ function celRamp(x, cel) {
   return x + (stepped - x) * cel;
 }
 
-/** The scene light's response on a surface with world normal n (the textile shader's terms). */
-function response(n, out) {
+/**
+ * The scene light's response on a surface with world normal n (the textile shader's terms; velvet,
+ * mode 2, lights its core at (ambient 0.45 + sun 0.55) x 0.85 instead of felt's 0.7 + 0.8).
+ */
+function response(n, out, mode = 0) {
   const u = sharedFurUniforms;
   const l = u.uSunDir.value.clone().normalize();
   const wrap = celRamp(THREE.MathUtils.clamp((n.dot(l) + 0.4) / 1.4, 0, 1), u.uCel.value);
-  const ambient = u.uGroundColor.value.clone().lerp(u.uSkyColor.value, n.y * 0.5 + 0.5).multiplyScalar(0.7);
-  return out.copy(ambient).add(u.uSunColor.value.clone().multiplyScalar(0.8 * wrap));
+  const velvet = mode === 2;
+  const ambient = u.uGroundColor.value.clone().lerp(u.uSkyColor.value, n.y * 0.5 + 0.5).multiplyScalar(velvet ? 0.45 * 0.85 : 0.7);
+  return out.copy(ambient).add(u.uSunColor.value.clone().multiplyScalar((velvet ? 0.55 * 0.85 : 0.8) * wrap));
 }
 
 const crops = new Map();
@@ -104,7 +108,7 @@ export async function projectPaint(object, paint) {
       const k = (v * img.width + u) * 4;
       if (img.data[k + 3] < 128) continue; // off the traced silhouette
       c.setRGB(img.data[k] / 255, img.data[k + 1] / 255, img.data[k + 2] / 255, THREE.SRGBColorSpace);
-      response(n, resp);
+      response(n, resp, mesh.material?.uniforms?.uMode?.value ?? 0);
       col.setXYZ(i, c.r / resp.r, c.g / resp.g, c.b / resp.b);
       got[i] = 1;
       painted++;

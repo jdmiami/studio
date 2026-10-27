@@ -15,15 +15,22 @@ shader, colours from the references with the scene light divided out.
 | Blocks (grass, earth, water, stone, seamed stone) | kit | kit cube designs at game density | `src/kit/families/blocks.js`, `src/cave/level.js` | in game |
 | Grass blankets | procedural | one draped felt blanket per terrace, scalloped hem | `src/cave/grass.js` | in game |
 | Layout | trace | layout fitted to the reference's surface classes under the solved camera, hand corrections | `src/cave/layout.json`, `scripts/fp/fit_layout.py`, `layout_edits.py` | in game; open items in `fit-notes.md` |
-| Cube tree, willow, knit domes, mushrooms, fence, dog, critters | kit | kit page export: warped + baked models as glTF (meshopt) | `public/kit/kit-props.glb`, `scripts/kit/export_glb.mjs`, `src/cave/kit-assets.js` | in game |
-| Great door (hero) | trace | door rectified by homography; seams traced (black-hat lines) into a relief map; painting as colour | `public/cave/door-*.png`, `scripts/fp/trace_door.py`, `src/cave/door.js` | in game; door region edge recall 0.92 |
-| Stepped domes (13 instances) | trace | silhouette by GrabCut seeded with the segmentation and monocular depth; turned as a lathe of the silhouette's half-width per row, grooved at the tier lines traced inside it, painted colour per tier | `src/cave/traced-props.json`, `scripts/fp/trace_props.py`, `src/cave/traced-props.js` | second pass: beehive outlines; the terraces they stand on sit nearer than painted (layout) |
-| Broom tree | trace | lathe of the traced radius bands, painted colour per band, fluted; felt handle | same | first pass: no green collar band |
-| Scaffold, light shafts | procedural | old builders | `src/cave/props.js` | to trace |
-| NPC on the scaffold | — | needs the img2threejs character track | — | not built |
+| Cube tree, willow, knit domes, mushrooms, fence, dog, critters | kit + projection paint | kit page export (glTF, meshopt); each placed model aligned to its painted silhouette and projection-painted from it (not the critters: their kit colours match better) | `public/kit/kit-props.glb`, `src/cave/kit-assets.js`, `scripts/fp/paint_props.py`, `src/cave/kit-paint.json` | in game; tree region dE 19.6 -> 14.0, dog 12.6 -> 9.4 |
+| Great door (hero) | trace | door rectified by homography; seams traced (black-hat lines) into a relief map; painting as colour | `public/cave/door-*.png`, `scripts/fp/trace_door.py`, `src/cave/door.js` | in game; relief halved for cel shading |
+| Door frame stones | projection paint | plain stone blocks, one mesh each, painted from the reference's frame pixels | `scripts/fp/paint_regions.py`, `public/cave/paint-frame.png`, `src/cave/level.js` | in game; region dE 11.8 -> 8.4 |
+| Block tones ("shaded cells") | fit | per-class gain and per-block residual tone fitted against the game's own render | `scripts/fp/fit_cell_tones.py`, `src/cave/cell-tones.json` | in game; 130 blocks; frame dE 17.4 -> 16.1 |
+| Stepped domes (13 instances) | trace + projection paint | silhouette by GrabCut seeded with segmentation and depth; lathe of the silhouette (widths across the viewing ray), grooved at the tier lines, axis on the painted centre, projection-painted | `src/cave/traced-props.json`, `scripts/fp/trace_props.py`, `src/cave/traced-props.js`, `src/cave/projection-paint.js` | in game |
+| Broom tree | trace + projection paint | dense outline lathe (90 rows), rounded-square section facing the painter, projection-painted head (bristles, green ferrule lip), green handle | same | in game; region edge recall 0.21 -> 0.63 |
+| Girl NPC and railing | procedural | chibi felt figure (bob, sailor top, collar, scarf) waving, railing at her chest, Talk interaction | `src/cave/npc.js` | in game |
+| Light shafts | procedural | beams aimed from the ceiling openings at floor targets, broad side to the room | `src/cave/props.js` | in game |
+| Lighting | procedural | cel shading, ink outlines, contact shadows, grade fitted to the painting's Lab statistics | `src/textile.js`, `src/fur.js`, `src/post.js`, `src/cave/contact-shadows.js` | in game; frame dE 19.8 -> 15.0 |
 
-Regenerate after a layout change: `python3 scripts/fp/place_props.py`, `python3 scripts/fp/trace_props.py`
-(the door does not depend on the layout).
+Regenerate after a layout change: `python3 scripts/fp/place_props.py`, `python3 scripts/fp/trace_props.py`,
+`python3 scripts/fp/paint_props.py`, then `fit_cell_tones.py --render <shot>` a few rounds against fresh renders
+(the door and the frame paint do not depend on the layout).
+
+Open: the layout still differs from the painting in places (the cascade's small steps, the left ceiling
+slabs, the terraces under the domes sit nearer than painted); the critters are larger than the painted puffs.
 
 ## Acceleration toolkit
 

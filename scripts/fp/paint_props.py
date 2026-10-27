@@ -26,7 +26,9 @@ from trace_blocks import Camera  # noqa: E402
 from trace_props import crop_disparity, grabcut  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-KIT = {'cube-tree', 'willow', 'willow-2', 'knit-shrub', 'knit-bush', 'mushroom', 'fence', 'dog', 'critter'}
+# Not the critters: white puffs whose painted shadow sides are brighter than the cel light gives;
+# the kit's baked colours match them better than the painting's pixels de-lit.
+KIT = {'cube-tree', 'willow', 'willow-2', 'knit-shrub', 'knit-bush', 'mushroom', 'fence', 'dog'}
 
 
 def main():
