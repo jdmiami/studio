@@ -124,6 +124,7 @@ function startCave() {
     if (e.code !== 'KeyE' || !near) return;
     if (near.id === 'door') hud.completeQuest();
     if (near.id === 'dog') hud.showToast('The fluffy dog wags its whole body at you!');
+    if (near.id === 'npc') hud.showToast('"Hi! The great door has been shut for ages. Maybe the fluffy dog knows the way in!"');
   });
 
   // Read-only handles for automated tests (scripts/fp-walk-test.mjs, scripts/fp/trace_blocks.py).

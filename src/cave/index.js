@@ -8,9 +8,8 @@ import { buildTracedDoor } from './door.js';
 import { buildTracedProps } from './traced-props.js';
 import { contactShadow } from './contact-shadows.js';
 import { projectPaint } from './projection-paint.js';
-import {
-  buildLightShafts, buildScaffold,
-} from './props.js';
+import { buildNpc, buildRailing } from './npc.js';
+import { buildLightShafts } from './props.js';
 
 /** Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag). */
 export function buildCave(scene, { hide = null } = {}) {
@@ -31,17 +30,31 @@ export function buildCave(scene, { hide = null } = {}) {
   const props = placement.props.filter((p) => p.build);
   const byName = (name) => props.filter((p) => p.name === name);
   const vec = (p) => new THREE.Vector3(p.x, p.y, p.z);
-  const scaled = (object, s) => { object.scale.setScalar(s); return object; };
 
   // The stepped felt domes and the broom tree, traced from the reference (src/cave/traced-props.js).
   const traced = buildTracedProps();
   scene.add(traced);
   for (const object of traced.children) if (object.userData.grounded) scene.add(contactShadow(object));
-  for (const p of byName('scaffold')) {
-    const scaffold = scaled(buildScaffold(vec(p)), p.scale);
-    scaffold.rotation.y = p.yaw;
-    scene.add(scaffold);
-  }
+  // The girl on the upper-left terrace, waving from behind a small wooden railing (the painting's
+  // "scaffold"): she stands at her traced spot facing the painter, the railing just in front.
+  const npcSpec = placement.props.find((p) => p.name === 'npc');
+  const npc = buildNpc();
+  const npcPos = npcSpec ? vec(npcSpec) : new THREE.Vector3(-7.5, level.heightAt(-7.5, -2.4), -2.4);
+  const eyeXZ = new THREE.Vector2(placement.camera?.eye?.[0] ?? 7.4, placement.camera?.eye?.[2] ?? 2.261);
+  const facing = Math.atan2(eyeXZ.x - npcPos.x, eyeXZ.y - npcPos.z);
+  npc.group.position.copy(npcPos);
+  npc.group.rotation.y = facing;
+  npc.group.scale.setScalar(1.88); // painted 74 px tall at 39 px per unit
+  scene.add(npc.group);
+  // The railing stands in front of the terrace edge, posts down the block face, its top rail at
+  // her chest (painted: 0.9 above the terrace), 1.7 wide.
+  const railAt = npcPos.clone().add(new THREE.Vector3(Math.sin(facing), 0, Math.cos(facing)).multiplyScalar(0.62));
+  const railBase = Math.min(npcPos.y, level.heightAt(railAt.x, railAt.z));
+  const railing = buildRailing(1.7, npcPos.y + 0.9 - railBase);
+  railing.position.set(railAt.x, railBase, railAt.z);
+  railing.rotation.y = facing;
+  scene.add(railing);
+  scene.add(contactShadow(npc.group));
 
   // The trees, domes, bushes, mushrooms, fence, dog and critters are the kit's own models, the ones
   // matched to the asset sheet (src/cave/kit-assets.js), each as tall as the reference paints it.
@@ -95,6 +108,7 @@ export function buildCave(scene, { hide = null } = {}) {
   const interactables = [
     { id: 'door', label: 'Inspect', position: new THREE.Vector3(0, 1.5, DOOR.z + 1), radius: 3.2 },
     { id: 'dog', label: 'Pet', position: dogBase.clone(), radius: 1.8 },
+    { id: 'npc', label: 'Talk', position: npcPos.clone().add(new THREE.Vector3(0, 0.8, 0)), radius: 2.4 },
   ];
 
   return {
@@ -112,6 +126,7 @@ export function buildCave(scene, { hide = null } = {}) {
       dog.position.y = dogBase.y + Math.abs(Math.sin(time * 2.2)) * 0.03 * dogSpec.scale;
       dog.rotation.z = Math.sin(time * 1.3) * 0.03;
       critters.position.y = Math.abs(Math.sin(time * 3.1)) * 0.02;
+      npc.update(time);
     },
   };
 }
