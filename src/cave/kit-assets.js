@@ -9,6 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { sharedFurUniforms } from '../fur.js';
 import { KIT_STAGE } from '../kit/style.js';
 import { createTextile, prepareTextileGeometry } from '../textile.js';
+import { projectPaint } from './projection-paint.js';
 
 const URL = '/kit/kit-props.glb';
 
@@ -65,4 +66,33 @@ export function placeKitModel(templates, id, { position, height, yaw = 0 }) {
   model.position.copy(position);
   model.rotation.y += yaw;
   return model;
+}
+
+const SHARED = ['uTime', 'uSunDir', 'uSunColor', 'uSkyColor', 'uGroundColor', 'uFogColor', 'uFogDensity', 'uCel'];
+
+/**
+ * Projection-paints a placed kit model from its painted crop (src/cave/kit-paint.json): each mesh
+ * gets its own geometry and material, its material colour baked into its vertex colours (so
+ * vertices the painting does not show keep the kit's colour) and set to white, then the painting's
+ * pixels go onto the vertices it shows. Resolves with the painted fraction.
+ */
+export function paintKitModel(model, paint) {
+  model.traverse((o) => {
+    if (!o.isMesh || !o.material?.uniforms?.uColor) return;
+    o.geometry = o.geometry.clone();
+    const material = o.material.clone();
+    for (const k of SHARED) if (sharedFurUniforms[k]) material.uniforms[k] = sharedFurUniforms[k];
+    const base = material.uniforms.uColor.value;
+    // The GLB stores colours quantized (normalized integers, meshopt): painted, de-lit values go
+    // above 1, so work in a float copy.
+    const q = o.geometry.getAttribute('color');
+    const col = new THREE.BufferAttribute(new Float32Array(q.count * 3), 3);
+    for (let i = 0; i < q.count; i++) col.setXYZ(i, q.getX(i), q.getY(i), q.getZ(i));
+    o.geometry.setAttribute('color', col);
+    for (let i = 0; i < col.count; i++) col.setXYZ(i, col.getX(i) * base.r, col.getY(i) * base.g, col.getZ(i) * base.b);
+    material.uniforms.uColor.value = new THREE.Color(1, 1, 1);
+    if (!o.geometry.getAttribute('normal')) o.geometry.computeVertexNormals();
+    o.material = material;
+  });
+  return projectPaint(model, paint);
 }

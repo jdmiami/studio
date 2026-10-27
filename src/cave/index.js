@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { rng } from '../world/util.js';
 import { buildCaveLevel, DOOR } from './level.js';
 import placement from './props-placement.json';
-import { loadKitAssets, placeKitModel } from './kit-assets.js';
+import { loadKitAssets, paintKitModel, placeKitModel } from './kit-assets.js';
+import kitPaint from './kit-paint.json';
 import { buildTracedDoor } from './door.js';
 import { buildTracedProps } from './traced-props.js';
 import { contactShadow } from './contact-shadows.js';
@@ -17,7 +18,8 @@ export function buildCave(scene, { hide = null } = {}) {
   const level = buildCaveLevel({ hide });
   scene.add(level.group);
   // The door frame's stones take the painting's own tones (projection painting).
-  const levelPainted = new URLSearchParams(location.search).has('nopaint')
+  const noPaint = new URLSearchParams(location.search).has('nopaint');
+  const levelPainted = noPaint
     ? Promise.resolve()
     : Promise.all(level.paintable.map((mesh) => projectPaint(mesh, mesh.userData.paint)));
 
@@ -71,9 +73,13 @@ export function buildCave(scene, { hide = null } = {}) {
   scene.add(critters);
   const propsReady = loadKitAssets().then((kit) => {
     const grounded = []; // small props and creatures get a contact shadow (not trees or fences)
+    const painting = []; // projection paint jobs: each model takes the painting's own pixels
+    const paintFor = (p) => (noPaint ? null : kitPaint.paints.find((k) => k.name === p.name && k.base[0] === p.base?.[0] && k.base[1] === p.base?.[1]));
     const place = (id, p, parent = scene, at = vec(p)) => {
       const model = placeKitModel(kit, id, { position: at, height: p.height, yaw: VIEW_TURN });
       parent.add(model);
+      const paint = paintFor(p);
+      if (paint) painting.push(paintKitModel(model, paint));
       if (!id.startsWith('tree') && !id.startsWith('fence')) grounded.push(model);
       return model;
     };
@@ -90,11 +96,14 @@ export function buildCave(scene, { hide = null } = {}) {
       const size = new THREE.Box3().setFromObject(kit.get('fence-a')).getSize(new THREE.Vector3());
       fence.rotation.y += p.yaw - (size.x >= size.z ? 0 : -Math.PI / 2);
       scene.add(fence);
+      const paint = paintFor(p);
+      if (paint) painting.push(paintKitModel(fence, paint));
     }
     place('dog-a', dogSpec, dog, new THREE.Vector3());
     const critterIds = ['critter-a', 'critter-b', 'critter-c'];
     byName('critter').forEach((p, i) => place(critterIds[i % critterIds.length], p, critters));
     for (const model of grounded) scene.add(contactShadow(model));
+    return Promise.all(painting);
   });
 
   // The painting's shafts fall from the ceiling openings down toward the viewer: the door's skylight

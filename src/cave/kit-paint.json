@@ -1,0 +1,155 @@
+{
+ "_": "Painted crops of the kit models placed in the cave, by prop name and base pixel (scripts/fp/paint_props.py); the game projection-paints each placed model from its crop.",
+ "paints": [
+  {
+   "name": "cube-tree",
+   "base": [
+    362,
+    250
+   ],
+   "src": "/cave/props/kit-0.png",
+   "x": 286,
+   "y": 94
+  },
+  {
+   "name": "willow",
+   "base": [
+    492,
+    300
+   ],
+   "src": "/cave/props/kit-1.png",
+   "x": 430,
+   "y": 152
+  },
+  {
+   "name": "knit-shrub",
+   "base": [
+    890,
+    364
+   ],
+   "src": "/cave/props/kit-2.png",
+   "x": 829,
+   "y": 306
+  },
+  {
+   "name": "fence",
+   "base": [
+    883,
+    397
+   ],
+   "src": "/cave/props/kit-3.png",
+   "x": 814,
+   "y": 337
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    305,
+    288
+   ],
+   "src": "/cave/props/kit-4.png",
+   "x": 286,
+   "y": 251
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    342,
+    280
+   ],
+   "src": "/cave/props/kit-5.png",
+   "x": 319,
+   "y": 246
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    357,
+    282
+   ],
+   "src": "/cave/props/kit-6.png",
+   "x": 343,
+   "y": 262
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    369,
+    360
+   ],
+   "src": "/cave/props/kit-7.png",
+   "x": 348,
+   "y": 331
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    826,
+    350
+   ],
+   "src": "/cave/props/kit-8.png",
+   "x": 797,
+   "y": 304
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    998,
+    432
+   ],
+   "src": "/cave/props/kit-9.png",
+   "x": 959,
+   "y": 372
+  },
+  {
+   "name": "knit-bush",
+   "base": [
+    778,
+    352
+   ],
+   "src": "/cave/props/kit-10.png",
+   "x": 754,
+   "y": 318
+  },
+  {
+   "name": "dog",
+   "base": [
+    590,
+    368
+   ],
+   "src": "/cave/props/kit-11.png",
+   "x": 546,
+   "y": 290
+  },
+  {
+   "name": "critter",
+   "base": [
+    673,
+    392
+   ],
+   "src": "/cave/props/kit-12.png",
+   "x": 651,
+   "y": 351
+  },
+  {
+   "name": "critter",
+   "base": [
+    614,
+    423
+   ],
+   "src": "/cave/props/kit-13.png",
+   "x": 592,
+   "y": 387
+  },
+  {
+   "name": "critter",
+   "base": [
+    714,
+    389
+   ],
+   "src": "/cave/props/kit-14.png",
+   "x": 700,
+   "y": 367
+  }
+ ]
+}
