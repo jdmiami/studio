@@ -6,6 +6,7 @@ import { createPost } from './post.js';
 import { buildWorld } from './world/index.js';
 import { rng } from './world/util.js';
 import { buildCave } from './cave/index.js';
+import { applyCaveLook } from './cave/look.js';
 import { createFirstPersonControls } from './fp/controls.js';
 import { createHands } from './fp/hands.js';
 import { createHud } from './fp/hud.js';
@@ -35,7 +36,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 // Khronos PBR Neutral keeps hues true; ACES greyed bright front-lit colors into a milky wash.
 renderer.toneMapping = THREE.NeutralToneMapping;
-renderer.toneMappingExposure = params.has('exposure') ? Number(params.get('exposure')) : 0.85;
+renderer.toneMappingExposure = params.has('exposure') ? Number(params.get('exposure')) : 0.85; // the cave sets its own
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -79,24 +80,8 @@ renderer.setAnimationLoop(() => {
 // --- Scenes -------------------------------------------------------------------
 
 function startCave() {
-  // Warm light from above-left, behind the player, so the great door is lit.
-  sharedFurUniforms.uSunDir.value.set(-0.4, 0.8, 0.45).normalize();
-  // The reference is chalky and slightly cool (mean Lab b 9.5 against 17 with the warmer light).
-  sharedFurUniforms.uSunColor.value.set('#fff6f1').multiplyScalar(1.25);
-  sharedFurUniforms.uSkyColor.value.set('#f3e4e2');
-  sharedFurUniforms.uGroundColor.value.set('#dcb4a4');
-  sharedFurUniforms.uFogColor.value.set('#f2dfd2');
-  sharedFurUniforms.uFogDensity.value = 0.004;
-  // The painting is cel shaded: flat tones per face, no plastic highlights (?cel=0 for smooth).
-  sharedFurUniforms.uCel.value = params.has('cel') ? Number(params.get('cel')) : 1;
-  // Grade fitted to the painting's Lab statistics (scripts: compare_frame.py; lightness mean,
-  // spread and 10th/90th percentiles within 1, chroma 18 against 17): brighter, flatter and with
-  // warm shadows; the painting lifts its dark sides into pastel instead of crushing them.
-  if (!params.has('exposure')) renderer.toneMappingExposure = 1.25;
-  const u = sky.material.uniforms;
-  u.uZenith.value.set('#9cc2ec');
-  u.uHorizon.value.set('#fbe8d6');
-  u.uHorizonSun.value.set('#fff3dc');
+  // The cave's light, cel shading, exposure and grade (src/cave/look.js, shared with the asset studio).
+  const postOptions = applyCaveLook(renderer, params, sky);
 
   // 58.3 degrees vertical is the reference frame's solved field of view (scripts/fp/solve_camera.py).
   const camera = new THREE.PerspectiveCamera(Number(params.get('fov')) || 58.3, innerWidth / innerHeight, 0.03, 600);
@@ -139,14 +124,7 @@ function startCave() {
   return {
     camera,
     ready: cave.ready,
-    // The reference's chalky pastel grade, and its ink outlines (?outline=0 turns them off).
-    postOptions: {
-      godRays: false, tiltShift: false,
-      saturation: params.has('sat') ? Number(params.get('sat')) : 0.85,
-      contrast: params.has('contrast') ? Number(params.get('contrast')) : 0.75,
-      shadowTint: params.has('stint') ? `#${params.get('stint')}` : '#c0957a',
-      outline: params.get('outline') === '0' ? null : true,
-    },
+    postOptions,
     update(time, dt) {
       controls.update(dt);
       fixedPose();

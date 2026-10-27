@@ -1,0 +1,1041 @@
+{
+ "_": "The cave painting's assets cut out (scripts/assets/reference_sheet.py): per object its crop (RGBA, alpha = silhouette), box and base pixel, placed world position, px per unit and painted size.",
+ "assets": [
+  {
+   "id": "cube-tree-0",
+   "name": "cube-tree",
+   "box": [
+    292,
+    100,
+    445,
+    250
+   ],
+   "base": [
+    362,
+    250
+   ],
+   "crop": [
+    286,
+    94
+   ],
+   "file": "cube-tree-0.png",
+   "position": [
+    -2.394,
+    3.0,
+    -4.167
+   ],
+   "ppu": 46.19,
+   "ppuW": 48.29,
+   "height": 2.468,
+   "width": 3.148
+  },
+  {
+   "id": "willow-0",
+   "name": "willow",
+   "box": [
+    436,
+    158,
+    542,
+    300
+   ],
+   "base": [
+    492,
+    300
+   ],
+   "crop": [
+    430,
+    152
+   ],
+   "file": "willow-0.png",
+   "position": [
+    -0.6,
+    2.0,
+    -6.4
+   ],
+   "ppu": 43.08,
+   "ppuW": 43.87,
+   "height": 3.064,
+   "width": 2.143
+  },
+  {
+   "id": "willow-2-0",
+   "name": "willow-2",
+   "box": [
+    798,
+    55,
+    1024,
+    258
+   ],
+   "base": [
+    940,
+    340
+   ],
+   "crop": [
+    792,
+    49
+   ],
+   "file": "willow-2-0.png",
+   "position": [
+    7.418,
+    2.0,
+    -7.051
+   ],
+   "ppu": 70.33,
+   "ppuW": 95.3,
+   "height": 2.631,
+   "width": 1.857
+  },
+  {
+   "id": "broom-tree-0",
+   "name": "broom-tree",
+   "box": [
+    846,
+    140,
+    960,
+    292
+   ],
+   "base": [
+    893,
+    352
+   ],
+   "crop": [
+    840,
+    134
+   ],
+   "file": "broom-tree-0.png",
+   "position": [
+    6.968,
+    2.0,
+    -5.835
+   ],
+   "ppu": 76.87,
+   "ppuW": 98.69,
+   "height": 1.548,
+   "width": 1.206
+  },
+  {
+   "id": "pom-0",
+   "name": "pom",
+   "box": [
+    870,
+    290,
+    915,
+    328
+   ],
+   "base": [
+    892,
+    327
+   ],
+   "crop": [
+    864,
+    284
+   ],
+   "file": "pom-0.png",
+   "position": [
+    6.825,
+    2.0,
+    -7.665
+   ],
+   "ppu": 63.1,
+   "ppuW": 79.39,
+   "height": 0.444,
+   "width": 0.542
+  },
+  {
+   "id": "knit-shrub-0",
+   "name": "knit-shrub",
+   "box": [
+    835,
+    312,
+    945,
+    365
+   ],
+   "base": [
+    890,
+    364
+   ],
+   "crop": [
+    829,
+    306
+   ],
+   "file": "knit-shrub-0.png",
+   "position": [
+    6.987,
+    2.0,
+    -5.158
+   ],
+   "ppu": 83.33,
+   "ppuW": 105.92,
+   "height": 0.588,
+   "width": 1.02
+  },
+  {
+   "id": "fence-0",
+   "name": "fence",
+   "box": [
+    820,
+    343,
+    948,
+    398
+   ],
+   "base": [
+    883,
+    397
+   ],
+   "crop": [
+    814,
+    337
+   ],
+   "file": "fence-0.png",
+   "position": [
+    7.035,
+    2.0,
+    -3.746
+   ],
+   "ppu": 101.13,
+   "ppuW": 128.95,
+   "height": 0.534,
+   "width": 1.016
+  },
+  {
+   "id": "mushroom-0",
+   "name": "mushroom",
+   "box": [
+    292,
+    257,
+    320,
+    288
+   ],
+   "base": [
+    305,
+    288
+   ],
+   "crop": [
+    286,
+    251
+   ],
+   "file": "mushroom-0.png",
+   "position": [
+    0.1,
+    3.0,
+    -1.6
+   ],
+   "ppu": 67.48,
+   "ppuW": 71.74,
+   "height": 0.252,
+   "width": 0.279
+  },
+  {
+   "id": "mushroom-1",
+   "name": "mushroom",
+   "box": [
+    325,
+    252,
+    356,
+    280
+   ],
+   "base": [
+    342,
+    280
+   ],
+   "crop": [
+    319,
+    246
+   ],
+   "file": "mushroom-1.png",
+   "position": [
+    0.4,
+    3.0,
+    -2.0
+   ],
+   "ppu": 66.53,
+   "ppuW": 69.26,
+   "height": 0.316,
+   "width": 0.39
+  },
+  {
+   "id": "mushroom-2",
+   "name": "mushroom",
+   "box": [
+    349,
+    268,
+    364,
+    281
+   ],
+   "base": [
+    357,
+    282
+   ],
+   "crop": [
+    343,
+    262
+   ],
+   "file": "mushroom-2.png",
+   "position": [
+    0.4,
+    3.0,
+    -2.2
+   ],
+   "ppu": 65.27,
+   "ppuW": 67.4,
+   "height": 0.153,
+   "width": 0.223
+  },
+  {
+   "id": "mushroom-3",
+   "name": "mushroom",
+   "box": [
+    354,
+    337,
+    381,
+    360
+   ],
+   "base": [
+    369,
+    360
+   ],
+   "crop": [
+    348,
+    331
+   ],
+   "file": "mushroom-3.png",
+   "position": [
+    1.4,
+    2.0,
+    -1.7
+   ],
+   "ppu": 71.95,
+   "ppuW": 75.47,
+   "height": 0.195,
+   "width": 0.305
+  },
+  {
+   "id": "mushroom-4",
+   "name": "mushroom",
+   "box": [
+    803,
+    310,
+    850,
+    350
+   ],
+   "base": [
+    826,
+    350
+   ],
+   "crop": [
+    797,
+    304
+   ],
+   "file": "mushroom-4.png",
+   "position": [
+    6.289,
+    2.0,
+    -5.398
+   ],
+   "ppu": 75.67,
+   "ppuW": 90.17,
+   "height": 0.41,
+   "width": 0.466
+  },
+  {
+   "id": "mushroom-5",
+   "name": "mushroom",
+   "box": [
+    965,
+    378,
+    1024,
+    432
+   ],
+   "base": [
+    998,
+    432
+   ],
+   "crop": [
+    959,
+    372
+   ],
+   "file": "mushroom-5.png",
+   "position": [
+    7.84,
+    2.0,
+    -3.368
+   ],
+   "ppu": 119.87,
+   "ppuW": 173.04,
+   "height": 0.4,
+   "width": 0.335
+  },
+  {
+   "id": "stone-0",
+   "name": "stone",
+   "box": [
+    327,
+    296,
+    361,
+    320
+   ],
+   "base": [
+    345,
+    320
+   ],
+   "crop": [
+    321,
+    290
+   ],
+   "file": "stone-0.png",
+   "position": [
+    -0.4,
+    2.0,
+    -2.6
+   ],
+   "ppu": 57.34,
+   "ppuW": 60.46,
+   "height": 0.366,
+   "width": 0.48
+  },
+  {
+   "id": "stone-1",
+   "name": "stone",
+   "box": [
+    382,
+    295,
+    410,
+    318
+   ],
+   "base": [
+    396,
+    321
+   ],
+   "crop": [
+    376,
+    289
+   ],
+   "file": "stone-1.png",
+   "position": [
+    0.43,
+    2.0,
+    -2.912
+   ],
+   "ppu": 59.3,
+   "ppuW": 61.22,
+   "height": 0.405,
+   "width": 0.457
+  },
+  {
+   "id": "stone-2",
+   "name": "stone",
+   "box": [
+    405,
+    273,
+    441,
+    320
+   ],
+   "base": [
+    423,
+    320
+   ],
+   "crop": [
+    399,
+    267
+   ],
+   "file": "stone-2.png",
+   "position": [
+    0.721,
+    2.0,
+    -3.251
+   ],
+   "ppu": 58.84,
+   "ppuW": 60.22,
+   "height": 0.646,
+   "width": 0.631
+  },
+  {
+   "id": "stone-3",
+   "name": "stone",
+   "box": [
+    410,
+    250,
+    443,
+    269
+   ],
+   "base": [
+    427,
+    273
+   ],
+   "crop": [
+    404,
+    244
+   ],
+   "file": "stone-3.png",
+   "position": [
+    -4.4,
+    2.0,
+    -7.7
+   ],
+   "ppu": 33.54,
+   "ppuW": 33.97,
+   "height": 0.477,
+   "width": 1.06
+  },
+  {
+   "id": "stone-4",
+   "name": "stone",
+   "box": [
+    402,
+    330,
+    439,
+    360
+   ],
+   "base": [
+    421,
+    360
+   ],
+   "crop": [
+    396,
+    324
+   ],
+   "file": "stone-4.png",
+   "position": [
+    0.6,
+    1.0,
+    -3.6
+   ],
+   "ppu": 54.93,
+   "ppuW": 56.82,
+   "height": 0.528,
+   "width": 0.563
+  },
+  {
+   "id": "stone-5",
+   "name": "stone",
+   "box": [
+    510,
+    350,
+    529,
+    365
+   ],
+   "base": [
+    519,
+    365
+   ],
+   "crop": [
+    504,
+    344
+   ],
+   "file": "stone-5.png",
+   "position": [
+    1.4,
+    1.0,
+    -4.4
+   ],
+   "ppu": 54.42,
+   "ppuW": 55.51,
+   "height": 0.257,
+   "width": 0.342
+  },
+  {
+   "id": "bush-0",
+   "name": "bush",
+   "box": [
+    437,
+    371,
+    472,
+    409
+   ],
+   "base": [
+    454,
+    409
+   ],
+   "crop": [
+    431,
+    365
+   ],
+   "file": "bush-0.png",
+   "position": [
+    2.179,
+    1.0,
+    -2.575
+   ],
+   "ppu": 67.75,
+   "ppuW": 70.32,
+   "height": 0.561,
+   "width": 0.512
+  },
+  {
+   "id": "bush-1",
+   "name": "bush",
+   "box": [
+    455,
+    340,
+    484,
+    368
+   ],
+   "base": [
+    470,
+    368
+   ],
+   "crop": [
+    449,
+    334
+   ],
+   "file": "bush-1.png",
+   "position": [
+    0.945,
+    1.0,
+    -4.131
+   ],
+   "ppu": 53.91,
+   "ppuW": 55.22,
+   "height": 0.427,
+   "width": 0.489
+  },
+  {
+   "id": "bush-2",
+   "name": "bush",
+   "box": [
+    497,
+    362,
+    550,
+    425
+   ],
+   "base": [
+    523,
+    425
+   ],
+   "crop": [
+    491,
+    356
+   ],
+   "file": "bush-2.png",
+   "position": [
+    1.813,
+    0.0,
+    -4.596
+   ],
+   "ppu": 53.45,
+   "ppuW": 55.69,
+   "height": 1.01,
+   "width": 0.934
+  },
+  {
+   "id": "bush-3",
+   "name": "bush",
+   "box": [
+    475,
+    350,
+    512,
+    380
+   ],
+   "base": [
+    493,
+    380
+   ],
+   "crop": [
+    469,
+    344
+   ],
+   "file": "bush-3.png",
+   "position": [
+    1.4,
+    1.0,
+    -4.2
+   ],
+   "ppu": 55.29,
+   "ppuW": 56.48,
+   "height": 0.307,
+   "width": 0.584
+  },
+  {
+   "id": "bush-4",
+   "name": "bush",
+   "box": [
+    440,
+    300,
+    474,
+    336
+   ],
+   "base": [
+    457,
+    338
+   ],
+   "crop": [
+    434,
+    294
+   ],
+   "file": "bush-4.png",
+   "position": [
+    1.4,
+    2.0,
+    -3.3
+   ],
+   "ppu": 61.63,
+   "ppuW": 62.42,
+   "height": 0.276,
+   "width": 0.336
+  },
+  {
+   "id": "bush-5",
+   "name": "bush",
+   "box": [
+    529,
+    320,
+    565,
+    358
+   ],
+   "base": [
+    547,
+    361
+   ],
+   "crop": [
+    523,
+    314
+   ],
+   "file": "bush-5.png",
+   "position": [
+    -0.283,
+    0.0,
+    -8.151
+   ],
+   "ppu": 37.78,
+   "ppuW": 38.9,
+   "height": 1.323,
+   "width": 1.234
+  },
+  {
+   "id": "bush-6",
+   "name": "bush",
+   "box": [
+    495,
+    325,
+    521,
+    347
+   ],
+   "base": [
+    508,
+    347
+   ],
+   "crop": [
+    489,
+    319
+   ],
+   "file": "bush-6.png",
+   "position": [
+    1.4,
+    1.0,
+    -4.4
+   ],
+   "ppu": 54.42,
+   "ppuW": 55.59,
+   "height": 0.459,
+   "width": 0.342
+  },
+  {
+   "id": "bush-7",
+   "name": "bush",
+   "box": [
+    733,
+    317,
+    762,
+    346
+   ],
+   "base": [
+    747,
+    346
+   ],
+   "crop": [
+    727,
+    311
+   ],
+   "file": "bush-7.png",
+   "position": [
+    4.325,
+    1.0,
+    -9.022
+   ],
+   "ppu": 46.57,
+   "ppuW": 52.27,
+   "height": 0.58,
+   "width": 0.612
+  },
+  {
+   "id": "knit-bush-0",
+   "name": "knit-bush",
+   "box": [
+    760,
+    324,
+    797,
+    352
+   ],
+   "base": [
+    778,
+    352
+   ],
+   "crop": [
+    754,
+    318
+   ],
+   "file": "knit-bush-0.png",
+   "position": [
+    5.831,
+    2.0,
+    -4.896
+   ],
+   "ppu": 76.61,
+   "ppuW": 87.55,
+   "height": 0.261,
+   "width": 0.411
+  },
+  {
+   "id": "crate-0",
+   "name": "crate",
+   "box": [
+    488,
+    298,
+    521,
+    328
+   ],
+   "base": [
+    504,
+    328
+   ],
+   "crop": [
+    482,
+    292
+   ],
+   "file": "crate-0.png",
+   "position": [
+    -0.45,
+    0.0,
+    -6.703
+   ],
+   "ppu": 40.7,
+   "ppuW": 41.71,
+   "height": 0.393,
+   "width": 0.456
+  },
+  {
+   "id": "bench-0",
+   "name": "bench",
+   "box": [
+    722,
+    318,
+    753,
+    353
+   ],
+   "base": [
+    738,
+    353
+   ],
+   "crop": [
+    716,
+    312
+   ],
+   "file": "bench-0.png",
+   "position": [
+    4.6,
+    1.0,
+    -7.8
+   ],
+   "ppu": 51.67,
+   "ppuW": 58.08,
+   "height": 0.658,
+   "width": 0.551
+  },
+  {
+   "id": "dog-0",
+   "name": "dog",
+   "box": [
+    552,
+    296,
+    624,
+    368
+   ],
+   "base": [
+    590,
+    368
+   ],
+   "crop": [
+    546,
+    290
+   ],
+   "file": "dog-0.png",
+   "position": [
+    0.897,
+    0.0,
+    -8.343
+   ],
+   "ppu": 39.55,
+   "ppuW": 41.28,
+   "height": 1.745,
+   "width": 1.647
+  },
+  {
+   "id": "critter-0",
+   "name": "critter",
+   "box": [
+    657,
+    357,
+    690,
+    392
+   ],
+   "base": [
+    673,
+    392
+   ],
+   "crop": [
+    651,
+    351
+   ],
+   "file": "critter-0.png",
+   "position": [
+    3.177,
+    0.0,
+    -7.999
+   ],
+   "ppu": 45.53,
+   "ppuW": 49.39,
+   "height": 0.659,
+   "width": 0.628
+  },
+  {
+   "id": "critter-1",
+   "name": "critter",
+   "box": [
+    598,
+    393,
+    630,
+    423
+   ],
+   "base": [
+    614,
+    423
+   ],
+   "crop": [
+    592,
+    387
+   ],
+   "file": "critter-1.png",
+   "position": [
+    3.03,
+    0.0,
+    -5.729
+   ],
+   "ppu": 53.05,
+   "ppuW": 56.23,
+   "height": 0.452,
+   "width": 0.498
+  },
+  {
+   "id": "critter-2",
+   "name": "critter",
+   "box": [
+    706,
+    373,
+    723,
+    389
+   ],
+   "base": [
+    714,
+    389
+   ],
+   "crop": [
+    700,
+    367
+   ],
+   "file": "critter-2.png",
+   "position": [
+    4.734,
+    1.0,
+    -5.851
+   ],
+   "ppu": 61.14,
+   "ppuW": 67.64,
+   "height": 0.245,
+   "width": 0.222
+  },
+  {
+   "id": "sprout-0",
+   "name": "sprout",
+   "box": [
+    689,
+    400,
+    708,
+    413
+   ],
+   "base": [
+    698,
+    412
+   ],
+   "crop": [
+    683,
+    394
+   ],
+   "file": "sprout-0.png",
+   "position": [
+    4.902,
+    1.0,
+    -4.722
+   ],
+   "ppu": 68.93,
+   "ppuW": 75.79,
+   "height": 0.073,
+   "width": 0.079
+  },
+  {
+   "id": "npc-0",
+   "name": "npc",
+   "box": [
+    156,
+    168,
+    204,
+    240
+   ],
+   "base": [
+    187,
+    245
+   ],
+   "crop": [
+    150,
+    162
+   ],
+   "file": "npc-0.png",
+   "position": [
+    -7.575,
+    3.0,
+    -2.391
+   ],
+   "ppu": 39.23,
+   "ppuW": 46.08,
+   "height": 0.994,
+   "width": 0.89
+  },
+  {
+   "id": "scaffold-0",
+   "name": "scaffold",
+   "box": [
+    150,
+    206,
+    232,
+    290
+   ],
+   "base": [
+    184,
+    289
+   ],
+   "crop": [
+    144,
+    200
+   ],
+   "file": "scaffold-0.png",
+   "position": [
+    -2.7,
+    2.5,
+    -0.777
+   ],
+   "ppu": 57.58,
+   "ppuW": 68.79,
+   "height": 1.355,
+   "width": 1.134
+  }
+ ]
+}

@@ -1,0 +1,215 @@
+{
+ "_": "scripts/assets/score.py: per asset iou (silhouette) and dE (colour where both silhouettes agree) against the painted cut-out.",
+ "assets": {
+  "cube-tree-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.415,
+   "dE": 4.21
+  },
+  "willow-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.587,
+   "dE": 6.03
+  },
+  "willow-2-0": {
+   "status": "missing",
+   "why": "no builder for the \"willow-2\" family yet"
+  },
+  "broom-tree-0": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.851,
+   "dE": 6.49
+  },
+  "pom-0": {
+   "status": "missing",
+   "why": "no builder for the \"pom\" family yet"
+  },
+  "knit-shrub-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.325,
+   "dE": 6.83
+  },
+  "fence-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.264,
+   "dE": 10.47
+  },
+  "mushroom-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.013,
+   "dE": 39.58
+  },
+  "mushroom-1": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.157,
+   "dE": 5.93
+  },
+  "mushroom-2": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.0,
+   "dE": null
+  },
+  "mushroom-3": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.05,
+   "dE": 10.75
+  },
+  "mushroom-4": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.786,
+   "dE": 5.69
+  },
+  "mushroom-5": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.489,
+   "dE": 10.19
+  },
+  "stone-0": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.843,
+   "dE": 5.26
+  },
+  "stone-1": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.767,
+   "dE": 5.07
+  },
+  "stone-2": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.701,
+   "dE": 5.72
+  },
+  "stone-3": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.602,
+   "dE": 4.95
+  },
+  "stone-4": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.402,
+   "dE": 5.45
+  },
+  "stone-5": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.394,
+   "dE": 7.36
+  },
+  "bush-0": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.87,
+   "dE": 4.31
+  },
+  "bush-1": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.496,
+   "dE": 5.46
+  },
+  "bush-2": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.9,
+   "dE": 4.69
+  },
+  "bush-3": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.734,
+   "dE": 6.16
+  },
+  "bush-4": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.532,
+   "dE": 6.42
+  },
+  "bush-5": {
+   "status": "missing",
+   "why": "no builder for the \"bush\" family yet"
+  },
+  "bush-6": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.126,
+   "dE": 7.23
+  },
+  "bush-7": {
+   "status": "built",
+   "kind": "traced",
+   "iou": 0.721,
+   "dE": 6.29
+  },
+  "knit-bush-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.365,
+   "dE": 6.3
+  },
+  "crate-0": {
+   "status": "missing",
+   "why": "no builder for the \"crate\" family yet"
+  },
+  "bench-0": {
+   "status": "missing",
+   "why": "no builder for the \"bench\" family yet"
+  },
+  "dog-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.797,
+   "dE": 4.86
+  },
+  "critter-0": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.71,
+   "dE": 11.68
+  },
+  "critter-1": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.583,
+   "dE": 12.94
+  },
+  "critter-2": {
+   "status": "built",
+   "kind": "kit",
+   "iou": 0.614,
+   "dE": 14.39
+  },
+  "sprout-0": {
+   "status": "missing",
+   "why": "no builder for the \"sprout\" family yet"
+  },
+  "npc-0": {
+   "status": "built",
+   "kind": "procedural",
+   "iou": 0.138,
+   "dE": 16.45
+  },
+  "scaffold-0": {
+   "status": "built",
+   "kind": "procedural",
+   "iou": 0.216,
+   "dE": 19.04
+  }
+ }
+}

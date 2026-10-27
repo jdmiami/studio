@@ -156,6 +156,14 @@ function broom(p, material) {
   return group;
 }
 
+let sharedFelt = null;
+const feltMaterial = () => (sharedFelt ??= createTextile('felt', { fuzz: 0.4, grain: 1.5 }));
+
+/** One traced prop (an entry of traced-props.json) as a standalone object, base at the origin. */
+export function buildTracedProp(p, seed = 100) {
+  return p.family === 'lathe' ? broom(p, feltMaterial()) : dome(p, seed, feltMaterial());
+}
+
 /**
  * Builds every traced prop at its placed position. Returns the group at once (band colours) and
  * repaints each prop from the painting's own pixels when its crop has loaded: `group.userData.painted`
