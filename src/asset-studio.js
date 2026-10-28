@@ -17,6 +17,7 @@ import kitPaint from './cave/kit-paint.json';
 import { paintKitModel } from './cave/kit-assets.js';
 import { projectPaint } from './cave/projection-paint.js';
 import { buildAsset, references } from './assets/library.js';
+import { exportElementsGLB } from './kit/export.js';
 
 const params = new URLSearchParams(location.search);
 const ref = references.find((r) => r.id === params.get('ref')) ?? references[0];
@@ -72,6 +73,7 @@ if (kind === 'kit') {
   paint = built.paint ?? null;
 }
 object.position.copy(at);
+object.name = ref.id;
 scene.add(object);
 
 built.update?.(shotTime ?? 0); // pose an animated asset before painting it
@@ -99,6 +101,9 @@ if (mask) {
 }
 const post = mask ? null : createPost(renderer, scene, camera, { ...postOptions, bloomStrength: 0 });
 
+// glTF export of the finished (painted) asset, base at the origin, for the game's world props
+// (scripts/assets/export_glb.mjs).
+window.__assetExportGLB = () => exportElementsGLB(scene, [ref.id]);
 window.__assetStudio = { ref: ref.id, kind, size: box.getSize(new THREE.Vector3()).toArray(), position: at.toArray() };
 const clock = new THREE.Clock();
 let frames = 0;

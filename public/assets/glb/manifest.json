@@ -1,0 +1,235 @@
+{
+ "assets": {
+  "cube-tree-0": {
+   "family": "cube-tree",
+   "height": 2.192,
+   "size": [
+    2.247,
+    2.192,
+    2.369
+   ],
+   "kind": "fence"
+  },
+  "willow-0": {
+   "family": "willow",
+   "height": 2.942,
+   "size": [
+    2.661,
+    2.942,
+    2.658
+   ],
+   "kind": "fence"
+  },
+  "broom-tree-0": {
+   "family": "broom-tree",
+   "height": 2.753,
+   "size": [
+    1.197,
+    2.753,
+    1.197
+   ],
+   "kind": "traced"
+  },
+  "stone-0": {
+   "family": "stone",
+   "height": 0.368,
+   "size": [
+    0.617,
+    0.368,
+    0.617
+   ],
+   "kind": "lathe"
+  },
+  "stone-1": {
+   "family": "stone",
+   "height": 0.421,
+   "size": [
+    0.616,
+    0.421,
+    0.616
+   ],
+   "kind": "lathe"
+  },
+  "stone-2": {
+   "family": "stone",
+   "height": 0.665,
+   "size": [
+    0.848,
+    0.665,
+    0.848
+   ],
+   "kind": "lathe"
+  },
+  "stone-4": {
+   "family": "stone",
+   "height": 0.577,
+   "size": [
+    0.848,
+    0.577,
+    0.848
+   ],
+   "kind": "lathe"
+  },
+  "bush-0": {
+   "family": "bush",
+   "height": 0.567,
+   "size": [
+    0.722,
+    0.567,
+    0.722
+   ],
+   "kind": "lathe"
+  },
+  "bush-1": {
+   "family": "bush",
+   "height": 0.445,
+   "size": [
+    0.689,
+    0.445,
+    0.689
+   ],
+   "kind": "lathe"
+  },
+  "bush-2": {
+   "family": "bush",
+   "height": 1.025,
+   "size": [
+    1.312,
+    1.025,
+    1.312
+   ],
+   "kind": "lathe"
+  },
+  "bush-3": {
+   "family": "bush",
+   "height": 0.306,
+   "size": [
+    0.783,
+    0.306,
+    0.783
+   ],
+   "kind": "lathe"
+  },
+  "mushroom-1": {
+   "family": "mushroom",
+   "height": 0.254,
+   "size": [
+    0.418,
+    0.254,
+    0.418
+   ],
+   "kind": "lathe"
+  },
+  "mushroom-4": {
+   "family": "mushroom",
+   "height": 0.415,
+   "size": [
+    0.515,
+    0.415,
+    0.515
+   ],
+   "kind": "lathe"
+  },
+  "mushroom-5": {
+   "family": "mushroom",
+   "height": 0.409,
+   "size": [
+    0.359,
+    0.409,
+    0.359
+   ],
+   "kind": "lathe"
+  },
+  "knit-shrub-0": {
+   "family": "knit-shrub",
+   "height": 0.582,
+   "size": [
+    1.063,
+    0.582,
+    1.063
+   ],
+   "kind": "lathe"
+  },
+  "knit-bush-0": {
+   "family": "knit-bush",
+   "height": 0.279,
+   "size": [
+    0.461,
+    0.279,
+    0.461
+   ],
+   "kind": "lathe"
+  },
+  "pom-0": {
+   "family": "pom",
+   "height": 0.45,
+   "size": [
+    0.57,
+    0.45,
+    0.57
+   ],
+   "kind": "lathe"
+  },
+  "fence-0": {
+   "family": "fence",
+   "height": 0.398,
+   "size": [
+    1.109,
+    0.398,
+    0.395
+   ],
+   "kind": "fence"
+  },
+  "crate-0": {
+   "family": "wood-fence",
+   "height": 0.571,
+   "size": [
+    0.52,
+    0.571,
+    0.258
+   ],
+   "kind": "fence"
+  },
+  "critter-0": {
+   "family": "critter",
+   "height": 0.669,
+   "size": [
+    0.766,
+    0.669,
+    0.766
+   ],
+   "kind": "lathe"
+  },
+  "critter-1": {
+   "family": "critter",
+   "height": 0.46,
+   "size": [
+    0.674,
+    0.46,
+    0.674
+   ],
+   "kind": "lathe"
+  },
+  "critter-2": {
+   "family": "critter",
+   "height": 0.241,
+   "size": [
+    0.279,
+    0.241,
+    0.279
+   ],
+   "kind": "lathe"
+  },
+  "dog-0": {
+   "family": "dog",
+   "height": 1.743,
+   "size": [
+    1.75,
+    1.743,
+    1.226
+   ],
+   "kind": "kit"
+  }
+ },
+ "_": "Finished assets exported from the asset studio (scripts/assets/export_glb.mjs): family, height and size in world units."
+}
