@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Phluph UI demo</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #c9a99a; }
+    /* Stand-in for the game's 3D backdrop: the reference painting, softly out of focus. */
+    .backdrop { position: fixed; inset: -2%; background: #d8b8a8 url('/docs/reference/cave-door.jpg') center / cover no-repeat; filter: blur(3px) saturate(1.05); }
+    .demo-bar { position: fixed; top: 6px; left: 6px; z-index: 100; display: flex; flex-wrap: wrap; gap: 4px; max-width: 70vw;
+      font: 600 11px system-ui, sans-serif; }
+    .demo-bar button { font: inherit; border: 0; border-radius: 6px; padding: 3px 7px; background: rgba(40, 25, 20, 0.7); color: #fff8ef; cursor: pointer; }
+    .demo-log { position: fixed; right: 6px; bottom: 6px; z-index: 100; max-width: 40vw; font: 11px ui-monospace, monospace; color: #fff8ef;
+      background: rgba(40, 25, 20, 0.6); border-radius: 6px; padding: 4px 8px; white-space: pre; pointer-events: none; }
+    body.shot .demo-bar, body.shot .demo-log { display: none; }
+  </style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <script type="module" src="./demo.js"></script>
+</body>
+</html>
