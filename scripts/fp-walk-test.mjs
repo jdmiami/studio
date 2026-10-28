@@ -12,7 +12,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 320, height: 180 } });
 const base = process.env.BASE_URL ?? 'http://127.0.0.1:5173';
-await page.goto(`${base}/?lowfx=1&bloom=0`, { waitUntil: 'load' });
+await page.goto(`${base}/?view=cave&lowfx=1&bloom=0`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__phluph, null, { timeout: 120000 });
 const pos = () => page.evaluate(() => { const p = window.__phluph.position; return { x: p.x, y: p.y, z: p.z }; });
 const hold = async (key, ms) => { await page.keyboard.down(key); await page.waitForTimeout(ms); await page.keyboard.up(key); };
