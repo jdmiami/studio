@@ -455,16 +455,15 @@ function showTitle() {
   hud.setVisible(false);
   input.setContext('menu');
   input.unlockPointer?.();
-  ui.open('title', { hasSave: !!saves.listSlots().find((s) => !s.empty) });
+  ui.reset('title');
 }
 
 function startGame(state) {
   session?.dispose();
   session = createSession({ state, events, labels });
   sighted = new Set(Object.keys(state.collection).filter((id) => ITEM_BY_ID[id]?.sighting));
-  ui.close?.();
-  while (ui.isOpen?.()) ui.close();
   mode = 'play';
+  ui.reset(); // the stack cleared without a resume: play starts here
   hud.setVisible(true);
   if (state.area?.kind === 'trip' && state.area.seed != null) {
     enterHub({ spawn: true });
