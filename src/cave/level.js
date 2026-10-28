@@ -116,7 +116,7 @@ const BLOCK_RES = 14;
 const partCache = new Map();
 
 /** A kit block design as instanceable parts: one merged geometry per material. */
-function blockParts(design, variant) {
+export function blockParts(design, variant) {
   const id = `${design}:${variant}`;
   if (partCache.has(id)) return partCache.get(id);
   const group = buildKitBlock({ kind: design, seed: 1 + variant * 7 }, rng(99 + variant), null, { res: BLOCK_RES });

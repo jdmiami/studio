@@ -265,6 +265,14 @@ export function createPost(renderer, scene, camera, {
 
   return {
     setSize,
+    /** Re-grades live (the game's areas each have their own grade). */
+    setGrade({ saturation: s, contrast: c, shadowTint: t } = {}) {
+      if (s !== undefined) grade.uniforms.uSaturation.value = s;
+      if (c !== undefined) grade.uniforms.uContrast.value = c;
+      if (t !== undefined) grade.uniforms.uShadowTint.value.set(t);
+    },
+    /** Bloom strength (the quality setting turns it off on low). */
+    setBloom(strength) { bloom.strength = strength; },
     render(time, sunDir, sunColor) {
       // Project the sun into screen space; fade rays out as it leaves the view.
       sunWorld.copy(camera.position).addScaledVector(sunDir, 400);
