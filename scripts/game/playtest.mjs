@@ -23,7 +23,7 @@ mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({
   ...(existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}),
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ viewport: { width: 1024, height: 576 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
@@ -32,8 +32,9 @@ const step = async (name, fn) => {
   const t = Date.now();
   try { await fn(); console.log(`ok   ${name} (${Date.now() - t} ms)`); } catch (e) { console.log(`FAIL ${name}: ${e.message}`); errors.push(`${name}: ${e.message}`); }
 };
-const shot = (name) => page.screenshot({ path: `${out}/${name}.png` });
+const shot = (name) => page.screenshot({ path: `${out}/${name}.png`, timeout: 180000 });
 const game = (fn, arg) => page.evaluate(fn, arg);
+page.setDefaultTimeout(180000);
 const wait = (ms) => page.waitForTimeout(ms);
 const press = async (key, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(key); await wait(120); } };
 
@@ -48,7 +49,7 @@ async function finishDialogue(max = 20) {
 }
 
 await step('load and title', async () => {
-  await page.goto(`${base}/?fps=1`, { waitUntil: 'load' });
+  await page.goto(`${base}/?fps=1&quality=${process.env.QUALITY ?? 'low'}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__phluphReady === true, null, { timeout: 180000 });
   await wait(1500);
   await shot('01-title');
