@@ -169,9 +169,10 @@ export function buildNpc() {
 
   return {
     group,
-    update(time) {
-      waving.rotation.z = -2.8 + Math.sin(time * 6.5) * 0.22; // hand up by her head, waving
-      waving.rotation.x = -0.15;
+    /** wave: 0 arm down .. 1 hand up by her head, waving (the game eases it from her brain's pose). */
+    update(time, wave = 1) {
+      waving.rotation.z = THREE.MathUtils.lerp(-0.35, -2.8 + Math.sin(time * 6.5) * 0.22, wave);
+      waving.rotation.x = -0.15 * wave;
       headGroup.rotation.z = Math.sin(time * 1.6) * 0.06;
       body.position.y = Math.abs(Math.sin(time * 3.25)) * 0.015;
     },

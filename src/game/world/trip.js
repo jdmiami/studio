@@ -81,19 +81,21 @@ export function buildGate() {
 
 export const CHIME_COLORS = ['#f2b8c2', '#bfe0c9', '#c6c0ec', '#f6dba6'];
 
-/** The chime circle: four felt chime stones round a mossy centre. lit(i, on) glows one. */
+/** The chime circle: four felt mushrooms round a mossy centre (the trip's chiming mushrooms). */
 export function buildChimeCircle() {
   const g = new THREE.Group();
   g.name = 'chimes';
   const stones = [];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const geo = new THREE.CylinderGeometry(0.3, 0.38, 0.9, 16);
-    geo.translate(0, 0.45, 0);
-    const m = feltMesh(geo, CHIME_COLORS[i], { stitch: 1 });
+    const stem = new THREE.CylinderGeometry(0.16, 0.22, 0.75, 14);
+    stem.translate(0, 0.375, 0);
+    const m = feltMesh(stem, '#f4e9dc');
     m.position.set(Math.cos(a) * 1.6, 0, Math.sin(a) * 1.6);
-    const cap = feltMesh(new THREE.SphereGeometry(0.3, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), CHIME_COLORS[i]);
-    cap.position.y = 0.9;
+    const capGeo = new THREE.SphereGeometry(0.48, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    capGeo.scale(1, 0.75, 1);
+    const cap = feltMesh(capGeo, CHIME_COLORS[i], { stitch: 1 });
+    cap.position.y = 0.7;
     m.add(cap);
     g.add(m);
     stones.push({ mesh: m, glows: [m.material, cap.material], base: m.position.clone(), lit: 0 });
@@ -108,7 +110,7 @@ export function buildChimeCircle() {
       s.lit = Math.max(0, s.lit - dt * 1.6);
       for (const mat of s.glows) mat.uniforms.uEmissive.value = s.lit * 0.6;
       s.mesh.position.y = s.base.y + s.lit * 0.12;
-      s.mesh.scale.setScalar(1 + s.lit * 0.08);
+      s.mesh.scale.setScalar(1 + s.lit * 0.1);
     }
   };
   return g;
@@ -188,8 +190,9 @@ export function buildTripWorld(trip, { pool, collected = new Set() } = {}) {
     { id: 'gate', kind: 'gate', label: 'Go home', position: gate.position.clone().add(new THREE.Vector3(0, 1.2, 0)), radius: 2.4 },
   ];
   if (chimes) {
+    chimes.updateMatrixWorld(true);
     chimes.userData.stones.forEach((s, i) => {
-      interactables.push({ id: `chime-${i}`, kind: 'chime', index: i, label: 'Ring', position: chimes.localToWorld(s.base.clone()).add(new THREE.Vector3(0, 0.9, 0)), radius: 1.3 });
+      interactables.push({ id: `chime-${i}`, kind: 'chime', index: i, label: 'Ring the mushroom', position: chimes.localToWorld(s.base.clone()).add(new THREE.Vector3(0, 0.9, 0)), radius: 1.3 });
     });
   }
 

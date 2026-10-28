@@ -12,8 +12,11 @@ import { projectPaint } from './projection-paint.js';
 import { buildNpc, buildRailing } from './npc.js';
 import { buildLightShafts } from './props.js';
 
-/** Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag). */
-export function buildCave(scene, { hide = null } = {}) {
+/**
+ * Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag);
+ * creatures: false leaves out the dog and critters (the game spawns them with brains).
+ */
+export function buildCave(scene, { hide = null, creatures = true } = {}) {
   const random = rng(20261026);
   const level = buildCaveLevel({ hide });
   scene.add(level.group);
@@ -24,7 +27,7 @@ export function buildCave(scene, { hide = null } = {}) {
     : Promise.all(level.paintable.map((mesh) => projectPaint(mesh, mesh.userData.paint)));
 
   // The door is the reference's own mosaic, traced (src/cave/door.js).
-  const doorReady = buildTracedDoor().then((door) => scene.add(door));
+  const doorReady = buildTracedDoor().then((door) => { scene.add(door); return door; });
 
   // Every prop stands where the reference paints it: src/cave/props-placement.json is computed by
   // scripts/fp/place_props.py (the base pixel's ray from the reference camera into the layout, and
@@ -104,9 +107,11 @@ export function buildCave(scene, { hide = null } = {}) {
       const paint = paintFor(p);
       if (paint) painting.push(paintKitModel(fence, paint));
     }
-    place('dog-a', dogSpec, dog, new THREE.Vector3());
-    const critterIds = ['critter-a', 'critter-b', 'critter-c'];
-    byName('critter').forEach((p, i) => place(critterIds[i % critterIds.length], p, critters));
+    if (creatures) {
+      place('dog-a', dogSpec, dog, new THREE.Vector3());
+      const critterIds = ['critter-a', 'critter-b', 'critter-c'];
+      byName('critter').forEach((p, i) => place(critterIds[i % critterIds.length], p, critters));
+    }
     for (const model of grounded) scene.add(contactShadow(model));
     return Promise.all(painting);
   });
@@ -143,6 +148,11 @@ export function buildCave(scene, { hide = null } = {}) {
     // land on the spawn terrace (top 2) and the eye is EYE_HEIGHT 1.775 above: the solved 3.775.
     spawn: { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
     stats: { blocks: level.blockCount, caps: level.capCount },
+    ceilingAt: level.ceilingAt,
+    // For the game: Mira, the door, and where the painting puts the dog and the critters.
+    npc, npcPosition: npcPos, npcFacing: facing,
+    door: doorReady,
+    dogSpot: dogSpec, critterSpots: byName('critter'),
     // Resolves when the kit models, the door and the traced props' projection paint are in.
     ready: Promise.all([propsReady, doorReady, traced.userData.painted, levelPainted]),
     update(time) {

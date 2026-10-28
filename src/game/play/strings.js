@@ -53,6 +53,10 @@ const EN = {
   // Finds and decorating
   'find.new': 'New find: {name}!',
   'find.again': '{name} (x{count})',
+  'find.sighting': 'New sighting: {name}! (in your collection book)',
+  'door.through': 'The Wander Gate swirls in the open doorway.',
+  'lock.help': 'Left/right: pick a dial. Up/down: turn it. Confirm: pull the lever. Back: step away.',
+  'chime.help': 'Watch the glow, then ring the mushrooms in the same order.',
   'sighting.new': 'You met a {name}!',
   'decor.on': 'Decorating: {item}',
   'decor.none': 'Nothing to place yet. Collect finds on your trips!',
