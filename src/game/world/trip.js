@@ -156,7 +156,7 @@ export function buildTripWorld(trip, { pool, collected = new Set() } = {}) {
     const options = (KIND_ASSETS[l.kind] ?? []).filter(hasModel);
     if (!options.length) continue;
     const id = options[hashString(`${trip.seed}:${l.x},${l.z}`) % options.length];
-    landmarks.add(placeModel(id, { position: new THREE.Vector3(l.x, ground(l.x, l.z), l.z), height: l.scale, yaw: l.yaw ?? 0 }));
+    landmarks.add(placeModel(id, { position: new THREE.Vector3(l.x, ground(l.x, l.z), l.z), height: l.height ?? l.scale, yaw: l.yaw ?? 0 }));
   }
   group.add(landmarks);
 

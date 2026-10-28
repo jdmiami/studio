@@ -62,6 +62,7 @@ if (params.has('quality')) settings.quality = params.get('quality');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.info.autoReset = false; // counted over the whole frame (scene + post passes), reset per frame
 document.body.appendChild(renderer.domElement);
 renderer.domElement.classList.add('game-canvas');
 const pixelRatio = () => ({ low: 1, medium: Math.min(devicePixelRatio, 1.5), high: Math.min(devicePixelRatio, 2) }[settings.quality] ?? 1.5);
@@ -802,6 +803,7 @@ function frame() {
   time += dt;
   sharedFurUniforms.uTime.value = time;
   const t0 = performance.now();
+  renderer.info.reset();
   input.update(dt);
 
   if (mode === 'title' || mode === 'loading') {

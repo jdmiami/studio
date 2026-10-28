@@ -6,14 +6,23 @@
 //
 // Usage: node scripts/game/playtest.mjs [outDir]   (needs the dev server: npm run dev)
 // Env: BASE_URL (default http://127.0.0.1:5173), SEED (trip seed code, default from the game)
-import { mkdirSync } from 'node:fs';
-import { chromium } from 'playwright';
+import { existsSync, mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
+
+let chromium;
+try {
+  ({ chromium } = await import('playwright'));
+} catch {
+  ({ chromium } = createRequire('/opt/node-tools/package.json')('playwright'));
+}
 
 const base = process.env.BASE_URL ?? 'http://127.0.0.1:5173';
 const out = process.argv[2] ?? 'scratch/playtest';
 mkdirSync(out, { recursive: true });
 
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({
+  ...(existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}),
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
