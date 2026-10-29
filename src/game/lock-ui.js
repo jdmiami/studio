@@ -27,6 +27,15 @@ const CSS = `
 .flock-lever:active { transform: translateY(2px); box-shadow: 0 2px 0 #c98c96; }
 .flock-help { font-size: 13px; font-weight: 700; opacity: 0.85; text-align: center; max-width: 420px; }
 .flock-panel.shake { animation: flock-shake 0.4s; }
+@media (max-width: 520px), (max-height: 460px) {
+  .flock-panel { padding: 20px 18px 18px; gap: 12px; }
+  .flock-title { font-size: 18px; }
+  .flock-dials { gap: 12px; }
+  .flock-wool { width: 72px; height: 72px; font-size: 11px; }
+  .flock-wool::before { width: 50px; height: 50px; }
+  .flock-arrow { font-size: 24px; padding: 4px 14px; }
+  .flock-help { font-size: 12px; }
+}
 @keyframes flock-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-10px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
 `;
 
@@ -82,7 +91,7 @@ export function createLockUi({ events }) {
         <div class="flock-dials">${[0, 1, 2].map((i) => `<div class="flock-dial" data-i="${i}">
           <span class="flock-arrow" data-d="1">▲</span><div class="flock-wool"></div><span class="flock-arrow" data-d="-1">▼</span></div>`).join('')}</div>
         <button class="flock-lever">Pull the lever</button>
-        <div class="flock-help">${t('lock.help')}</div></div>`;
+        <div class="flock-help">${matchMedia?.('(pointer: coarse)').matches ? 'Tap the arrows to turn a dial, then pull the lever. Tap outside to step away.' : t('lock.help')}</div></div>`;
       document.body.appendChild(el);
       el.addEventListener('click', (e) => {
         const dial = e.target.closest('.flock-dial');

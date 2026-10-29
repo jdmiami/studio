@@ -28,6 +28,17 @@ const BUFFER = 0.14;
 const STEP_DIST = 1.15; // metres per footstep (walking; running stretches it)
 const DT = 1 / 120;
 
+/**
+ * The vertical field of view to use for a setting (a landscape vertical FOV) on a screen of this
+ * aspect: unchanged in landscape; widened in portrait so a phone held upright still sees enough to
+ * the sides (half way to keeping the horizontal view), capped at 100 degrees.
+ */
+export function fovFor(fov, aspect) {
+  if (!(aspect < 1)) return fov;
+  const t = Math.tan((fov * Math.PI) / 360) / Math.sqrt(aspect);
+  return Math.min(100, (Math.atan(t) * 360) / Math.PI);
+}
+
 /** Surface names for footsteps from the column kind underfoot. */
 export function surfaceOf(kind) {
   if (kind === 'water' || kind === 'stream') return 'water';
@@ -188,7 +199,7 @@ export function createPlayerController({ camera, input, events, settings }) {
     camera.position.set(x, y + EYE_HEIGHT + bob + eyeOffset + dip, z);
     camera.rotation.set(pitch + n1 * shake * 0.035, yaw + n2 * shake * 0.035, sway + n1 * shake * 0.02, 'YXZ');
     // FOV from settings, widening a touch when running.
-    const targetFov = s.fov + (speed > WALK + 0.5 ? 4 : 0);
+    const targetFov = fovFor(s.fov, camera.aspect) + (speed > WALK + 0.5 ? 4 : 0);
     if (Math.abs(camera.fov - targetFov) > 0.01) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1 - Math.exp(-frameDt * 6));
       camera.updateProjectionMatrix();

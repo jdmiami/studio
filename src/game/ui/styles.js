@@ -73,6 +73,10 @@ export const CSS = `
   display: inline-flex; align-items: center; gap: 0.45em; border: 0; cursor: pointer; font-weight: 800; font-size: 0.85em;
   background: rgba(255, 244, 232, 0.1); padding: 0.4em 0.85em 0.4em 0.45em; border-radius: 999px;
 }
+/* Touch screens (the game sets body.touch-ui): no keyboard hints; things are tapped. */
+body.touch-ui .phl-keycap, body.touch-ui .phl-title-hint { display: none !important; }
+/* The decorate bar moves to the top, clear of the thumbs' controls. */
+body.touch-ui .phl-decorate { bottom: auto !important; top: calc(max(0.9em, env(safe-area-inset-top)) + 7.5em); }
 .phl-keycap {
   display: inline-flex; align-items: center; justify-content: center; min-width: 1.9em; height: 1.55em; padding: 0 0.4em;
   font-size: 0.75em; font-weight: 900; letter-spacing: 0.03em; color: var(--cocoa); text-shadow: none;

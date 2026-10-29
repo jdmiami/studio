@@ -22,5 +22,6 @@ export function mergeSettings(input) {
   const s = mergeOver(defaultSettings(), isPlainObject(input) ? input : {});
   for (const k of Object.keys(s.volume)) s.volume[k] = Math.min(1, Math.max(0, s.volume[k]));
   if (!QUALITY.has(s.quality)) s.quality = defaultSettings().quality;
+  if (!['auto', 'on', 'off'].includes(s.touchControls)) s.touchControls = 'auto';
   return s;
 }

@@ -54,6 +54,8 @@ export function defaultSettings() {
     mouseSensitivity: 1, invertY: false, fov: 70, gamepadDeadzone: 0.18, lookSensitivityPad: 1,
     quality: 'high', // 'low' | 'medium' | 'high'
     showFps: false, headBob: true, cameraShake: true,
+    // Touch screens: 'auto' shows the on-screen controls on touch devices; 'on' / 'off' force it.
+    touchControls: 'auto', touchLookSensitivity: 1, touchButtonScale: 1,
     bindings: null, // null = the input system's defaults; else { [action]: [binding, ...] }
   };
 }

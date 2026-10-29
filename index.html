@@ -2,12 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#f3e3d8" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Phluph</title>
     <link rel="icon" href="data:," />
     <style>
-      html, body { margin: 0; height: 100%; overflow: hidden; background: #f3e3d8; }
-      canvas { display: block; }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #f3e3d8; overscroll-behavior: none; }
+      /* Phones: no page scroll, zoom, text selection or callouts under a thumb. */
+      body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+      input, textarea { -webkit-user-select: text; user-select: text; touch-action: auto; }
+      canvas { display: block; touch-action: none; }
     </style>
   </head>
   <body>

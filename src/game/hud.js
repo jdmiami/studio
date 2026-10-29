@@ -42,6 +42,27 @@ const CSS = `
 .ghud-veil-bar > div { height: 100%; width: 0; background: linear-gradient(90deg, #f3b3bd, #a8d5b9); border-radius: 6px; transition: width 0.25s; }
 .ghud-veil-text { font-size: 14px; font-weight: 800; letter-spacing: 1px; }
 .ghud.hidden .ghud-quest, .ghud.hidden .ghud-area, .ghud.hidden .ghud-dot, .ghud.hidden .ghud-prompt { visibility: hidden; }
+/* Small screens (phones in either orientation): tighter panels, smaller type. */
+@media (max-width: 760px), (max-height: 500px) {
+  .ghud-quest { padding: 7px 11px; max-width: min(300px, 48vw); }
+  .ghud-quest-title { font-size: 10px; letter-spacing: 1.2px; }
+  .ghud-quest-step { font-size: 13px; }
+  .ghud-quest-pips { margin-top: 4px; }
+  .ghud-area { padding: 6px 10px; gap: 8px; }
+  .ghud-area-name { font-size: 13px; }
+  .ghud-area-code { font-size: 10px; letter-spacing: 1.2px; }
+  .ghud-finds { font-size: 12px; }
+  .ghud-chip { font-size: 14px; padding: 5px 12px; }
+  .ghud-veil-title { font-size: 34px; }
+}
+/* Portrait phones: the seed code wraps under the area name, the quest panel narrows. */
+@media (max-width: 520px) {
+  .ghud-area { flex-wrap: wrap; max-width: 44vw; row-gap: 4px; }
+  .ghud-quest { max-width: 50vw; }
+  .ghud-quest-step { font-size: 12px; }
+}
+/* With the on-screen controls: the perf readout moves out from under the stick. */
+body.touch-ui .ghud-perf { bottom: auto; top: calc(max(14px, env(safe-area-inset-top)) + 100px); }
 `;
 
 export function createGameHud() {

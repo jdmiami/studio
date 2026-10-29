@@ -8,7 +8,7 @@ import {
 } from '../src/game/input/bindings.js';
 import { radialDeadzone, responseCurve, shapeStick, createRepeat, clampLength } from '../src/game/input/analog.js';
 import { keyLabel, bindingLabel, labelForAction, padAxisLabel } from '../src/game/input/labels.js';
-import { createInputCore, MOUSE_LOOK_SCALE, PAD_LOOK_SPEED, PAD_PITCH_SCALE } from '../src/game/input/core.js';
+import { createInputCore, MOUSE_LOOK_SCALE, PAD_LOOK_SPEED, PAD_PITCH_SCALE, TOUCH_LOOK_SCALE } from '../src/game/input/core.js';
 import { createInput } from '../src/game/input/index.js';
 
 const A = ACTIONS;
@@ -530,4 +530,40 @@ test('createInput: pointer lock follows context; mouse buttons only while locked
   input.update(1 / 60);
   assert.equal(input.pressed(A.PAUSE), true);
   input.dispose();
+});
+
+test('touch: stick moves, drag looks, buttons press and hold, all gated by context', () => {
+  const core = createInputCore({ settings: defaultSettings() });
+  core.update(0.016);
+  core.touchStick(0, 1);
+  core.touchLook(100, -50);
+  core.touchAction(ACTIONS.JUMP, true);
+  core.update(0.016);
+  assert.deepEqual(core.axis2('move'), { x: 0, y: 1 });
+  const look = core.axis2('look');
+  assert.ok(Math.abs(look.x - 100 * TOUCH_LOOK_SCALE) < 1e-9);
+  assert.ok(Math.abs(look.y - 50 * TOUCH_LOOK_SCALE) < 1e-9, 'dragging up looks up');
+  assert.equal(core.pressed(ACTIONS.JUMP), true);
+  assert.equal(core.lastDevice, 'touch');
+  assert.equal(core.labelFor(ACTIONS.INTERACT), '✋');
+  core.update(0.016);
+  assert.equal(core.pressed(ACTIONS.JUMP), false);
+  assert.equal(core.held(ACTIONS.JUMP), true, 'a held button stays held');
+  assert.deepEqual(core.axis2('look'), { x: 0, y: 0 }, 'look drag is per frame');
+  core.touchAction(ACTIONS.JUMP, false);
+  core.update(0.016);
+  assert.equal(core.released(ACTIONS.JUMP), true);
+  // A tap shorter than a frame still presses.
+  core.touchAction(ACTIONS.INTERACT, true);
+  core.touchAction(ACTIONS.INTERACT, false);
+  core.update(0.016);
+  assert.equal(core.pressed(ACTIONS.INTERACT), true);
+  // Menus: the stick does not move the player; leaving gameplay drops touch state.
+  core.touchStick(1, 0);
+  core.setContext('menu');
+  core.update(0.016);
+  assert.deepEqual(core.axis2('move'), { x: 0, y: 0 });
+  core.setContext('gameplay');
+  core.update(0.016);
+  assert.deepEqual(core.axis2('move'), { x: 0, y: 0 }, 'the stick was released by the context change');
 });

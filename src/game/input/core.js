@@ -11,11 +11,13 @@ import {
   defaultBindings, PAD,
 } from './bindings.js';
 import { radialDeadzone, shapeStick, clampLength, createRepeat } from './analog.js';
-import { labelForAction } from './labels.js';
+import { labelForAction, touchLabel } from './labels.js';
 
 export const CONTEXTS = ['gameplay', 'menu', 'dialogue'];
 /** Radians of turn per pixel of mouse movement at mouseSensitivity 1 (never scaled by dt). */
 export const MOUSE_LOOK_SCALE = 0.0022;
+/** Radians per CSS pixel of a touch look drag (a swipe across a phone turns about half round). */
+export const TOUCH_LOOK_SCALE = 0.0045;
 /** Gamepad look: radians per second at full deflection, lookSensitivityPad 1 (scaled by dt). */
 export const PAD_LOOK_SPEED = 3.0;
 /** Pitch turns slower than yaw on a stick (comfortable; the screen is wider than tall). */
@@ -65,6 +67,13 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
   const buttons = new Set();
   const buttonDowns = new Set();
   const virtual = new Set();
+  // Touch (the on-screen controls, ./touch.js): a stick vector, a look drag in CSS pixels, and
+  // actions held by on-screen buttons (a tap shorter than a frame still counts as a press).
+  const touchHeld = new Set();
+  const touchDowns = new Set();
+  let touchMove = { x: 0, y: 0 };
+  let touchDX = 0;
+  let touchDY = 0;
   let mouseDX = 0;
   let mouseDY = 0;
   let pad = null;
@@ -129,11 +138,29 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
   /** Window blur / tab hidden: everything held is let go (released edges on the next update). */
   function clearHeld() {
     keys.clear(); buttons.clear(); keyDowns.clear(); buttonDowns.clear();
+    touchHeld.clear(); touchDowns.clear(); touchMove = { x: 0, y: 0 }; touchDX = 0; touchDY = 0;
     mouseDX = 0; mouseDY = 0;
     for (const id of [...latched]) if (id.startsWith('key:') || id.startsWith('mouse:')) latched.delete(id);
   }
   /** A press that comes from no binding (e.g. PAUSE when the browser drops pointer lock). */
   const virtualPress = (action) => virtual.add(action);
+
+  /** Touch: the on-screen stick, x right / y forward, length <= 1 (0, 0 when released). */
+  function touchStick(x, y) {
+    touchMove = clampLength(Number(x) || 0, Number(y) || 0);
+    if (touchMove.x || touchMove.y) lastDevice = 'touch';
+  }
+  /** Touch: a look drag in CSS pixels (accumulated until the next update). */
+  function touchLook(dx, dy) {
+    touchDX += Number(dx) || 0;
+    touchDY += Number(dy) || 0;
+    lastDevice = 'touch';
+  }
+  /** Touch: an on-screen button holding (true) or letting go of (false) an action. */
+  function touchAction(action, down) {
+    if (!raw[action]) return;
+    if (down) { touchHeld.add(action); touchDowns.add(action); lastDevice = 'touch'; } else touchHeld.delete(action);
+  }
 
   const isKeyBound = (code) => code === 'Escape' || ALL_ACTIONS.some((a) => bindings[a].some((b) => b.device === 'key' && b.code === code));
 
@@ -197,14 +224,15 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
     for (const a of ALL_ACTIONS) {
       const prev = raw[a].held;
       let held = false;
-      let down = virtual.has(a);
-      let digital = down;
+      let down = virtual.has(a) || touchDowns.has(a);
+      let digital = down || touchHeld.has(a);
+      let touching = touchHeld.has(a);
       for (const b of bindingsFor(a)) {
         const s = bindingState(b, a, prev);
         if (s > 0) { held = true; if (b.device !== 'pad-axis') digital = true; }
         if (s === 2) down = true;
       }
-      held = held || down;
+      held = held || down || touching;
       raw[a] = { held, pressed: down || (held && !prev), released: prev && !held, digital };
     }
 
@@ -219,8 +247,8 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
 
     computeAxes(dt);
 
-    keyDowns.clear(); buttonDowns.clear(); virtual.clear();
-    mouseDX = 0; mouseDY = 0;
+    keyDowns.clear(); buttonDowns.clear(); virtual.clear(); touchDowns.clear();
+    mouseDX = 0; mouseDY = 0; touchDX = 0; touchDY = 0;
     prevPadButtons = pad ? pad.buttons.slice() : [];
   }
 
@@ -239,13 +267,14 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
       return v;
     };
     const stick = radialDeadzone(analog(R) - analog(L), analog(F) - analog(B), num('gamepadDeadzone'));
-    const m = clampLength(dig(R) - dig(L) + stick.x, dig(F) - dig(B) + stick.y);
+    const m = clampLength(dig(R) - dig(L) + stick.x + touchMove.x, dig(F) - dig(B) + stick.y + touchMove.y);
     move = { x: m.x + 0, y: m.y + 0 };
 
     const inv = settingsRef?.invertY ? -1 : 1;
     const mk = MOUSE_LOOK_SCALE * num('mouseSensitivity');
-    let x = mouseDX * mk;
-    let y = -mouseDY * mk;
+    const tk = TOUCH_LOOK_SCALE * num('touchLookSensitivity');
+    let x = mouseDX * mk + touchDX * tk;
+    let y = -mouseDY * mk - touchDY * tk;
     if (pad) {
       const [ax, ay] = lookAxes();
       if (!latched.has(`pad-axis:${ax}`) && !latched.has(`pad-axis:${ay}`)) {
@@ -273,6 +302,7 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
       pad.axes.forEach((v, i) => { if (Math.abs(v) >= AXIS_RELEASE) latched.add(`pad-axis:${i}`); });
     }
     for (const a of ALL_ACTIONS) raw[a] = { held: false, pressed: false, released: false, digital: false };
+    touchHeld.clear(); touchDowns.clear(); touchMove = { x: 0, y: 0 }; touchDX = 0; touchDY = 0;
     for (const r of Object.values(repeats)) r.reset();
     repeatFired.clear();
     for (const a of Object.keys(lastPressedAt)) delete lastPressedAt[a];
@@ -332,7 +362,7 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
 
   return {
     // device events
-    keyDown, keyUp, mouseDown, mouseUp, mouseMove, clearHeld, virtualPress,
+    keyDown, keyUp, mouseDown, mouseUp, mouseMove, clearHeld, virtualPress, touchStick, touchLook, touchAction,
     update,
     // queries
     pressed: (a, { anyContext = false } = {}) => !!raw[a] && allowed(a, anyContext) && (raw[a].pressed || repeatFired.has(a)),
@@ -346,8 +376,8 @@ export function createInputCore({ settings = null, onBindingsChanged = () => {} 
       return true;
     },
     get lastDevice() { return lastDevice; },
-    setLastDevice(d) { if (d === 'keyboard' || d === 'gamepad') lastDevice = d; },
-    labelFor: (a, { device = lastDevice, layoutMap = null } = {}) => labelForAction(bindings, a, device, layoutMap),
+    setLastDevice(d) { if (d === 'keyboard' || d === 'gamepad' || d === 'touch') lastDevice = d; },
+    labelFor: (a, { device = lastDevice, layoutMap = null } = {}) => (device === 'touch' ? touchLabel(a) : labelForAction(bindings, a, device, layoutMap)),
     // context
     get context() { return context; },
     setContext(next) {

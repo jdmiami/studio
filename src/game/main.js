@@ -30,6 +30,8 @@ import { createChimeRing } from './play/puzzles.js';
 import { t } from './play/strings.js';
 import { createSaveSystem } from './save/index.js';
 import { createInput } from './input/index.js';
+import { createTouchControls } from './input/touch.js';
+import { touchWanted } from './input/touch-math.js';
 import { createAudio } from './audio/index.js';
 import { createUI } from './ui/index.js';
 import { createDogBrain, createCritterBrain, createNpcBrain } from './ai/index.js';
@@ -41,7 +43,7 @@ import { createCreature } from './world/creatures.js';
 import { createFluff } from './world/fluff.js';
 import { createBall } from './world/ball.js';
 import { applyTripLook } from './world/look.js';
-import { createPlayerController, EYE_HEIGHT } from './player/controller.js';
+import { createPlayerController, EYE_HEIGHT, fovFor } from './player/controller.js';
 import { createGameHud } from './hud.js';
 import { createLockUi } from './lock-ui.js';
 
@@ -62,7 +64,15 @@ const events = createEvents();
 const saves = createSaveSystem({ events, getState: () => session?.state ?? null });
 let settings = saves.loadSettings?.() ?? defaultSettings();
 if (params.has('fps')) settings.showFps = true;
+// Touch screens (phones, tablets): on-screen controls, no pointer lock, and on a first run a
+// lighter quality preset (smaller render target, simpler blocks, no bloom).
+const coarsePointer = params.has('touch') || !!globalThis.matchMedia?.('(pointer: coarse)').matches;
+let touchSeen = coarsePointer;
+const firstRun = (() => { try { return !localStorage.getItem('phluph:settings'); } catch { return true; } })();
+if (coarsePointer && firstRun) settings.quality = 'low';
+if (params.has('touch')) settings.touchControls = 'on';
 if (params.has('quality')) settings.quality = params.get('quality');
+const touchActive = () => touchWanted(settings.touchControls, { coarse: coarsePointer, touched: touchSeen });
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.toneMapping = THREE.NeutralToneMapping;
@@ -71,18 +81,28 @@ document.body.appendChild(renderer.domElement);
 renderer.domElement.classList.add('game-canvas');
 const pixelRatio = () => ({ low: 1, medium: Math.min(devicePixelRatio, 1.5), high: Math.min(devicePixelRatio, 2) }[settings.quality] ?? 1.5);
 renderer.setPixelRatio(pixelRatio());
-renderer.setSize(innerWidth, innerHeight);
+/** The visible viewport (the visual viewport on phones, where browser bars come and go). */
+const viewSize = () => ({ width: Math.round(globalThis.visualViewport?.width ?? innerWidth), height: Math.round(globalThis.visualViewport?.height ?? innerHeight) });
+renderer.setSize(viewSize().width, viewSize().height);
 
 const scene = new THREE.Scene();
 const sky = createSky();
 scene.add(sky);
-const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.03, 600);
+const camera = new THREE.PerspectiveCamera(fovFor(settings.fov, viewSize().width / viewSize().height), viewSize().width / viewSize().height, 0.03, 600);
 scene.add(camera);
 const caveGrade = applyCaveLook(renderer, new URLSearchParams(), sky);
 const post = createPost(renderer, scene, camera, { ...caveGrade, bloomStrength: 0.25 });
 post.setBloom(settings.quality === 'low' ? 0 : 0.25);
 
-const input = createInput({ dom: renderer.domElement, events, settings });
+const input = createInput({ dom: renderer.domElement, events, settings, autoLock: !touchActive(), pauseOnUnlock: !touchActive() });
+const touchUi = createTouchControls({ input, getSettings: () => settings, onNext: () => { wheel += 1; } });
+document.body.classList.toggle('touch-ui', touchActive());
+addEventListener('touchstart', () => {
+  if (touchSeen) return;
+  touchSeen = true;
+  input.setAutoLock(!touchActive());
+  document.body.classList.toggle('touch-ui', touchActive());
+}, { passive: true });
 const audio = createAudio({ events, settings });
 const unlockAudio = () => { audio.unlock(); audio.setVolumes(settings.volume); };
 addEventListener('pointerdown', unlockAudio, { once: true });
@@ -165,8 +185,9 @@ function applySettings(next) {
   input.setSettings(settings);
   audio.setVolumes(settings.volume);
   renderer.setPixelRatio(pixelRatio());
-  renderer.setSize(innerWidth, innerHeight);
-  post.setSize(innerWidth, innerHeight);
+  fitView();
+  input.setAutoLock(!touchActive());
+  document.body.classList.toggle('touch-ui', touchActive());
   post.setBloom(settings.quality === 'low' ? 0 : 0.25);
   events.emit(EVENTS.SETTINGS_CHANGED, { settings });
 }
@@ -473,6 +494,7 @@ function showTitle() {
 }
 
 function startGame(state) {
+  goFullscreen(); // inside the tap that chose New Game / Continue / Load
   session?.dispose();
   session = createSession({ state, events, labels });
   refreshQuestCatalogue();
@@ -843,6 +865,8 @@ function frame() {
     updatePlay(dt);
   }
   if (hub?.group.visible) hub.update(time, dt);
+  // The on-screen controls show only while playing (menus, dialogue and the lock take taps).
+  touchUi.setVisible(mode === 'play' && touchActive() && input.context === 'gameplay' && !busy && !ui.isOpen?.() && !lockUi.open);
   ui.update?.(dt);
   fluff.update(dt);
   sky.position.copy(camera.position);
@@ -886,7 +910,9 @@ function updatePlay(dt) {
       const prompts = [];
       if (near) prompts.push({ key: input.labelFor(ACTIONS.INTERACT), text: near.label });
       if (s.flags.hasBall && ball.state === 'held' && area) prompts.push({ key: input.labelFor(ACTIONS.THROW), text: 'Throw the ball' });
-      hud.setPrompt(prompts);
+      // On touch the buttons say it themselves (the interact button's bubble).
+      hud.setPrompt(touchUi.visible ? [] : prompts);
+      touchUi.setState({ interact: near?.label ?? null, canThrow: !!s.flags.hasBall && ball.state === 'held', canDecorate: area.kind === 'hub' && !!s.flags.basket });
       if (near && input.pressed(ACTIONS.INTERACT)) interact(near);
       if (s.flags.hasBall && ball.state === 'held' && input.pressed(ACTIONS.THROW)) {
         const dir = camera.getWorldDirection(new THREE.Vector3());
@@ -894,7 +920,10 @@ function updatePlay(dt) {
         audio.play?.('throw');
       }
     }
-    if (decorating) hud.setPrompt([]);
+    if (decorating) {
+      hud.setPrompt([]);
+      touchUi.setState({ decorating: true, canDecorate: true });
+    }
   } else {
     hud.setPrompt([]);
   }
@@ -962,12 +991,25 @@ function updateChime(dt) {
   }
 }
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+/** Fits the canvas, post targets and camera to the visible viewport (resize, rotation, browser bars). */
+function fitView() {
+  const { width, height } = viewSize();
+  camera.aspect = width / height;
+  if (mode !== 'play') camera.fov = fovFor(settings.fov, camera.aspect); // in play the controller eases it
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-  post.setSize(innerWidth, innerHeight);
-});
+  renderer.setSize(width, height);
+  post.setSize(width, height);
+}
+addEventListener('resize', fitView);
+// iOS Safari ignores user-scalable=no for pinches; stop the page zooming under two thumbs.
+for (const type of ['gesturestart', 'gesturechange']) document.addEventListener(type, (e) => e.preventDefault());
+/** On touch screens, starting play asks for fullscreen (Android hides the browser bars; iPhone declines quietly). */
+function goFullscreen() {
+  if (!touchActive() || params.has('nofs') || document.fullscreenElement) return;
+  try { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.catch?.(() => {}); } catch { /* not allowed here */ }
+}
+addEventListener('orientationchange', () => setTimeout(fitView, 120));
+globalThis.visualViewport?.addEventListener('resize', fitView);
 addEventListener('pagehide', () => { if (session) { snapshotPlayer(); saves.autosave(session.state, 'quit'); saves.flush?.(); } });
 document.addEventListener('visibilitychange', () => { if (document.hidden && session) { snapshotPlayer(); saves.flush?.(); } });
 
@@ -978,6 +1020,8 @@ window.__phluphGame = {
   get area() { return area?.kind; },
   get _area() { return area; },
   get _feet() { return player.position; },
+  get settingsNow() { return settings; },
+  get touchControls() { return touchUi; },
   get trip() { return trip?.data ? { code: trip.data.code, biome: trip.data.biome, name: trip.data.name, finds: trip.finds.length } : null; },
   get player() { return { position: player.position.toArray(), yaw: player.yaw }; },
   get creatures() { return creatures.map((c) => ({ kind: c.kind, state: c.brain.state(), position: [c.body?.position.x ?? c.creature.body.position.x, c.body?.position.z ?? c.creature.body.position.z] })); },

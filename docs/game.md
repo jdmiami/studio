@@ -19,6 +19,24 @@ with Biscuit the dog and make the Nest your own.
 
 Every binding can be changed in Settings, Controls. Finds are collected by walking over them.
 
+### On a phone or tablet
+
+The on-screen controls appear on touch screens (Settings, Controls, Touch: Auto / On / Off).
+
+| | Touch |
+|---|---|
+| Move | put a thumb anywhere on the lower left: a stick appears under it; push past its rim to run |
+| Look | drag anywhere else on the screen |
+| Jump | the big pink button |
+| Interact | the green ✋ button; the bubble above it says what it will do ("Talk to Mira") |
+| Throw / decorate | ◍ and ✿ appear when you can; in decorate mode: ✓ place, ↻ turn, › next, ⇡ pick up |
+| Pause, journal, collection | the three small buttons under the area name |
+| Menus, dialogue, the felt lock | tap |
+
+Portrait and landscape both work; in portrait the view widens so you still see to the sides.
+Touch look speed and button size are in Settings, Controls. On a first visit from a phone the
+game starts on the Low quality preset; Android goes fullscreen when you start playing.
+
 ### The story
 
 1. **Welcome.** Talk to Mira on her terrace. Find a fluff stone, a button mushroom and get close
@@ -49,7 +67,8 @@ recovers from its backup.
 ## URL flags
 
 `?seed=CODE` the next trip; `?autostart=1` skip the title (new game, slot 1); `?fps=1` the
-performance overlay; `?quality=low|medium|high`. The cave viewer and reference-matching tools are
+performance overlay; `?quality=low|medium|high`; `?touch=1` force the on-screen controls (to try
+them with a mouse); `?nofs=1` no fullscreen request on touch screens. The cave viewer and reference-matching tools are
 still at `?view=cave` (and the old `?eye=`, `?look=`, `?scene=island` flags).
 
 ## Architecture
@@ -61,7 +80,8 @@ src/game/main.js       the orchestrator: renderer, frame loop, flow, areas, inte
   data/                items (finds), quests, dialogue graphs
   play/                pure rules: quests, dialogue runner, collection, puzzles, decor, session
   save/                slots + autosave, crash-safe envelopes with checksums, migrations
-  input/               actions over keyboard, mouse and gamepad; rebinding; contexts
+  input/               actions over keyboard, mouse, gamepad and touch (touch.js: on-screen stick,
+                       look drag, buttons); rebinding; contexts
   audio/               procedural Web Audio ambience and SFX, buses, variation, voice limits
   ui/                  title, slots, pause, settings, journal, collection, dialogue, toasts
   ai/                  behaviour trees + utility moods; dog, critter and Mira brains
@@ -74,7 +94,9 @@ src/game/main.js       the orchestrator: renderer, frame loop, flow, areas, inte
 Systems never import each other; they talk on the event bus with the names in
 `core/contracts.js`. Everything below `main.js` except `world/`, `ui/`, `hud.js` and `lock-ui.js` is
 plain JavaScript that runs in Node, so the rules are tested without a browser (`npm test`), and
-`scripts/game/playtest.mjs` plays the whole story in headless Chromium.
+`scripts/game/playtest.mjs` plays the whole story in headless Chromium;
+`scripts/game/mobile-check.mjs` checks the touch controls and phone layouts (portrait and
+landscape) with real touch events.
 
 ### Performance budgets
 

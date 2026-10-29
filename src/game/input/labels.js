@@ -68,3 +68,12 @@ export function labelForAction(bindings, action, family = 'keyboard', layoutMap 
   const b = pick(family) ?? pick(family === 'gamepad' ? 'keyboard' : 'gamepad');
   return b ? bindingLabel(b, layoutMap) : '—';
 }
+
+/** Prompts on touch: the on-screen button's own glyph (the buttons wear the same glyphs). */
+export const TOUCH_GLYPHS = {
+  jump: '⤒', run: '»', interact: '✋', throw: '◍', decorate: '✿', rotate: '↻', pickUp: '⇡',
+  journal: '☰', collection: '❀', pause: 'Ⅱ',
+  moveForward: '◎', moveBack: '◎', moveLeft: '◎', moveRight: '◎',
+  uiUp: '↑', uiDown: '↓', uiLeft: '←', uiRight: '→', uiConfirm: 'Tap', uiBack: '✕', uiTabPrev: '‹', uiTabNext: '›',
+};
+export const touchLabel = (action) => TOUCH_GLYPHS[action] ?? 'Tap';

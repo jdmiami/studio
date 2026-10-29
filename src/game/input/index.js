@@ -155,7 +155,11 @@ export function createInput({
     resetBindings: () => core.resetBindings(),
     getBindings: () => core.getBindings(),
     conflicts: () => core.conflicts(),
-    lockPointer() { wantLock = true; lockPointer(); },
+    lockPointer() { if (!autoLock) return; wantLock = true; lockPointer(); },
+    /** Pointer lock on/off (off on touch screens: look comes from the on-screen drag instead). */
+    setAutoLock(on) { autoLock = !!on; if (!autoLock) { wantLock = false; unlockPointer(); } },
+    /** The on-screen controls' input (./touch.js): stick(x, y), look(dx, dy) in CSS px, action(name, down). */
+    touch: { stick: (x, y) => core.touchStick(x, y), look: (dx, dy) => core.touchLook(dx, dy), action: (a, down) => core.touchAction(a, down) },
     unlockPointer() { wantLock = false; unlockPointer(); },
     get pointerLocked() { return isLocked(); },
     get context() { return core.context; },
