@@ -75,8 +75,16 @@ export const CSS = `
 }
 /* Touch screens (the game sets body.touch-ui): no keyboard hints; things are tapped. */
 body.touch-ui .phl-keycap, body.touch-ui .phl-title-hint { display: none !important; }
-/* The decorate bar moves to the top, clear of the thumbs' controls. */
-body.touch-ui .phl-decorate { bottom: auto !important; top: calc(max(0.9em, env(safe-area-inset-top)) + 7.5em); }
+/* The decorate bar: the on-screen buttons carry the prompts, so only the item shows; it sits
+   between the thumbs in landscape and above the button cluster in portrait. */
+body.touch-ui .phl-deco-prompts { display: none; }
+body.touch-ui .phl-decorate { font-size: 0.85em; }
+@media (orientation: portrait) { body.touch-ui .phl-decorate { bottom: calc(var(--safe-b) + 15em); } }
+/* Short screens (phones in landscape): at most two toasts at a time, smaller. */
+@media (max-height: 500px) {
+  .phl-toasts { font-size: 0.82em; width: min(24em, 60vw); }
+  .phl-toasts > .phl-toast:nth-last-child(n+3) { display: none; }
+}
 .phl-keycap {
   display: inline-flex; align-items: center; justify-content: center; min-width: 1.9em; height: 1.55em; padding: 0 0.4em;
   font-size: 0.75em; font-weight: 900; letter-spacing: 0.03em; color: var(--cocoa); text-shadow: none;
