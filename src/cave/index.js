@@ -125,9 +125,12 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes, sdf 
     { from: [-9.5, 9.5, -1.2], target: new THREE.Vector3(-5, 2, -1.5), width: 4.2 },
   ];
   const viewer = new THREE.Vector3(7.4, 3.775, 2.261); // the spawn eye: the shafts' broad side faces the room
-  scene.add(buildLightShafts(shafts.map((s) => ({
-    x: s.from[0], y: s.from[1], z: s.from[2], width: s.width, length: 12, target: s.target, faceToward: viewer,
-  }))));
+  // The SDF renderer raymarches the shafts as volumes itself (src/game/sdf/shader.js).
+  if (!sdf) {
+    scene.add(buildLightShafts(shafts.map((s) => ({
+      x: s.from[0], y: s.from[1], z: s.from[2], width: s.width, length: 12, target: s.target, faceToward: viewer,
+    }))));
+  }
 
   // Lights only affect the glossy button eyes and the compass; textiles and fur light themselves.
   scene.add(new THREE.HemisphereLight('#fff1e6', '#d9b3a3', 1.3));
@@ -156,6 +159,7 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes, sdf 
     door: doorReady,
     dogSpot: dogSpec, critterSpots: byName('critter'),
     props, // every placed prop (the SDF renderer draws them as distance-field shapes)
+    shafts, // the light shafts: { from: [x, y, z], target: Vector3, width }
     // Resolves when the kit models, the door and the traced props' projection paint are in.
     ready: Promise.all([propsReady, doorReady, traced.userData.painted, levelPainted]),
     update(time) {

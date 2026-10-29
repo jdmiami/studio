@@ -11,19 +11,23 @@ const MAX_PROPS = 48;
 
 /** Steps, shadow steps and AO samples per quality preset (shadows and AO are the expensive part). */
 export const SDF_QUALITY = {
-  low: { steps: 72, shadow: 0, ao: 0, far: 60 },
-  medium: { steps: 110, shadow: 20, ao: 3, far: 80 },
-  high: { steps: 150, shadow: 36, ao: 5, far: 110 },
+  low: { steps: 72, shadow: 0, ao: 0, far: 60, shafts: 0 },
+  medium: { steps: 110, shadow: 20, ao: 4, far: 80, shafts: 0.16 },
+  high: { steps: 150, shadow: 36, ao: 5, far: 110, shafts: 0.18 },
 };
 
 const linear = (hex) => new THREE.Color(hex);
 
-/** Per-area felt tints for the terrain kinds. */
+/**
+ * Per-area felt tints for the terrain kinds, and the light round the sun: a cool fill from the
+ * sky opposite and a warm bounce off the earth (fitted to the painting with sdf-compare: its water
+ * is a pale powder blue, its grass a light mint, its shadows pink).
+ */
 const TINTS = {
-  hub: { wall: '#d6b4a8', floor: '#d8c3bb', water: '#7f9fd4', grass: '#94ad80' },
-  meadow: { wall: '#dcb3a2', floor: '#e0cbbf', water: '#86a8d8', grass: '#9fbf86' },
-  grotto: { wall: '#e3aeb0', floor: '#e2c6cc', water: '#9aa6dc', grass: '#a3b98c' },
-  lake: { wall: '#d8b9ac', floor: '#dccbc4', water: '#78a6d8', grass: '#98c08f' },
+  hub: { wall: '#e0b4a2', floor: '#e2cdc6', water: '#a9c6ee', grass: '#a8c98e', fill: '#c9d2f4', bounce: '#e7b8a6' },
+  meadow: { wall: '#e2b5a3', floor: '#e6d0c4', water: '#9fc0ea', grass: '#a6c98b', fill: '#cbd9f6', bounce: '#d8c9a8' },
+  grotto: { wall: '#e8b0b2', floor: '#e6cad0', water: '#aab4ea', grass: '#a9c093', fill: '#d6cdf6', bounce: '#e9b8bd' },
+  lake: { wall: '#dfbcaf', floor: '#e2d0c9', water: '#93bdea', grass: '#a0c795', fill: '#c3dcf4', bounce: '#cfd2c6' },
 };
 
 export function createSdfWorld({ quality = 'medium' } = {}) {
@@ -65,6 +69,14 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
     uFogColor: u.uFogColor,
     uFogDensity: u.uFogDensity,
     uCel: u.uCel,
+    uFillDir: { value: new THREE.Vector3(0.5, 0.35, -0.6) },
+    uFillColor: { value: linear(TINTS.hub.fill) },
+    uBounce: { value: linear(TINTS.hub.bounce) },
+    uShaftFrom: { value: [0, 1, 2, 3].map(() => new THREE.Vector3()) },
+    uShaftTo: { value: [0, 1, 2, 3].map(() => new THREE.Vector3()) },
+    uShaftWidth: { value: [0, 0, 0, 0] },
+    uShaftCount: { value: 0 },
+    uShaftStrength: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({ vertexShader, fragmentShader, uniforms, depthWrite: true, depthTest: true });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
@@ -81,6 +93,7 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
     uniforms.uShadowSteps.value = s.shadow;
     uniforms.uAo.value = s.ao;
     uniforms.uFar.value = s.far;
+    uniforms.uShaftStrength.value = s.shafts;
   }
   setQuality(quality);
 
@@ -91,7 +104,7 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
      * A new world: columns (Map or record), ceilingAt?, door? ({ z, xMin, xMax, height }), props
      * (scene-data.js normalised props), tint key ('hub' | biome).
      */
-    setArea({ columns, ceilingAt = null, door = null, props: list = [], tint = 'hub' }) {
+    setArea({ columns, ceilingAt = null, door = null, props: list = [], tint = 'hub', shafts = [] }) {
       const t = packTerrain(columns, { ceilingAt });
       // A new texture per area: texture storage is allocated once at its first size.
       terrainTex.dispose();
@@ -107,6 +120,14 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
       uniforms.uTintFloor.value.set(tints.floor);
       uniforms.uTintWater.value.set(tints.water);
       uniforms.uGrass.value.set(tints.grass);
+      uniforms.uFillColor.value.set(tints.fill);
+      uniforms.uBounce.value.set(tints.bounce);
+      uniforms.uShaftCount.value = Math.min(4, shafts.length);
+      shafts.slice(0, 4).forEach((sh, i) => {
+        uniforms.uShaftFrom.value[i].set(...sh.from);
+        uniforms.uShaftTo.value[i].copy(sh.target);
+        uniforms.uShaftWidth.value[i] = sh.width;
+      });
       props = list;
       lastPack = null;
     },

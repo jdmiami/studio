@@ -41,6 +41,7 @@ import { buildTripWorld } from './world/trip.js';
 import { createFindPool, buildFindModel } from './world/finds.js';
 import { createCreature } from './world/creatures.js';
 import { createFluff } from './world/fluff.js';
+import { createAmbient } from './world/ambient.js';
 import { createBall } from './world/ball.js';
 import { applyTripLook } from './world/look.js';
 import { createPlayerController, EYE_HEIGHT, fovFor } from './player/controller.js';
@@ -110,7 +111,7 @@ scene.add(sky);
 const camera = new THREE.PerspectiveCamera(fovFor(settings.fov, viewSize().width / viewSize().height), viewSize().width / viewSize().height, 0.03, 600);
 scene.add(camera);
 const caveGrade = applyCaveLook(renderer, new URLSearchParams(), sky);
-const post = createPost(renderer, scene, camera, { ...caveGrade, bloomStrength: 0.25 });
+let post = createPost(renderer, scene, camera, { ...caveGrade, bloomStrength: 0.25 });
 post.setBloom(settings.quality === 'low' ? 0 : 0.25);
 
 const input = createInput({ dom: renderer.domElement, events, settings, autoLock: !touchActive(), pauseOnUnlock: !touchActive() });
@@ -132,6 +133,8 @@ const hud = createGameHud();
 const lockUi = createLockUi({ events });
 const fluff = createFluff();
 scene.add(fluff.points);
+const ambient = createAmbient();
+scene.add(ambient.points);
 const pool = createFindPool();
 const ball = createBall();
 scene.add(ball.mesh);
@@ -208,7 +211,7 @@ function applySettings(next) {
   fitView();
   input.setAutoLock(!touchActive());
   document.body.classList.toggle('touch-ui', touchActive());
-  post.setBloom(settings.quality === 'low' ? 0 : 0.25);
+  post.setBloom(settings.quality === 'low' ? 0 : renderMode === 'sdf' ? 0.42 : 0.25);
   events.emit(EVENTS.SETTINGS_CHANGED, { settings });
 }
 
@@ -226,6 +229,12 @@ async function boot() {
     sdfWorld = createSdfWorld({ quality: settings.quality });
     scene.add(sdfWorld.mesh);
     renderer.setPixelRatio(pixelRatio());
+    // The soft renderer's glow: bloom on the shafts and highlights, a gentle diorama blur above and
+    // below the eye line (medium and high), the cave's warm grade.
+    post = createPost(renderer, scene, camera, {
+      ...caveGrade, bloomStrength: settings.quality === 'low' ? 0 : 0.42, bloomThreshold: 0.92,
+      tiltShift: settings.quality !== 'low', tilt: { focus: 0.48, band: 0.3, radius: 1.5 },
+    });
     fitView();
   }
   hud.loading(0.05, renderMode === 'sdf' ? 'Shaping the distance fields…' : 'Fluffing the felt…');
@@ -396,7 +405,8 @@ function enterHub({ spawn = false, title = false, fromTrip = false } = {}) {
   const grade = applyCaveLook(renderer, new URLSearchParams(), sky);
   post.setGrade(grade);
   setArea(hub);
-  sdfWorld?.setArea({ columns: hub.cave.columns, ceilingAt: hub.cave.ceilingAt, door: DOOR, props: (hub.sdfProps ??= propsFromPlacement(hub.cave.props)), tint: 'hub' });
+  sdfWorld?.setArea({ columns: hub.cave.columns, ceilingAt: hub.cave.ceilingAt, door: DOOR, props: (hub.sdfProps ??= propsFromPlacement(hub.cave.props)), tint: 'hub', shafts: hub.cave.shafts });
+  ambient.setArea({ kind: 'hub', shafts: hub.cave.shafts });
   const s = getState();
   hub.setDoor(!!s?.flags.doorOpen, true);
   hub.syncDecor(s?.decor ?? []);
@@ -422,6 +432,7 @@ function enterTrip(seed, biome = null) {
   if (trip) trip.dispose();
   trip = buildTripWorld(data, { pool, blockRes: blockRes(), sdf: renderMode === 'sdf' });
   sdfWorld?.setArea({ columns: data.columns, props: propsFromLandmarks(data.landmarks, data.biome), tint: data.biome });
+  ambient.setArea({ kind: data.biome }, trip.spawn.position);
   trip.data = data;
   scene.add(trip.group);
   post.setGrade(applyTripLook(renderer, data.biome, sky));
@@ -908,6 +919,7 @@ function frame() {
   touchUi.setVisible(mode === 'play' && touchActive() && input.context === 'gameplay' && !busy && !ui.isOpen?.() && !lockUi.open);
   ui.update?.(dt);
   fluff.update(dt);
+  ambient.update(dt, time, area ? player.position : null);
   sky.position.copy(camera.position);
   if (sdfWorld) {
     // The great door rises like a felt curtain (the mesh renderer animates its door mesh the same way).

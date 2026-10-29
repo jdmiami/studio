@@ -59,6 +59,16 @@ export const fragmentShader = /* glsl */ `
   uniform vec3 uFogColor;
   uniform float uFogDensity;
   uniform float uCel;
+  // Light beyond the sun: a cool sky fill from the other side, a warm bounce off the earth.
+  uniform vec3 uFillDir;
+  uniform vec3 uFillColor;
+  uniform vec3 uBounce;
+  // Light shafts (the cave's skylights): from (top), to (floor), width; raymarched as volumes.
+  uniform vec3 uShaftFrom[4];
+  uniform vec3 uShaftTo[4];
+  uniform float uShaftWidth[4];
+  uniform int uShaftCount;
+  uniform float uShaftStrength;
 
   ${CEL_GLSL}
 
@@ -326,7 +336,7 @@ export const fragmentShader = /* glsl */ `
     for (int i = 0; i < 48; i++) {
       if (i >= uShadowSteps) break;
       float h = map(ro + rd * t);
-      res = min(res, 10.0 * h / t);
+      res = min(res, 6.0 * h / t);
       t += clamp(h, 0.03, 0.5);
       if (res < 0.01 || t > 14.0) break;
     }
@@ -338,11 +348,39 @@ export const fragmentShader = /* glsl */ `
     float sca = 1.0;
     for (int i = 0; i < 6; i++) {
       if (i >= uAo) break;
-      float h = 0.03 + 0.12 * float(i);
+      float h = 0.04 + 0.16 * float(i);
       occ += (h - map(p + n * h)) * sca;
-      sca *= 0.7;
+      sca *= 0.72;
     }
-    return clamp(1.0 - 2.2 * occ, 0.0, 1.0);
+    return clamp(1.0 - 1.9 * occ, 0.0, 1.0);
+  }
+
+  // In-scattered light along the view ray inside the shafts: soft cones widening toward the floor,
+  // their density stirred by slow noise, sampled at jittered steps (the noise of the jitter is
+  // hidden by the beams' own softness and the bloom).
+  vec3 shaftGlow(vec3 ro, vec3 rd, float tmax) {
+    if (uShaftCount == 0 || uShaftStrength <= 0.0) return vec3(0.0);
+    const int N = 14;
+    float len = min(tmax, 34.0);
+    float dt = len / float(N);
+    float t = dt * hash12(gl_FragCoord.xy + fract(uTime * 7.0) * 61.0);
+    float acc = 0.0;
+    for (int i = 0; i < N; i++) {
+      vec3 p = ro + rd * t;
+      for (int k = 0; k < 4; k++) {
+        if (k >= uShaftCount) break;
+        vec3 a = uShaftFrom[k];
+        vec3 ab = uShaftTo[k] - a;
+        float h = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
+        float r = uShaftWidth[k] * (0.32 + 0.22 * h);
+        float d = length(p - (a + ab * h));
+        float along = smoothstep(0.0, 0.12, h) * (1.0 - smoothstep(0.8, 1.0, h));
+        float stir = 0.55 + 0.6 * vnoise(p * 0.9 + vec3(0.0, uTime * 0.06, uTime * 0.03));
+        acc += smoothstep(r, r * 0.2, d) * along * stir * dt;
+      }
+      t += dt;
+    }
+    return uSunColor * vec3(1.0, 0.92, 0.8) * acc * uShaftStrength;
   }
 
   void main() {
@@ -378,17 +416,25 @@ export const fragmentShader = /* glsl */ `
     float ndv = clamp(dot(n, view), 0.0, 1.0);
     float sh = uShadowSteps > 0 ? softShadow(p + n * 0.02, l) : 1.0;
     float ao = uAo > 0 ? calcAO(p, n) : 1.0;
-    float wrap = celRamp(clamp((dot(n, l) + 0.4) / 1.4, 0.0, 1.0) * mix(1.0, sh, 0.85), uCel);
-    vec3 ambient = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
+    float keyRaw = clamp((dot(n, l) + 0.4) / 1.4, 0.0, 1.0);
+    float wrap = celRamp(keyRaw * mix(1.0, sh, 0.85), uCel);
+    // Ambient: sky from above, the warm earth bounce from below (the painting's shadows are pink).
+    vec3 ambient = mix(uBounce, uSkyColor, smoothstep(-0.6, 0.8, n.y));
+    float fill = clamp(dot(n, normalize(uFillDir)) * 0.5 + 0.5, 0.0, 1.0);
     float baseLuma = max(dot(base, vec3(0.2126, 0.7152, 0.0722)), 0.02);
     vec3 shadeTint = mix(vec3(1.0), base / baseLuma, 0.45 * uCel * (1.0 - wrap));
-    vec3 col = base * (ambient * 0.7 * shadeTint * mix(0.55, 1.0, ao) + uSunColor * wrap * 0.8);
+    float aoK = mix(0.42, 1.0, ao);
+    vec3 col = base * (ambient * 0.72 * shadeTint * aoK + uSunColor * wrap * 0.85 + uFillColor * fill * 0.2 * aoK);
+    // Felt glows warm and saturated where light turns to shadow (light scattering in the fibres).
+    float band = smoothstep(0.06, 0.3, keyRaw) * (1.0 - smoothstep(0.3, 0.62, keyRaw));
+    col += base * (base / baseLuma) * band * 0.14 * uSunColor * sh;
     col += base * 1.15 * pow(1.0 - ndv, 2.5) * fuzz * (0.4 + 0.6 * wrap) * (1.0 - 0.6 * uCel);
 
     float dist = t;
     float fog = 1.0 - exp(-max(dist - 18.0, 0.0) * uFogDensity);
     vec3 haze = mix(uFogColor, uSunColor * 0.8, pow(clamp(dot(rd, l), 0.0, 1.0), 4.0) * 0.5);
     col = mix(col, haze, fog);
+    col += shaftGlow(ro, rd, t);
 
     vec4 clip = uViewProj * vec4(p, 1.0);
     gl_FragDepth = clamp((clip.z / clip.w) * 0.5 + 0.5, 0.0, 1.0);

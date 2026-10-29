@@ -207,7 +207,7 @@ class InkPass extends Pass {
 }
 
 export function createPost(renderer, scene, camera, {
-  lowfx = false, bloomStrength = 0.35, godRays: useGodRays = true, tiltShift: useTiltShift = true, saturation = 1.0,
+  lowfx = false, bloomStrength = 0.35, bloomThreshold = 1.3, tilt = null, godRays: useGodRays = true, tiltShift: useTiltShift = true, saturation = 1.0,
   outline = null, contrast, shadowTint,
 } = {}) {
   // Ink outlines read the scene's depth, so the composer's targets carry a depth texture then.
@@ -234,11 +234,19 @@ export function createPost(renderer, scene, camera, {
   if (!lowfx && useGodRays) composer.addPass(godRays);
 
   // Threshold above lit surfaces so only glints, glitter, motes and the sun bloom.
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), bloomStrength, 0.6, 1.3);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), bloomStrength, 0.6, bloomThreshold);
   composer.addPass(bloom);
 
   const tiltH = new ShaderPass(tiltShiftShader(new THREE.Vector2(1, 0)));
   const tiltV = new ShaderPass(tiltShiftShader(new THREE.Vector2(0, 1)));
+  // tilt: { focus, band, radius } overrides the focus band (a gentle diorama blur for first person).
+  if (tilt) {
+    for (const pass of [tiltH, tiltV]) {
+      if (tilt.focus !== undefined) pass.uniforms.uFocus.value = tilt.focus;
+      if (tilt.band !== undefined) pass.uniforms.uBand.value = tilt.band;
+      if (tilt.radius !== undefined) pass.uniforms.uMaxRadius.value = tilt.radius;
+    }
+  }
   if (!lowfx && useTiltShift) {
     composer.addPass(tiltH);
     composer.addPass(tiltV);
