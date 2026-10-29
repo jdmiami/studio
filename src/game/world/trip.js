@@ -198,7 +198,7 @@ export function buildTripWorld(trip, { pool, collected = new Set(), blockRes = 8
 
   const tmp = new THREE.Vector3();
   return {
-    group, world, finds, gate, chimes, interactables,
+    kind: 'trip', group, world, finds, gate, chimes, interactables,
     critters: trip.critters,
     heightAt: ground,
     kindAt: world.kindAt,

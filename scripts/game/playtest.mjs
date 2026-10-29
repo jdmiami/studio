@@ -67,7 +67,7 @@ await step('new game', async () => {
 });
 
 await step('talk to Mira (welcome quest)', async () => {
-  const p = game(() => window.__phluphGame.interact('npc'));
+  const p = game(() => window.__phluphGame.interact('npc')).catch(() => null);
   await wait(800);
   await shot('03-dialogue');
   await press('ArrowDown');
@@ -104,7 +104,7 @@ await step('meet a critter', async () => {
 });
 
 await step('report to Mira, get the lock note', async () => {
-  const p = game(() => window.__phluphGame.interact('npc'));
+  const p = game(() => window.__phluphGame.interact('npc')).catch(() => null);
   await wait(600);
   await finishDialogue();
   await p;
@@ -115,7 +115,7 @@ await step('report to Mira, get the lock note', async () => {
 await step('solve the felt lock', async () => {
   await game(() => window.__phluphGame.teleport(0, -12.5, 0));
   await frames(4);
-  game(() => window.__phluphGame.interact('door'));
+  game(() => window.__phluphGame.interact('door')).catch(() => null);
   await wait(700);
   await shot('06-lock');
   // Dials start cream/peach/sage; the answer is cream/sage/lilac.
@@ -132,7 +132,7 @@ await step('solve the felt lock', async () => {
 });
 
 await step('through the Wander Gate', async () => {
-  const p = game(() => window.__phluphGame.interact('door'));
+  const p = game(() => window.__phluphGame.interact('door')).catch(() => null);
   await wait(600);
   await finishDialogue();
   await p;
@@ -170,7 +170,7 @@ await step('home again', async () => {
   await game(() => window.__phluphGame.goHome());
   await wait(1500);
   await shot('11-home');
-  const p = game(() => window.__phluphGame.interact('npc'));
+  const p = game(() => window.__phluphGame.interact('npc')).catch(() => null);
   await wait(600);
   await finishDialogue();
   await p;

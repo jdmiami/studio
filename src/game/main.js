@@ -610,7 +610,7 @@ function openLock() {
     if (r === 'open') {
       hub.setDoor(true);
       player.addTrauma(0.35);
-      setTimeout(() => events.emit(EVENTS.TOAST, { text: t('door.through'), kind: 'quest' }), 2600);
+      setTimeout(() => { if (area?.kind === 'hub') events.emit(EVENTS.TOAST, { text: t('door.through'), kind: 'quest' }); }, 2600);
     }
   });
 }
