@@ -46,7 +46,11 @@ import { createGameHud } from './hud.js';
 import { createLockUi } from './lock-ui.js';
 
 const params = new URLSearchParams(location.search);
-const BUDGET = { ms: 16.7, calls: 600 };
+const BUDGET = { ms: 16.7, calls: 600, tris: 3e6 };
+// Block mesh density per quality (subdivisions per unit; the painting-matching viewer uses 14):
+// ~6 * res^2 * 2 triangles a block, thousands of blocks per area.
+const BLOCK_RES = { low: 5, medium: 7, high: 9 };
+const blockRes = () => BLOCK_RES[settings.quality] ?? 7;
 const REACH = 4.5;
 const CRITTER_KINDS = { cream: 'critter-cream', mint: 'critter-mint', blush: 'critter-blush' };
 const CRITTER_MODELS = { 'critter-cream': 'critter-0', 'critter-mint': 'critter-1', 'critter-blush': 'critter-2' };
@@ -181,7 +185,7 @@ function buildHub() {
   const group = new THREE.Group();
   group.name = 'hub';
   scene.add(group);
-  const cave = buildCave(group, { creatures: false });
+  const cave = buildCave(group, { creatures: false, blockRes: blockRes() });
   const decorGroup = new THREE.Group();
   decorGroup.name = 'decor';
   group.add(decorGroup);
@@ -350,7 +354,7 @@ function enterTrip(seed, biome = null) {
   const data = generateTrip({ seed, ...(biome ? { biome } : {}) });
   hub.group.visible = false;
   if (trip) trip.dispose();
-  trip = buildTripWorld(data, { pool });
+  trip = buildTripWorld(data, { pool, blockRes: blockRes() });
   trip.data = data;
   scene.add(trip.group);
   post.setGrade(applyTripLook(renderer, data.biome, sky));
@@ -968,6 +972,21 @@ window.__phluphGame = {
   startGame: (slot = 1) => startGame(newGameState({ slot, name: 'Test Nest' })),
   ui, input, events, session: () => session, saves, perf: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, frames: [...perf.frames] }),
   seedToCode,
+  /** Triangles per named group under the scene (profiling: where the budget goes). */
+  triangles() {
+    const out = {};
+    scene.traverseVisible((o) => {
+      if (!o.isMesh && !o.isPoints) return;
+      const g = o.geometry;
+      const n = (g.index ? g.index.count : g.attributes.position.count) / 3 * (o.isInstancedMesh ? o.count : 1);
+      let p = o;
+      const path = [];
+      while (p && p !== scene) { if (p.name) path.unshift(p.name); p = p.parent; }
+      const key = (path.slice(0, 2).join('/') || '(unnamed)') + (path.length < 2 ? ` <${g.type}${o.isInstancedMesh ? ' inst' : ''} ${o.material?.type}>` : '');
+      out[key] = (out[key] ?? 0) + n;
+    });
+    return Object.entries(out).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => `${k}: ${Math.round(v / 1000)}k`);
+  },
 };
 
 renderer.setAnimationLoop(frame);

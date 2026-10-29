@@ -116,10 +116,10 @@ const BLOCK_RES = 14;
 const partCache = new Map();
 
 /** A kit block design as instanceable parts: one merged geometry per material. */
-export function blockParts(design, variant) {
-  const id = `${design}:${variant}`;
+export function blockParts(design, variant, res = BLOCK_RES) {
+  const id = `${design}:${variant}:${res}`;
   if (partCache.has(id)) return partCache.get(id);
-  const group = buildKitBlock({ kind: design, seed: 1 + variant * 7 }, rng(99 + variant), null, { res: BLOCK_RES });
+  const group = buildKitBlock({ kind: design, seed: 1 + variant * 7 }, rng(99 + variant), null, { res });
   group.updateMatrixWorld(true);
   const byMaterial = new Map();
   group.traverse((o) => {
@@ -138,8 +138,11 @@ export function blockParts(design, variant) {
   return parts;
 }
 
-/** @param {{ hide?: ((x: number, y: number, z: number) => boolean) | null }} options blocks to leave out */
-export function buildCaveLevel({ hide = null } = {}) {
+/**
+ * @param {{ hide?: ((x: number, y: number, z: number) => boolean) | null, blockRes?: number }} options
+ * hide: blocks to leave out; blockRes: block mesh density (the game lowers it for its budgets)
+ */
+export function buildCaveLevel({ hide = null, blockRes = BLOCK_RES } = {}) {
   const random = rng(4242);
   const solid = new Set();
   const blocks = []; // { x, y, z, kind }
@@ -248,7 +251,7 @@ export function buildCaveLevel({ hide = null } = {}) {
   };
   for (const [id, cells] of placed) {
     const [design, variant] = id.split(':');
-    for (const part of blockParts(design, Number(variant))) {
+    for (const part of blockParts(design, Number(variant), blockRes)) {
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, cells.length);
       cells.forEach((cell, i) => {
         mesh.setMatrixAt(i, m.makeTranslation(cell.x, cell.y, cell.z));
@@ -265,7 +268,7 @@ export function buildCaveLevel({ hide = null } = {}) {
   const paintable = [];
   const frameMaterial = createTextile('felt', { fuzz: 0.25, grain: 1 });
   for (const cell of frameCells) {
-    for (const part of blockParts('stone', cell.variant)) {
+    for (const part of blockParts('stone', cell.variant, blockRes)) {
       const g = part.geometry.clone();
       const base = part.material.uniforms.uColor.value;
       const col = g.getAttribute('color');

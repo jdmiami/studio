@@ -33,9 +33,9 @@ function jitter(x, y, z, k) {
 }
 
 /**
- * @param {{ columns: Record<string, {top: number, kind: string}>, biome?: string, bottom?: number, buildRadius?: number }} opts
+ * @param {{ columns: Record<string, {top: number, kind: string}>, biome?: string, bottom?: number, buildRadius?: number, blockRes?: number }} opts
  */
-export function buildBlockWorld({ columns, biome = 'meadow', bottom = -2, buildRadius = 48 }) {
+export function buildBlockWorld({ columns, biome = 'meadow', bottom = -2, buildRadius = 48, blockRes = 8 }) {
   const group = new THREE.Group();
   group.name = 'blockworld';
   const tints = BIOME_TINTS[biome] ?? BIOME_TINTS.meadow;
@@ -85,7 +85,7 @@ export function buildBlockWorld({ columns, biome = 'meadow', bottom = -2, buildR
     }
     for (const [id, blocks] of byDesign) {
       const [design, variant] = id.split(':');
-      for (const part of blockParts(design, Number(variant))) {
+      for (const part of blockParts(design, Number(variant), blockRes)) {
         const mesh = new THREE.InstancedMesh(part.geometry, part.material, blocks.length);
         blocks.forEach((b, i) => {
           m.makeTranslation(b.x, b.y, b.z);

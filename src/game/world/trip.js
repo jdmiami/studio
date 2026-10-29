@@ -142,10 +142,10 @@ function chimeSpot(trip, world) {
  * Builds the trip. `pool` is a find pool (finds.js createFindPool); `collected` an optional set of
  * find ids already taken on an earlier visit of this seed.
  */
-export function buildTripWorld(trip, { pool, collected = new Set() } = {}) {
+export function buildTripWorld(trip, { pool, collected = new Set(), blockRes = 8 } = {}) {
   const group = new THREE.Group();
   group.name = `trip ${trip.code}`;
-  const world = buildBlockWorld({ columns: trip.columns, biome: trip.biome });
+  const world = buildBlockWorld({ columns: trip.columns, biome: trip.biome, blockRes });
   group.add(world.group);
   const ground = (x, z) => world.heightAt(x, z);
 

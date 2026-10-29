@@ -14,11 +14,12 @@ import { buildLightShafts } from './props.js';
 
 /**
  * Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag);
- * creatures: false leaves out the dog and critters (the game spawns them with brains).
+ * creatures: false leaves out the dog and critters (the game spawns them with brains); blockRes the
+ * block mesh density (default the matching density).
  */
-export function buildCave(scene, { hide = null, creatures = true } = {}) {
+export function buildCave(scene, { hide = null, creatures = true, blockRes } = {}) {
   const random = rng(20261026);
-  const level = buildCaveLevel({ hide });
+  const level = buildCaveLevel({ hide, blockRes });
   scene.add(level.group);
   // The door frame's stones take the painting's own tones (projection painting).
   const noPaint = new URLSearchParams(location.search).has('nopaint');

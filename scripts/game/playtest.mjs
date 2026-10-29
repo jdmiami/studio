@@ -38,14 +38,15 @@ page.setDefaultTimeout(180000);
 const wait = (ms) => page.waitForTimeout(ms);
 const press = async (key, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(key); await wait(120); } };
 
-/** Advances a running dialogue by confirming until it closes (choices pick the first). */
-async function finishDialogue(max = 20) {
+/** Advances a running dialogue by confirming until it closes (choices pick the focused one). */
+async function finishDialogue(max = 80) {
   for (let i = 0; i < max; i++) {
-    const open = await game(() => !!document.querySelector('.phl-layer-dialogue *'));
+    const open = await game(() => window.__phluphGame.input.context === 'dialogue');
     if (!open) return;
     await press('Enter');
-    await wait(250);
+    await wait(450);
   }
+  throw new Error('dialogue did not close');
 }
 
 await step('load and title', async () => {
