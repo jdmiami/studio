@@ -197,16 +197,20 @@ await step('menus', async () => {
 });
 
 await step('decorate the Nest', async () => {
-  await game(() => window.__phluphGame.teleport(4, -2, Math.PI * 0.6));
+  // A clear stretch of the Nest's floor, looking down at it from a step away.
+  const spot = await game(() => { const f = window.__phluphGame.state; return f ? [2, -6] : null; });
+  await game(([x, z]) => window.__phluphGame.teleport(x, z + 1.8, 0, -0.75), spot);
   await frames(4);
   await press('KeyB');
   await wait(500);
   await shot('15-decorate');
   await press('KeyE');
   await wait(500);
+  await shot('15b-placed');
   await press('KeyB');
   const n = await game(() => window.__phluphGame.state.decor.length);
   console.log(`     decorations placed: ${n}`);
+  if (n < 1) throw new Error('nothing placed');
 });
 
 await step('save and reload', async () => {

@@ -675,8 +675,8 @@ function setGhost() {
   decorating.ghost = buildFindModel(it.item.id);
   scene.add(decorating.ghost);
   ui.showDecorate?.({ item: it.item, count: it.count, prompts: [
-    { key: input.labelFor(ACTIONS.INTERACT), text: 'Place' }, { key: input.labelFor(ACTIONS.ROTATE), text: 'Turn' },
-    { key: 'Wheel / Q', text: 'Next item' }, { key: input.labelFor(ACTIONS.PICK_UP), text: 'Pick up' }, { key: input.labelFor(ACTIONS.DECORATE), text: 'Done' },
+    { key: input.labelFor(ACTIONS.INTERACT), label: 'Place' }, { key: input.labelFor(ACTIONS.ROTATE), label: 'Turn' },
+    { key: 'Wheel / Q', label: 'Next' }, { key: input.labelFor(ACTIONS.PICK_UP), label: 'Pick up' }, { key: input.labelFor(ACTIONS.DECORATE), label: 'Done' },
   ] });
 }
 function endDecorate() {
@@ -973,7 +973,7 @@ window.__phluphGame = {
   get creatures() { return creatures.map((c) => ({ kind: c.kind, state: c.brain.state(), position: [c.body?.position.x ?? c.creature.body.position.x, c.body?.position.z ?? c.creature.body.position.z] })); },
   get hubFinds() { return hub?.finds.map((f) => ({ itemId: f.data.itemId, position: f.root.position.toArray() })) ?? []; },
   get tripFinds() { return trip?.finds.map((f) => ({ itemId: f.data.itemId, position: f.root.position.toArray() })) ?? []; },
-  teleport: (x, z, yaw = player.yaw) => player.teleport(new THREE.Vector3(x, 0, z), yaw),
+  teleport: (x, z, yaw = player.yaw, pitch = 0) => player.teleport(new THREE.Vector3(x, 0, z), yaw, pitch),
   interact: (id) => { const list = areaInteractables(); const it = list.find((i) => i.id === id) ?? (id === 'dog' && dog ? { id: 'dog', kind: 'dog' } : null); return it ? interact(it) : null; },
   enterTrip: (code) => enterTrip(codeToSeed(code)),
   goHome: () => { session.endTrip(); enterHub({ fromTrip: true }); },
