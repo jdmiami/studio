@@ -142,7 +142,16 @@ const ui = createUI({
     conflicts: () => input.conflicts(),
   },
 });
-ui.setQuestCatalogue?.(QUESTS.map((q) => ({ id: q.id, title: q.title, giver: q.giver, description: q.description, steps: q.steps.map((s) => ({ id: s.id, text: typeof s.text === 'function' ? '…' : s.text })) })));
+/** The journal's quest catalogue, with step text resolved against the current state. */
+function refreshQuestCatalogue() {
+  const name = (g) => (g ? g[0].toUpperCase() + g.slice(1) : g);
+  const list = session
+    ? session.quests.catalogueForUi()
+    : QUESTS.map((q) => ({ id: q.id, title: q.title, giver: q.giver, description: q.description, steps: q.steps.map((st) => ({ id: st.id, text: typeof st.text === 'function' ? '' : st.text })) }));
+  ui.setQuestCatalogue?.(list.map((q) => ({ ...q, giver: name(q.giver) })));
+}
+refreshQuestCatalogue();
+for (const e of [EVENTS.QUEST_STARTED, EVENTS.QUEST_STEP, EVENTS.QUEST_DONE, EVENTS.FIND_COLLECTED]) events.on(e, () => { if (session) refreshQuestCatalogue(); });
 ui.setHud?.(hud.el);
 
 function latestSave() {
@@ -466,6 +475,7 @@ function showTitle() {
 function startGame(state) {
   session?.dispose();
   session = createSession({ state, events, labels });
+  refreshQuestCatalogue();
   sighted = new Set(Object.keys(state.collection).filter((id) => ITEM_BY_ID[id]?.sighting));
   mode = 'play';
   ui.reset(); // the stack cleared without a resume: play starts here
