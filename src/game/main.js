@@ -67,6 +67,15 @@ const events = createEvents();
 const saves = createSaveSystem({ events, getState: () => session?.state ?? null });
 let settings = saves.loadSettings?.() ?? defaultSettings();
 if (params.has('fps')) settings.showFps = true;
+// Art comparison flags (scripts/game/sdf-compare.mjs): ?nohud=1 hides every overlay, ?fov= sets
+// the vertical field of view (the cave painting's solved camera is 58.3 degrees).
+const noHud = params.has('nohud');
+if (noHud) {
+  const s = document.createElement('style');
+  s.textContent = '.ghud, .phl-ui, .ptouch { display: none !important; }';
+  document.head.appendChild(s);
+}
+if (params.has('fov') && Number(params.get('fov')) > 0) settings.fov = Number(params.get('fov'));
 // Touch screens (phones, tablets): on-screen controls, no pointer lock, and on a first run a
 // lighter quality preset (smaller render target, simpler blocks, no bloom).
 const coarsePointer = params.has('touch') || !!globalThis.matchMedia?.('(pointer: coarse)').matches;
