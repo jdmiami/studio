@@ -23,5 +23,6 @@ export function mergeSettings(input) {
   for (const k of Object.keys(s.volume)) s.volume[k] = Math.min(1, Math.max(0, s.volume[k]));
   if (!QUALITY.has(s.quality)) s.quality = defaultSettings().quality;
   if (!['auto', 'on', 'off'].includes(s.touchControls)) s.touchControls = 'auto';
+  if (!['ask', 'threejs', 'sdf'].includes(s.renderer)) s.renderer = 'ask';
   return s;
 }

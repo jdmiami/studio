@@ -142,17 +142,18 @@ function chimeSpot(trip, world) {
  * Builds the trip. `pool` is a find pool (finds.js createFindPool); `collected` an optional set of
  * find ids already taken on an earlier visit of this seed.
  */
-export function buildTripWorld(trip, { pool, collected = new Set(), blockRes = 8 } = {}) {
+export function buildTripWorld(trip, { pool, collected = new Set(), blockRes = 8, sdf = false } = {}) {
   const group = new THREE.Group();
   group.name = `trip ${trip.code}`;
-  const world = buildBlockWorld({ columns: trip.columns, biome: trip.biome, blockRes });
+  // With the SDF renderer the terrain and landmarks are drawn by its shader from this same data.
+  const world = buildBlockWorld({ columns: trip.columns, biome: trip.biome, blockRes, meshes: !sdf });
   group.add(world.group);
   const ground = (x, z) => world.heightAt(x, z);
 
   // Landmarks: each kind played by one of its painted assets (a stable pick per landmark).
   const landmarks = new THREE.Group();
   landmarks.name = 'landmarks';
-  for (const l of trip.landmarks) {
+  for (const l of sdf ? [] : trip.landmarks) {
     const options = (KIND_ASSETS[l.kind] ?? []).filter(hasModel);
     if (!options.length) continue;
     const id = options[hashString(`${trip.seed}:${l.x},${l.z}`) % options.length];

@@ -15,20 +15,21 @@ import { buildLightShafts } from './props.js';
 /**
  * Builds the level and props; options.hide(x, y, z) leaves out blocks (the ?clear= flag);
  * creatures: false leaves out the dog and critters (the game spawns them with brains); blockRes the
- * block mesh density (default the matching density).
+ * block mesh density (default the matching density); sdf: true builds no level, prop or door meshes
+ * (the SDF renderer, src/game/sdf/, draws them from the columns and the placements returned here).
  */
-export function buildCave(scene, { hide = null, creatures = true, blockRes } = {}) {
+export function buildCave(scene, { hide = null, creatures = true, blockRes, sdf = false } = {}) {
   const random = rng(20261026);
-  const level = buildCaveLevel({ hide, blockRes });
+  const level = buildCaveLevel({ hide, blockRes, meshes: !sdf });
   scene.add(level.group);
   // The door frame's stones take the painting's own tones (projection painting).
-  const noPaint = new URLSearchParams(location.search).has('nopaint');
+  const noPaint = sdf || new URLSearchParams(location.search).has('nopaint');
   const levelPainted = noPaint
     ? Promise.resolve()
     : Promise.all(level.paintable.map((mesh) => projectPaint(mesh, mesh.userData.paint)));
 
   // The door is the reference's own mosaic, traced (src/cave/door.js).
-  const doorReady = buildTracedDoor().then((door) => { scene.add(door); return door; });
+  const doorReady = sdf ? Promise.resolve(null) : buildTracedDoor().then((door) => { scene.add(door); return door; });
 
   // Every prop stands where the reference paints it: src/cave/props-placement.json is computed by
   // scripts/fp/place_props.py (the base pixel's ray from the reference camera into the layout, and
@@ -38,7 +39,7 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes } = {
   const vec = (p) => new THREE.Vector3(p.x, p.y, p.z);
 
   // The stepped felt domes and the broom tree, traced from the reference (src/cave/traced-props.js).
-  const traced = buildTracedProps();
+  const traced = sdf ? Object.assign(new THREE.Group(), { userData: { painted: Promise.resolve() } }) : buildTracedProps();
   scene.add(traced);
   for (const object of traced.children) if (object.userData.grounded) scene.add(contactShadow(object));
   // The girl on the upper-left terrace, waving from behind a small wooden railing (the painting's
@@ -75,7 +76,7 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes } = {
   scene.add(dog);
   const critters = new THREE.Group();
   scene.add(critters);
-  const propsReady = loadKitAssets().then((kit) => {
+  const propsReady = sdf ? Promise.resolve() : loadKitAssets().then((kit) => {
     const grounded = []; // small props and creatures get a contact shadow (not trees or fences)
     const painting = []; // projection paint jobs: each model takes the painting's own pixels
     const paintFor = (p) => (noPaint ? null : kitPaint.paints.find((k) => k.name === p.name && k.base[0] === p.base?.[0] && k.base[1] === p.base?.[1]));
@@ -154,6 +155,7 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes } = {
     npc, npcPosition: npcPos, npcFacing: facing,
     door: doorReady,
     dogSpot: dogSpec, critterSpots: byName('critter'),
+    props, // every placed prop (the SDF renderer draws them as distance-field shapes)
     // Resolves when the kit models, the door and the traced props' projection paint are in.
     ready: Promise.all([propsReady, doorReady, traced.userData.painted, levelPainted]),
     update(time) {

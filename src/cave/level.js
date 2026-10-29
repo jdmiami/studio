@@ -140,9 +140,10 @@ export function blockParts(design, variant, res = BLOCK_RES) {
 
 /**
  * @param {{ hide?: ((x: number, y: number, z: number) => boolean) | null, blockRes?: number }} options
- * hide: blocks to leave out; blockRes: block mesh density (the game lowers it for its budgets)
+ * hide: blocks to leave out; blockRes: block mesh density (the game lowers it for its budgets);
+ * meshes: false computes only the columns, heights and ceiling (the SDF renderer draws them itself)
  */
-export function buildCaveLevel({ hide = null, blockRes = BLOCK_RES } = {}) {
+export function buildCaveLevel({ hide = null, blockRes = BLOCK_RES, meshes = true } = {}) {
   const random = rng(4242);
   const solid = new Set();
   const blocks = []; // { x, y, z, kind }
@@ -178,6 +179,8 @@ export function buildCaveLevel({ hide = null, blockRes = BLOCK_RES } = {}) {
       }
     }
   }
+
+  if (!meshes) return { group: new THREE.Group(), heightAt, columns, ceilingAt, paintable: [], blockCount: blocks.length, capCount: 0 };
 
   // Only blocks with at least one open face can ever be seen.
   const exposed = (b) => [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]

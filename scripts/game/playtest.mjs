@@ -4,6 +4,7 @@
 // reload. Screenshots of each beat go to the folder given (default scratch/playtest); console errors
 // fail the run. Frame-time stats are printed at the end.
 //
+// Env RENDERER=threejs|sdf picks the renderer (default threejs; the game would otherwise ask).
 // Usage: node scripts/game/playtest.mjs [outDir]   (needs the dev server: npm run dev)
 // Env: BASE_URL (default http://127.0.0.1:5173), SEED (trip seed code, default from the game)
 import { existsSync, mkdirSync } from 'node:fs';
@@ -52,7 +53,7 @@ async function finishDialogue(max = 80) {
 }
 
 await step('load and title', async () => {
-  await page.goto(`${base}/?fps=1&quality=${process.env.QUALITY ?? 'low'}`, { waitUntil: 'load' });
+  await page.goto(`${base}/?fps=1&quality=${process.env.QUALITY ?? 'low'}&renderer=${process.env.RENDERER ?? 'threejs'}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__phluphReady === true, null, { timeout: 180000 });
   await wait(1500);
   await shot('01-title');

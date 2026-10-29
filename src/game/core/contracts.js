@@ -56,6 +56,8 @@ export function defaultSettings() {
     showFps: false, headBob: true, cameraShake: true,
     // Touch screens: 'auto' shows the on-screen controls on touch devices; 'on' / 'off' force it.
     touchControls: 'auto', touchLookSensitivity: 1, touchButtonScale: 1,
+    // How the world is drawn: 'threejs' (painted meshes), 'sdf' (raymarched), or 'ask' before loading.
+    renderer: 'ask',
     bindings: null, // null = the input system's defaults; else { [action]: [binding, ...] }
   };
 }

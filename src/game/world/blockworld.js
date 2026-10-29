@@ -35,13 +35,24 @@ function jitter(x, y, z, k) {
 /**
  * @param {{ columns: Record<string, {top: number, kind: string}>, biome?: string, bottom?: number, buildRadius?: number, blockRes?: number }} opts
  */
-export function buildBlockWorld({ columns, biome = 'meadow', bottom = -2, buildRadius = 48, blockRes = 8 }) {
+export function buildBlockWorld({ columns, biome = 'meadow', bottom = -2, buildRadius = 48, blockRes = 8, meshes = true }) {
   const group = new THREE.Group();
   group.name = 'blockworld';
   const tints = BIOME_TINTS[biome] ?? BIOME_TINTS.meadow;
   const cols = new Map(Object.entries(columns));
   const colAt = (x, z) => cols.get(`${x},${z}`);
   const topAt = (x, z) => colAt(x, z)?.top;
+  // Data only (the SDF renderer draws the terrain from the columns itself).
+  if (!meshes) {
+    return {
+      group, chunks: [], columns: cols,
+      buildAll() {}, update: () => 0, progress: () => 1,
+      heightAt: (x, z) => topAt(Math.round(x), Math.round(z)) ?? 99,
+      kindAt: (x, z) => colAt(Math.round(x), Math.round(z))?.kind ?? null,
+      stats: () => ({ chunks: 0, built: 0, blocks: 0, grassCells: 0 }),
+      dispose() {},
+    };
+  }
   const solid = (x, y, z) => {
     const c = colAt(x, z);
     return c ? y >= bottom && y < Math.ceil(c.top) : false;

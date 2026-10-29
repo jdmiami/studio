@@ -64,11 +64,24 @@ autosave slot; Save in the pause menu writes your slot. Three slots plus the aut
 exported as a code and imported (Load). Saves are versioned and migrate forward; a damaged save
 recovers from its backup.
 
+## Two renderers
+
+Before anything loads, the game asks how to draw the world:
+
+- **Painted (three.js)**: the meshes matched to the artwork.
+- **Soft (SDF)**: the whole static world raymarched from signed distance fields, with pillowy
+  blocks, blended felt shapes and real soft shadows. Creatures, finds and particles stay meshes
+  and sit inside it.
+
+Tick "Remember my choice" to skip the question, or change it later in Settings, Video, Renderer.
+`?renderer=threejs|sdf` picks one from the address. How it works: `src/game/sdf/README.md`.
+
 ## URL flags
 
 `?seed=CODE` the next trip; `?autostart=1` skip the title (new game, slot 1); `?fps=1` the
 performance overlay; `?quality=low|medium|high`; `?touch=1` force the on-screen controls (to try
-them with a mouse); `?nofs=1` no fullscreen request on touch screens. The cave viewer and reference-matching tools are
+them with a mouse); `?nofs=1` no fullscreen request on touch screens; `?renderer=threejs|sdf` skip the renderer
+question. The cave viewer and reference-matching tools are
 still at `?view=cave` (and the old `?eye=`, `?look=`, `?scene=island` flags).
 
 ## Architecture
@@ -87,6 +100,7 @@ src/game/main.js       the orchestrator: renderer, frame loop, flow, areas, inte
   ai/                  behaviour trees + utility moods; dog, critter and Mira brains
   proc/                trip generator: noise terrain, WFC kit tiles, Poisson finds, reachability
   world/               block world (chunk streaming), painted models, finds, trip, creatures, fluff, ball, light
+  sdf/                 the SDF renderer: scene data, the raymarching shader, the full-screen pass
   player/              the first-person controller (fixed timestep, coyote, buffer, juice)
   hud.js lock-ui.js    the HUD and the felt lock overlay
 ```

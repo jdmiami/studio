@@ -45,6 +45,9 @@ import { createBall } from './world/ball.js';
 import { applyTripLook } from './world/look.js';
 import { createPlayerController, EYE_HEIGHT, fovFor } from './player/controller.js';
 import { createGameHud } from './hud.js';
+import { chooseRenderer } from './renderer-choice.js';
+import { createSdfWorld } from './sdf/world.js';
+import { propsFromPlacement, propsFromLandmarks } from './sdf/scene-data.js';
 import { createLockUi } from './lock-ui.js';
 
 const params = new URLSearchParams(location.search);
@@ -79,7 +82,14 @@ renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.info.autoReset = false; // counted over the whole frame (scene + post passes), reset per frame
 document.body.appendChild(renderer.domElement);
 renderer.domElement.classList.add('game-canvas');
-const pixelRatio = () => ({ low: 1, medium: Math.min(devicePixelRatio, 1.5), high: Math.min(devicePixelRatio, 2) }[settings.quality] ?? 1.5);
+// How the world is drawn ('threejs' painted meshes or 'sdf' raymarched; chosen before loading).
+let renderMode = 'threejs';
+let sdfWorld = null;
+let rendererChoice = null;
+// The SDF pass costs per pixel, so it renders below the screen's resolution and is scaled up.
+const pixelRatio = () => (renderMode === 'sdf'
+  ? ({ low: 0.6, medium: 0.8, high: Math.min(devicePixelRatio, 1.25) }[settings.quality] ?? 0.8)
+  : ({ low: 1, medium: Math.min(devicePixelRatio, 1.5), high: Math.min(devicePixelRatio, 2) }[settings.quality] ?? 1.5));
 renderer.setPixelRatio(pixelRatio());
 /** The visible viewport (the visual viewport on phones, where browser bars come and go). */
 const viewSize = () => ({ width: Math.round(globalThis.visualViewport?.width ?? innerWidth), height: Math.round(globalThis.visualViewport?.height ?? innerHeight) });
@@ -102,6 +112,7 @@ addEventListener('touchstart', () => {
   touchSeen = true;
   input.setAutoLock(!touchActive());
   document.body.classList.toggle('touch-ui', touchActive());
+  sdfWorld?.setQuality(settings.quality);
 }, { passive: true });
 const audio = createAudio({ events, settings });
 const unlockAudio = () => { audio.unlock(); audio.setVolumes(settings.volume); };
@@ -195,8 +206,23 @@ function applySettings(next) {
 // --- Loading ---------------------------------------------------------------------------------------
 
 async function boot() {
-  hud.loading(0.05, 'Fluffing the felt…');
-  const modelsReady = loadModels(undefined, (p) => hud.loading(0.05 + p * 0.55, 'Stitching the finds…'));
+  // First, before anything heavy loads: how the world is drawn (menus read the UI actions).
+  input.setContext('menu');
+  rendererChoice = chooseRenderer({
+    setting: settings.renderer, params, heavyHint: coarsePointer,
+    onRemember: (choice) => applySettings({ renderer: choice }),
+  });
+  renderMode = await rendererChoice.promise;
+  if (renderMode === 'sdf') {
+    sdfWorld = createSdfWorld({ quality: settings.quality });
+    scene.add(sdfWorld.mesh);
+    renderer.setPixelRatio(pixelRatio());
+    fitView();
+  }
+  hud.loading(0.05, renderMode === 'sdf' ? 'Shaping the distance fields…' : 'Fluffing the felt…');
+  // The SDF world draws its own scenery: only the creatures' models are needed.
+  const modelIdsNeeded = renderMode === 'sdf' ? ['dog-0', 'critter-0', 'critter-1', 'critter-2'] : undefined;
+  const modelsReady = loadModels(modelIdsNeeded, (p) => hud.loading(0.05 + p * 0.55, 'Stitching the finds…'));
   hub = buildHub();
   await modelsReady;
   hud.loading(0.65, 'Painting the Nest…');
@@ -215,7 +241,7 @@ function buildHub() {
   const group = new THREE.Group();
   group.name = 'hub';
   scene.add(group);
-  const cave = buildCave(group, { creatures: false, blockRes: blockRes() });
+  const cave = buildCave(group, { creatures: false, blockRes: blockRes(), sdf: renderMode === 'sdf' });
   const decorGroup = new THREE.Group();
   decorGroup.name = 'decor';
   group.add(decorGroup);
@@ -361,6 +387,7 @@ function enterHub({ spawn = false, title = false, fromTrip = false } = {}) {
   const grade = applyCaveLook(renderer, new URLSearchParams(), sky);
   post.setGrade(grade);
   setArea(hub);
+  sdfWorld?.setArea({ columns: hub.cave.columns, ceilingAt: hub.cave.ceilingAt, door: DOOR, props: (hub.sdfProps ??= propsFromPlacement(hub.cave.props)), tint: 'hub' });
   const s = getState();
   hub.setDoor(!!s?.flags.doorOpen, true);
   hub.syncDecor(s?.decor ?? []);
@@ -384,7 +411,8 @@ function enterTrip(seed, biome = null) {
   const data = generateTrip({ seed, ...(biome ? { biome } : {}) });
   hub.group.visible = false;
   if (trip) trip.dispose();
-  trip = buildTripWorld(data, { pool, blockRes: blockRes() });
+  trip = buildTripWorld(data, { pool, blockRes: blockRes(), sdf: renderMode === 'sdf' });
+  sdfWorld?.setArea({ columns: data.columns, props: propsFromLandmarks(data.landmarks, data.biome), tint: data.biome });
   trip.data = data;
   scene.add(trip.group);
   post.setGrade(applyTripLook(renderer, data.biome, sky));
@@ -848,7 +876,9 @@ function frame() {
   renderer.info.reset();
   input.update(dt);
 
-  if (mode === 'title' || mode === 'loading') {
+  if (rendererChoice?.open) {
+    for (const a of [ACTIONS.UI_UP, ACTIONS.UI_DOWN, ACTIONS.UI_LEFT, ACTIONS.UI_RIGHT, ACTIONS.UI_CONFIRM]) if (input.pressed(a)) rendererChoice.handle(a);
+  } else if (mode === 'title' || mode === 'loading') {
     // The title's backdrop: the Nest from the painter's corner, drifting softly.
     titleT += dt;
     const sp = hub?.cave.spawn;
@@ -870,6 +900,12 @@ function frame() {
   ui.update?.(dt);
   fluff.update(dt);
   sky.position.copy(camera.position);
+  if (sdfWorld) {
+    // The great door rises like a felt curtain (the mesh renderer animates its door mesh the same way).
+    const d = hub?.doorOpen ?? 0;
+    sdfWorld.setDoorLift(d * d * (3 - 2 * d) * (DOOR.height - 0.3));
+    sdfWorld.update(camera);
+  }
   post.render(time, sharedFurUniforms.uSunDir.value, sharedFurUniforms.uSunColor.value);
 
   // Profiling.
@@ -1021,6 +1057,7 @@ window.__phluphGame = {
   get _area() { return area; },
   get _feet() { return player.position; },
   get settingsNow() { return settings; },
+  get renderMode() { return renderMode; },
   get touchControls() { return touchUi; },
   get trip() { return trip?.data ? { code: trip.data.code, biome: trip.data.biome, name: trip.data.name, finds: trip.finds.length } : null; },
   get player() { return { position: player.position.toArray(), yaw: player.yaw }; },

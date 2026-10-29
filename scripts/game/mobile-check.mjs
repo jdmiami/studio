@@ -5,6 +5,7 @@
 // Touches are real touch events (DevTools Input.dispatchTouchEvent), so the controls see what a
 // phone sends. Screenshots go to the folder given; failures exit 1.
 //
+// Env RENDERER=threejs|sdf picks the renderer (default threejs; the game would otherwise ask).
 // Usage: node scripts/game/mobile-check.mjs [outDir]   (needs the dev server: npm run dev)
 import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -47,7 +48,7 @@ for (const phone of PHONES.filter((p) => !process.env.ONLY || p.name === process
   const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${phone.name}: ${what}`); if (!ok) failures.push(`${phone.name}: ${what}`); };
   const { width: W, height: H } = phone.viewport;
 
-  await page.goto(`${base}/?nofs=1`, { waitUntil: 'load' });
+  await page.goto(`${base}/?nofs=1&renderer=${process.env.RENDERER ?? 'threejs'}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__phluphReady === true);
   await frames(4);
   await shot('01-title');
