@@ -783,8 +783,14 @@ let time = 0;
 let titleT = 0;
 let playClock = 0;
 
+/** The current area's interactables (the Nest computes its own: the door's label changes; a trip lists them). */
+function areaInteractables() {
+  if (!area) return [];
+  return typeof area.interactables === 'function' ? area.interactables() : area.interactables ?? [];
+}
+
 function nearestInteractable() {
-  const list = [...area.interactables?.() ?? [], ...(area.kind === 'trip' ? trip.interactables : [])];
+  const list = [...areaInteractables()];
   if (dog) list.push({ id: 'dog', kind: 'dog', label: 'Pet Biscuit', position: dog.creature.root.position.clone().add(new THREE.Vector3(0, 0.4, 0)), radius: 1.9 });
   const eye = camera.position;
   const fwd = camera.getWorldDirection(new THREE.Vector3());
@@ -968,7 +974,7 @@ window.__phluphGame = {
   get hubFinds() { return hub?.finds.map((f) => ({ itemId: f.data.itemId, position: f.root.position.toArray() })) ?? []; },
   get tripFinds() { return trip?.finds.map((f) => ({ itemId: f.data.itemId, position: f.root.position.toArray() })) ?? []; },
   teleport: (x, z, yaw = player.yaw) => player.teleport(new THREE.Vector3(x, 0, z), yaw),
-  interact: (id) => { const list = [...area.interactables?.() ?? [], ...(trip?.interactables ?? [])]; const it = list.find((i) => i.id === id) ?? (id === 'dog' && dog ? { id: 'dog', kind: 'dog' } : null); return it ? interact(it) : null; },
+  interact: (id) => { const list = areaInteractables(); const it = list.find((i) => i.id === id) ?? (id === 'dog' && dog ? { id: 'dog', kind: 'dog' } : null); return it ? interact(it) : null; },
   enterTrip: (code) => enterTrip(codeToSeed(code)),
   goHome: () => { session.endTrip(); enterHub({ fromTrip: true }); },
   startGame: (slot = 1) => startGame(newGameState({ slot, name: 'Test Nest' })),
