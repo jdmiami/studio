@@ -39,3 +39,17 @@ test('packProps keeps the nearest props, packed 4 texels each', () => {
   assert.equal(data[0], PROP.STONE);
   assert.ok(Math.abs(data[8] - 1) < 1e-6, 'white is linear 1');
 });
+
+test('faces: emotes for events and expressions for poses', async () => {
+  const { emoteFor, expressionFor, FACE_ANCHORS } = await import('../src/game/world/faces.js');
+  assert.equal(emoteFor('creature:petted'), 'heart');
+  assert.equal(emoteFor('dog:bark', { reason: 'greet' }), 'note');
+  assert.equal(emoteFor('dog:bark', { reason: 'fetch' }), null);
+  assert.equal(emoteFor('critter:squeak'), 'alert');
+  assert.equal(emoteFor('find:collected'), null);
+  assert.equal(expressionFor('sleep'), 'sleepy');
+  assert.equal(expressionFor('idle', 0.5), 'happy');
+  assert.equal(expressionFor('wag'), 'happy');
+  assert.equal(expressionFor('walk'), 'normal');
+  for (const id of ['dog-0', 'critter-0', 'critter-1', 'critter-2']) assert.ok(FACE_ANCHORS[id], id);
+});

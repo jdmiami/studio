@@ -76,6 +76,24 @@ Before anything loads, the game asks how to draw the world:
 Tick "Remember my choice" to skip the question, or change it later in Settings, Video, Renderer.
 `?renderer=threejs|sdf` picks one from the address. How it works: `src/game/sdf/README.md`.
 
+## Faces and feelings
+
+Biscuit and the critters have faces in both renderers (`src/game/world/faces.js`):
+
+- **Faces:** button eyes with catchlights, felt blush and Biscuit's tiny "w" mouth. Each feature is
+  stuck onto the painted model's surface by a ray cast.
+- **Eyes:** they blink, follow you when you're close, squeeze into happy ^ ^ when petted or after
+  a fetch, and droop when asleep.
+- **Bubbles:** felt speech bubbles pop over their heads:
+  - ♥ when petted, after a fetch, and when a critter takes to you;
+  - ! when a critter squeaks;
+  - zzz while asleep;
+  - ♪ when Biscuit greets you or Mira waves.
+- **Squash and stretch:** bodies stretch on each hop, squash on landing, and wobble on a boop.
+
+`node scripts/game/face-check.mjs <outDir> [renderer] [quality]` renders each face from in
+front, before and after a feeling.
+
 ## URL flags
 
 `?seed=CODE` the next trip; `?autostart=1` skip the title (new game, slot 1); `?fps=1` the

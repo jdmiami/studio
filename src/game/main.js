@@ -40,6 +40,7 @@ import { loadModels, hasModel } from './world/models.js';
 import { buildTripWorld } from './world/trip.js';
 import { createFindPool, buildFindModel } from './world/finds.js';
 import { createCreature } from './world/creatures.js';
+import { createFace, emoteFor } from './world/faces.js';
 import { createFluff } from './world/fluff.js';
 import { createAmbient } from './world/ambient.js';
 import { createBall } from './world/ball.js';
@@ -147,6 +148,7 @@ let area = null; // the current area: { kind: 'hub'|'trip', ...world }
 let hub = null; // the Nest, built once
 let trip = null; // the current trip (rebuilt each visit)
 let creatures = []; // [{ creature, brain, kind, itemId? }]
+let debugFreeze = false; // checks hold the brains still (window.__phluphGame.freeze)
 let dog = null;
 let busy = false; // a transition or a dialogue in progress
 let decorating = null; // { index, yaw, ghost, ring } in decorate mode
@@ -516,6 +518,8 @@ function spawnCreatures(kind, data = null) {
     const brain = createNpcBrain({ rng: rng.fork('mira'), events, body, world: { ...world, walkable: (x, z) => Math.hypot(x - home.x, z - home.z) < 0.6 }, routine: [{ ...home, idle: 6 }] });
     let wave = 0;
     let turn = hub.cave.npcFacing;
+    const bubble = createFace(npc.group, 'mira'); // a bubble only: her face is painted
+    let waving = false;
     creatures.push({
       kind: 'npc', brain, body,
       creature: {
@@ -528,6 +532,9 @@ function spawnCreatures(kind, data = null) {
           turn += d * (1 - Math.exp(-dt * 3));
           npc.group.rotation.y = turn;
           npc.update(time, wave);
+          if (body.pose === 'wave' && !waving) bubble.emote('note');
+          waving = body.pose === 'wave';
+          bubble.update(dt);
         },
       },
     });
@@ -851,7 +858,31 @@ events.on(EVENTS.FIND_COLLECTED, ({ itemId, position, sighting }) => {
   if (item.rarity === 'legendary') player.addTrauma(0.2);
 });
 events.on(EVENTS.CRITTER_SIGHTED, ({ itemId }) => session?.sight(itemId));
-events.on(EVENTS.DOG_FETCHED, () => {
+// Feelings: hearts, notes and alarms over the creature they belong to.
+function nearestCritter(test, at) {
+  let best = null;
+  let bestD = Infinity;
+  for (const c of creatures) {
+    if (c.kind !== 'critter' || !test(c)) continue;
+    const p = c.creature.body.position;
+    const d = Math.hypot(p.x - at.x, p.z - at.z);
+    if (d < bestD) { best = c; bestD = d; }
+  }
+  return best;
+}
+function feel(target, event, payload) {
+  const kind = emoteFor(event, payload);
+  if (!target?.creature.face) return;
+  if (kind) target.creature.face.emote(kind);
+  if (kind === 'heart') { target.creature.face.feel('happy', 2.2); target.creature.squish(0.16); }
+  if (kind === 'alert') target.creature.squish(-0.14);
+}
+events.on(EVENTS.PETTED, (p) => { if (p?.creature === 'dog') feel(dog, EVENTS.PETTED, p); });
+events.on(EVENTS.DOG_BARK, (p) => feel(dog, EVENTS.DOG_BARK, p));
+events.on(EVENTS.CRITTER_SIGHTED, (p) => feel(nearestCritter((c) => c.itemId === p.itemId, player.position), EVENTS.CRITTER_SIGHTED, p));
+events.on(EVENTS.CRITTER_SQUEAK, (p) => feel(nearestCritter(() => true, p.position ?? player.position), EVENTS.CRITTER_SQUEAK, p));
+events.on(EVENTS.DOG_FETCHED, (p) => {
+  feel(dog, EVENTS.DOG_FETCHED, p);
   // Biscuit dropped the ball at the player's feet: it's back in hand.
   if (ball.state === 'landed' || ball.state === 'carried') ball.pickUp();
 });
@@ -1003,8 +1034,8 @@ function updatePlay(dt) {
 
   // Creatures.
   for (const c of creatures) {
-    c.brain.tick(dt);
-    c.creature.update(time, dt);
+    if (!debugFreeze) c.brain.tick(dt);
+    c.creature.update(time, dt, camera.position);
   }
   if (ball.state === 'carried' && dog) ball.mesh.position.copy(dog.creature.mouth(tmp));
   ball.update(dt);
@@ -1085,7 +1116,19 @@ window.__phluphGame = {
   get touchControls() { return touchUi; },
   get trip() { return trip?.data ? { code: trip.data.code, biome: trip.data.biome, name: trip.data.name, finds: trip.finds.length } : null; },
   get player() { return { position: player.position.toArray(), yaw: player.yaw }; },
-  get creatures() { return creatures.map((c) => ({ kind: c.kind, state: c.brain.state(), position: [c.body?.position.x ?? c.creature.body.position.x, c.body?.position.z ?? c.creature.body.position.z] })); },
+  /** Where each face sits and which way it looks (world space), for the face checks. */
+  faceSpots() {
+    return creatures.filter((c) => c.creature.face?.group.children.length).map((c) => {
+      const g = c.creature.face.group;
+      return { kind: c.kind, p: g.getWorldPosition(new THREE.Vector3()).toArray(), n: new THREE.Vector3(0, 0, 1).transformDirection(g.matrixWorld).toArray() };
+    });
+  },
+  heightAt: (x, z) => area?.heightAt(x, z) ?? 0,
+  /** Hold every brain still (face checks); poses and faces keep animating. */
+  freeze(on = true) { debugFreeze = on; for (const c of creatures) { (c.body ?? c.creature.body).velocity.x = 0; (c.body ?? c.creature.body).velocity.z = 0; } },
+  /** Fire a game event (playtests). */
+  emit: (name, payload) => events.emit(name, payload),
+    get creatures() { return creatures.map((c) => ({ kind: c.kind, state: c.brain.state(), position: [c.body?.position.x ?? c.creature.body.position.x, c.body?.position.z ?? c.creature.body.position.z] })); },
   get hubFinds() { return hub?.finds.map((f) => ({ itemId: f.data.itemId, position: f.root.position.toArray() })) ?? []; },
   get tripFinds() { return trip?.finds.map((f) => ({ itemId: f.data.itemId, position: f.root.position.toArray() })) ?? []; },
   teleport: (x, z, yaw = player.yaw, pitch = 0) => player.teleport(new THREE.Vector3(x, 0, z), yaw, pitch),
