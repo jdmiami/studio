@@ -17,6 +17,7 @@ the before/after sheets.
 | M1 light | 969f7da | 16.37 | 29.41 | 0.547 | 0.406 | 0.497 | fill + bounce, warm terminator, AO, raymarched shafts, motes, bloom, diorama blur |
 | M1b grade | 8a53dd5 | 16.22 | 28.84 | 0.548 | 0.409 | 0.495 | chalkier, crisper grade; icy water edges |
 | M2 plush | 0a94287 | 15.82 | 28.22 | 0.545 | 0.404 | 0.508 | pillow blocks, running stitches, fur canopies, straw broom, knit dome, spotted toadstools, soft shadows without rings |
+| M3 + M4 faces, motion | 20e0716 | 15.87 | 28.26 | 0.544 | 0.411 | 0.499 | faces and bubbles on the creatures; sway, breathing, boops, water flow, butterflies (the score holds: the motion and the faces barely touch the painting frame) |
 
 ## Notes
 
