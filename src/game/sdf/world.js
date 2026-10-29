@@ -11,9 +11,9 @@ const MAX_PROPS = 48;
 
 /** Steps, shadow steps and AO samples per quality preset (shadows and AO are the expensive part). */
 export const SDF_QUALITY = {
-  low: { steps: 72, shadow: 0, ao: 0, far: 60, shafts: 0 },
-  medium: { steps: 110, shadow: 20, ao: 4, far: 80, shafts: 0.16 },
-  high: { steps: 150, shadow: 36, ao: 5, far: 110, shafts: 0.18 },
+  low: { steps: 72, shadow: 0, ao: 0, far: 60, shafts: 0, fur: 0 },
+  medium: { steps: 110, shadow: 20, ao: 4, far: 80, shafts: 0.16, fur: 1 },
+  high: { steps: 150, shadow: 36, ao: 5, far: 110, shafts: 0.18, fur: 1 },
 };
 
 const linear = (hex) => new THREE.Color(hex);
@@ -77,6 +77,7 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
     uShaftWidth: { value: [0, 0, 0, 0] },
     uShaftCount: { value: 0 },
     uShaftStrength: { value: 0 },
+    uFur: { value: 1 },
   };
   const material = new THREE.ShaderMaterial({ vertexShader, fragmentShader, uniforms, depthWrite: true, depthTest: true });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
@@ -94,6 +95,7 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
     uniforms.uAo.value = s.ao;
     uniforms.uFar.value = s.far;
     uniforms.uShaftStrength.value = s.shafts;
+    uniforms.uFur.value = s.fur;
   }
   setQuality(quality);
 
