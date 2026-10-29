@@ -126,6 +126,18 @@ export function createHands(camera, random) {
   );
   lug.position.y = 0.095;
   compass.add(lug);
+  // The needle: a coral felt arrow over the radar face, turned toward a target by setTarget().
+  const needleShape = new THREE.Shape();
+  needleShape.moveTo(0, 0.058);
+  needleShape.lineTo(0.011, 0);
+  needleShape.lineTo(0, -0.04);
+  needleShape.lineTo(-0.011, 0);
+  needleShape.closePath();
+  const needle = new THREE.Mesh(new THREE.ShapeGeometry(needleShape), new THREE.MeshBasicMaterial({ color: '#ff8f7a', toneMapped: false }));
+  needle.position.z = 0.021;
+  const hub = new THREE.Mesh(new THREE.CircleGeometry(0.008, 16), new THREE.MeshBasicMaterial({ color: '#fff4e6', toneMapped: false }));
+  hub.position.z = 0.022;
+  compass.add(needle, hub);
   compass.position.set(-0.03, 0.06, -0.3);
   compass.rotation.set(-0.55, -0.6, 0); // face tilted up and turned back toward the eye
   compass.scale.setScalar(0.6);
@@ -133,12 +145,30 @@ export function createHands(camera, random) {
 
   const leftBase = left.position.clone();
   const rightBase = right.position.clone();
+  let bearing = null; // radians, relative to straight ahead (positive to the left), or null
+  let needleAngle = 0;
+  let needleVel = 0;
+  let catchT = 0;
   return {
-    update(walkPhase, speed) {
+    root,
+    /** The needle's target as an angle from straight ahead (positive = left), or null to wander. */
+    setTarget(angle) { bearing = angle; },
+    /** The left hand catches something (a find popping into the pocket). */
+    bump() { catchT = 0.35; },
+    update(walkPhase, speed, dt = 0.016, time = 0) {
       const sway = Math.sin(walkPhase) * 0.012 * speed;
       const lift = Math.abs(Math.cos(walkPhase)) * 0.01 * speed;
-      left.position.set(leftBase.x + sway, leftBase.y + lift, leftBase.z);
+      catchT = Math.max(0, catchT - dt);
+      const dip = Math.sin((catchT / 0.35) * Math.PI) * 0.025;
+      left.position.set(leftBase.x + sway, leftBase.y + lift - dip, leftBase.z);
       right.position.set(rightBase.x + sway, rightBase.y - lift, rightBase.z);
+      // A damped spring toward the bearing; with no target, a slow lost wander.
+      const goal = bearing ?? Math.sin(time * 0.7) * 1.2 + Math.sin(time * 1.9) * 0.4;
+      let d = goal - needleAngle;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      needleVel += (d * 60 - needleVel * 7) * dt;
+      needleAngle += needleVel * dt;
+      needle.rotation.z = needleAngle;
     },
   };
 }

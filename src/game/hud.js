@@ -20,7 +20,9 @@ const CSS = `
 .ghud-area { top: max(14px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); padding: 8px 14px; display: flex; gap: 12px; align-items: center; }
 .ghud-area-name { font-size: 15px; font-weight: 800; letter-spacing: 0.5px; }
 .ghud-area-code { font-size: 12px; font-weight: 800; letter-spacing: 2px; padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.16); }
-.ghud-finds { font-size: 13px; font-weight: 800; color: #f6dba6; }
+.ghud-finds { font-size: 13px; font-weight: 800; color: #f6dba6; display: inline-block; }
+.ghud-finds.pop { animation: ghud-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes ghud-pop { 0% { transform: scale(1); } 35% { transform: scale(1.45) rotate(-6deg); color: #fff4c2; } 100% { transform: scale(1); } }
 .ghud-dot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
   background: rgba(255, 248, 239, 0.75); box-shadow: 0 0 0 1.5px rgba(48, 36, 32, 0.35); transition: transform 0.15s; }
 .ghud-dot.near { transform: scale(1.8); background: #ffd27a; }
@@ -107,7 +109,17 @@ export function createGameHud() {
       c.hidden = !code;
       c.textContent = code ? `SEED ${code}` : '';
     },
-    setFinds(found, total) { $('.ghud-finds').textContent = `✿ ${found}/${total}`; },
+    setFinds(found, total) {
+      const text = `✿ ${found}/${total}`;
+      if ($('.ghud-finds').textContent !== text) $('.ghud-finds').textContent = text;
+    },
+    /** A find landed in the pocket: the counter bounces. */
+    bumpFinds() {
+      const el = $('.ghud-finds');
+      el.classList.remove('pop');
+      void el.offsetWidth; // restart the animation
+      el.classList.add('pop');
+    },
     /** tracked: { title, step, index, total } | null */
     setQuest(tracked) {
       const key = tracked ? `${tracked.title}|${tracked.step}|${tracked.index}` : '';

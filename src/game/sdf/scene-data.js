@@ -137,7 +137,30 @@ export function packProps(props, viewer, max = 48, out = new Float32Array(max * 
   ranked.forEach(({ p }, i) => {
     const o = i * PROP_TEXELS * 4;
     const b = propBounds(p);
-    out.set([p.type, p.x, p.y, p.z, p.height, p.yaw, p.seed, p.length ?? 0, ...rgb(p.c1), b.r, ...rgb(p.c2), 0], o);
+    out.set([p.type, p.x, p.y, p.z, p.height, p.yaw, p.seed, p.length ?? 0, ...rgb(p.c1), b.r, ...rgb(p.c2), p.boop ?? 0], o);
   });
-  return { data: out, count: ranked.length };
+  return { data: out, count: ranked.length, order: ranked.map(({ p }) => p) };
+}
+
+/** Props that squash when you walk into them (mushrooms, poms, cushion and knit domes). */
+export const BOOPABLE = new Set([PROP.MUSHROOM, PROP.POM, PROP.DOME, PROP.KNIT]);
+/** Texel offset (in floats) of a packed prop's boop squash, in its fourth texel's alpha. */
+export const BOOP_OFFSET = PROP_TEXELS * 4 - 1;
+
+/**
+ * One step of a prop's boop spring: a kick when the viewer first comes within reach, then a
+ * wobble back to rest. State lives on the prop ({ boop, boopV, near }); returns true while moving.
+ */
+export function stepBoop(p, viewer, dt) {
+  const reach = propBounds(p).r * 0.7 + 0.35;
+  const near = Math.hypot(p.x - viewer.x, p.z - viewer.z) < reach;
+  if (near && !p.near) p.boopV = (p.boopV ?? 0) + 2.4;
+  p.near = near;
+  const b = p.boop ?? 0;
+  let v = p.boopV ?? 0;
+  v += (-180 * b - 9 * v) * dt;
+  p.boop = Math.max(-0.25, Math.min(0.3, b + v * dt));
+  p.boopV = v;
+  if (Math.abs(p.boop) < 1e-4 && Math.abs(v) < 1e-3) { p.boop = 0; p.boopV = 0; return false; }
+  return true;
 }

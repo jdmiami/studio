@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { sharedFurUniforms } from '../../fur.js';
 import { vertexShader, fragmentShader } from './shader.js';
-import { packTerrain, packProps, PROP_TEXELS } from './scene-data.js';
+import { packTerrain, packProps, stepBoop, BOOPABLE, BOOP_OFFSET, PROP_TEXELS } from './scene-data.js';
 
 const MAX_PROPS = 48;
 
@@ -86,6 +86,7 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
   mesh.renderOrder = -1000; // first: everything else depth-tests against the raymarched world
 
   let props = [];
+  let packed = []; // the packed props, in texture order
   let lastPack = null;
 
   function setQuality(q) {
@@ -134,18 +135,35 @@ export function createSdfWorld({ quality = 'medium' } = {}) {
       lastPack = null;
     },
     setDoorLift(lift) { uniforms.uDoorLift.value = lift; },
-    /** Follows the camera; repacks the nearest props when the viewer moved more than 2 units. */
-    update(camera) {
+    /**
+     * Follows the camera; repacks the nearest props when the viewer moved more than 2 units, and
+     * springs the props the viewer (the player's feet) walks into.
+     */
+    update(camera, dt = 0, viewer = camera.position) {
       camera.updateMatrixWorld();
       uniforms.uInvProj.value.copy(camera.projectionMatrixInverse);
       uniforms.uCamWorld.value.copy(camera.matrixWorld);
       uniforms.uViewProj.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
       const at = camera.position;
       if (!lastPack || Math.hypot(at.x - lastPack.x, at.z - lastPack.z) > 2) {
-        const { count } = packProps(props, at, MAX_PROPS, propData);
+        const { count, order } = packProps(props, at, MAX_PROPS, propData);
         uniforms.uPropCount.value = count;
         propTex.needsUpdate = true;
+        packed = order;
         lastPack = { x: at.x, z: at.z };
+      }
+      if (dt > 0) {
+        let moved = false;
+        for (let i = 0; i < packed.length; i++) {
+          const p = packed[i];
+          if (!BOOPABLE.has(p.type)) continue;
+          const was = p.boop ?? 0;
+          if (stepBoop(p, viewer, Math.min(dt, 0.05)) || was !== 0) {
+            propData[i * PROP_TEXELS * 4 + BOOP_OFFSET] = p.boop;
+            moved = true;
+          }
+        }
+        if (moved) propTex.needsUpdate = true;
       }
     },
     get propCount() { return props.length; },

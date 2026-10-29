@@ -94,12 +94,31 @@ Biscuit and the critters have faces in both renderers (`src/game/world/faces.js`
 `node scripts/game/face-check.mjs <outDir> [renderer] [quality]` renders each face from in
 front, before and after a feeling.
 
+## Life and motion
+
+- **The world stirs (Soft renderer):**
+  - willow and broom drips sway, each on its own beat;
+  - cube-tree crowns breathe;
+  - grass hems ripple;
+  - water drifts, with foam curling along its edges (streams run faster).
+- **Boops:** mushrooms, poms and cushion and knit domes squash when you walk into them, then
+  wobble back.
+- **In the air:**
+  - felt butterflies over meadows and lakes, flitting away when you come close;
+  - fireflies in grottos;
+  - dust motes in the Nest's light shafts.
+- **Your hands:** the knit gloves and the compass from the painting. The compass needle points to
+  the nearest find on a trip (the way home once they're all found) and to the great door in the
+  Nest. A find you pick up pops into your left glove, and the ✿ counter bounces. The hands hide
+  while touch controls are showing, and with `?nohands`.
+
 ## URL flags
 
 `?seed=CODE` the next trip; `?autostart=1` skip the title (new game, slot 1); `?fps=1` the
 performance overlay; `?quality=low|medium|high`; `?touch=1` force the on-screen controls (to try
 them with a mouse); `?nofs=1` no fullscreen request on touch screens; `?renderer=threejs|sdf` skip the renderer
-question. The cave viewer and reference-matching tools are
+question; `?nohud` no HUD or hands (the art captures); `?nohands` no hands; `?fov=N` the field of
+view. The cave viewer and reference-matching tools are
 still at `?view=cave` (and the old `?eye=`, `?look=`, `?scene=island` flags).
 
 ## Architecture

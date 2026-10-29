@@ -43,6 +43,9 @@ import { createCreature } from './world/creatures.js';
 import { createFace, emoteFor } from './world/faces.js';
 import { createFluff } from './world/fluff.js';
 import { createAmbient } from './world/ambient.js';
+import { createButterflies } from './world/butterflies.js';
+import { createPickupPops } from './world/pickup-pop.js';
+import { createHands } from '../fp/hands.js';
 import { createBall } from './world/ball.js';
 import { applyTripLook } from './world/look.js';
 import { createPlayerController, EYE_HEIGHT, fovFor } from './player/controller.js';
@@ -136,6 +139,11 @@ const fluff = createFluff();
 scene.add(fluff.points);
 const ambient = createAmbient();
 scene.add(ambient.points);
+const butterflies = createButterflies();
+scene.add(butterflies.group);
+const pops = createPickupPops(scene, camera);
+// The knit gloves and the compass from the painting, in play (?nohands hides them).
+const hands = params.has('nohands') || noHud ? null : createHands(camera, Math.random);
 const pool = createFindPool();
 const ball = createBall();
 scene.add(ball.mesh);
@@ -412,6 +420,7 @@ function enterHub({ spawn = false, title = false, fromTrip = false } = {}) {
   setArea(hub);
   sdfWorld?.setArea({ columns: hub.cave.columns, ceilingAt: hub.cave.ceilingAt, door: DOOR, props: (hub.sdfProps ??= propsFromPlacement(hub.cave.props)), tint: 'hub', shafts: hub.cave.shafts });
   ambient.setArea({ kind: 'hub', shafts: hub.cave.shafts });
+  butterflies.setArea('hub', new THREE.Vector3(0, 0, -5), (x, z) => area.heightAt(x, z));
   const s = getState();
   hub.setDoor(!!s?.flags.doorOpen, true);
   hub.syncDecor(s?.decor ?? []);
@@ -438,6 +447,7 @@ function enterTrip(seed, biome = null) {
   trip = buildTripWorld(data, { pool, blockRes: blockRes(), sdf: renderMode === 'sdf' });
   sdfWorld?.setArea({ columns: data.columns, props: propsFromLandmarks(data.landmarks, data.biome), tint: data.biome });
   ambient.setArea({ kind: data.biome }, trip.spawn.position);
+  butterflies.setArea(data.biome, trip.spawn.position, (x, z) => area.heightAt(x, z));
   trip.data = data;
   scene.add(trip.group);
   post.setGrade(applyTripLook(renderer, data.biome, sky));
@@ -855,6 +865,7 @@ events.on(EVENTS.FIND_COLLECTED, ({ itemId, position, sighting }) => {
   const item = ITEM_BY_ID[itemId];
   const c = { common: ['#fff6ea'], uncommon: ['#bfe6cc', '#fff'], rare: ['#bcd4f2', '#fff'], legendary: ['#ffe39a', '#f6c9cf', '#fff'] }[item.rarity];
   fluff.puff(new THREE.Vector3(...position), { count: item.rarity === 'common' ? 10 : 24, colors: c, spread: 1.4, lift: 2 });
+  pops.pop(new THREE.Vector3(...position).add(new THREE.Vector3(0, 0.3, 0)), c[0], () => { hands?.bump(); hud.bumpFinds(); });
   if (item.rarity === 'legendary') player.addTrauma(0.2);
 });
 events.on(EVENTS.CRITTER_SIGHTED, ({ itemId }) => session?.sight(itemId));
@@ -898,6 +909,24 @@ let titleT = 0;
 let playClock = 0;
 
 /** The current area's interactables (the Nest computes its own: the door's label changes; a trip lists them). */
+/** Where the compass points: the nearest find on a trip, else the way home; the door in the Nest. */
+function compassBearing() {
+  if (!area) return null;
+  let target = null;
+  if (area.kind === 'trip' && trip) {
+    let best = Infinity;
+    for (const f of trip.finds) {
+      const d = f.root.position.distanceToSquared(player.position);
+      if (d < best) { best = d; target = f.root.position; }
+    }
+    target ??= trip.gate.position;
+  } else if (area.kind === 'hub') target = tmpTarget.set((DOOR.xMin + DOOR.xMax) / 2, 0, DOOR.z);
+  if (!target) return null;
+  const want = Math.atan2(-(target.x - player.position.x), -(target.z - player.position.z));
+  return Math.atan2(Math.sin(want - player.yaw), Math.cos(want - player.yaw));
+}
+const tmpTarget = new THREE.Vector3();
+
 function areaInteractables() {
   if (!area) return [];
   return typeof area.interactables === 'function' ? area.interactables() : area.interactables ?? [];
@@ -954,12 +983,19 @@ function frame() {
   ui.update?.(dt);
   fluff.update(dt);
   ambient.update(dt, time, area ? player.position : null);
+  butterflies.update(dt, time, area ? player.position : null);
+  pops.update(dt);
+  if (hands) {
+    hands.root.visible = mode === 'play' && !touchActive();
+    hands.setTarget(compassBearing());
+    hands.update(player.walkPhase, Math.min(1, player.speed / 3), dt, time);
+  }
   sky.position.copy(camera.position);
   if (sdfWorld) {
     // The great door rises like a felt curtain (the mesh renderer animates its door mesh the same way).
     const d = hub?.doorOpen ?? 0;
     sdfWorld.setDoorLift(d * d * (3 - 2 * d) * (DOOR.height - 0.3));
-    sdfWorld.update(camera);
+    sdfWorld.update(camera, dt, player.position);
   }
   post.render(time, sharedFurUniforms.uSunDir.value, sharedFurUniforms.uSunColor.value);
 

@@ -172,11 +172,14 @@ export const fragmentShader = /* glsl */ `
     if (type == 1) { // cube tree: a cluster of felt cubes on a trunk
       float trunk = sdCappedCyl(q - vec3(0.0, 0.25, 0.0), 0.25, 0.055);
       vec3 cq = q - vec3(0.0, 0.66, 0.0);
+      // The crown breathes a little, slow and out of step with its neighbours.
+      float breath = 1.0 + 0.018 * sin(uTime * 1.1 + seed * 40.0);
+      cq /= breath;
       // Plump fuzzy cubes, a 3 x 2 x 3 cluster as the painting stacks them.
       vec3 cell = clamp(floor(cq / 0.2 + 0.5), vec3(-1.0, -1.0, -1.0), vec3(1.0, 0.0, 1.0));
       vec3 lq = cq - cell * 0.2 - vec3(0.0, 0.1, 0.0);
       float cube = sdRoundBox(lq, vec3(0.115), 0.05);
-      float crown = max(cube, length(cq * vec3(1.0, 1.2, 1.0)) - 0.36);
+      float crown = max(cube, length(cq * vec3(1.0, 1.2, 1.0)) - 0.36) * breath;
       crown -= uFur * 0.012 * vnoise(q * 34.0);
       part = trunk < crown ? 1.0 : 0.0;
       return smin(crown, trunk, 0.04);
@@ -188,7 +191,9 @@ export const fragmentShader = /* glsl */ `
       float cap = sdEllipsoid(s - vec3(0.17, 0.72, 0.0), vec3(0.17, 0.09, 0.17));
       vec3 dq = sector(q, 14.0, id);
       float len2 = 0.22 + 0.16 * hash12(vec2(id, seed * 17.0));
-      float drip = sdCapsule(dq, vec3(0.27, 0.70, 0.0), vec3(0.29, 0.70 - len2, 0.0), 0.04);
+      // Drips sway in the cave's draught, each on its own beat, the tips most.
+      float sw = sin(uTime * 1.3 + id * 1.7 + seed * 23.0);
+      float drip = sdCapsule(dq, vec3(0.27, 0.70, 0.0), vec3(0.29 + 0.015 * sw, 0.70 - len2, 0.04 * sw), 0.04);
       float trunk = sdCappedCyl(q - vec3(0.0, 0.3, 0.0), 0.3, 0.05);
       float crown = smin(smin(top, cap, 0.06), drip, 0.05);
       part = trunk < crown ? 1.0 : 0.0;
@@ -203,7 +208,8 @@ export const fragmentShader = /* glsl */ `
       float id;
       vec3 dq = sector(q - vec3(0.0, 0.0, 0.0), 10.0, id);
       float cap = sdEllipsoid(q - vec3(0.0, 0.85, 0.0), vec3(0.26, 0.09, 0.2));
-      float drip = sdCapsule(dq, vec3(0.2, 0.84, 0.0), vec3(0.23, 0.72 - 0.08 * hash12(vec2(id, seed * 9.0)), 0.0), 0.035);
+      float sw = sin(uTime * 1.5 + id * 2.1 + seed * 19.0);
+      float drip = sdCapsule(dq, vec3(0.2, 0.84, 0.0), vec3(0.23, 0.72 - 0.08 * hash12(vec2(id, seed * 9.0)), 0.025 * sw), 0.035);
       float crown = smin(cap, drip, 0.04);
       if (bristles < crown && bristles < trunk) part = 2.0; else part = trunk < crown ? 1.0 : 0.0;
       return min(min(crown, bristles), trunk);
@@ -271,7 +277,10 @@ export const fragmentShader = /* glsl */ `
       part = part0;
       return d * h;
     }
-    return propShape(int(a.x + 0.5), q / h, b.z, b.w, part) * h;
+    // A boop (the prop's spring, packed in its fourth texel): squashed down and out, then wobbling.
+    float boop = propTexel(i, 3).w;
+    vec3 s = vec3(1.0 + 0.5 * boop, 1.0 - boop, 1.0 + 0.5 * boop);
+    return propShape(int(a.x + 0.5), q / (h * s), b.z, b.w, part) * h * min(min(s.x, s.y), s.z);
   }
   float props(vec3 p, out int which, out float part) {
     float d = NO_HIT; which = -1; part = 0.0;
@@ -383,13 +392,18 @@ export const fragmentShader = /* glsl */ `
     // Grass blankets on earth tops: a scalloped felt hem a little down the sides.
     if (kind == 0 && !ceiling) {
       float hem = 0.12 + 0.05 * sin(atan(p.z - c.y, p.x - c.x) * 6.0 + info.w * 20.0) + 0.04 * vnoise(p * 6.0);
+      hem += 0.018 * sin(uTime * 1.6 + p.x * 1.9 + p.z * 1.3); // the hem stirs in the breeze
       if (p.y > info.x - hem) { base = uGrass * (0.95 + 0.1 * info.w); fuzz = 0.5; }
     }
     // Water: a soft moving marble, icy white along its block edges (as the painting draws it).
     if (kind >= 3 && topBlock) {
-      if (n.y > 0.5) base *= 0.9 + 0.2 * vnoise(vec3(p.xz * 2.0, uTime * 0.4));
+      // The marble drifts (streams run faster), and foam curls along the edges.
+      float flow = kind == 4 ? 0.7 : 0.18;
+      vec2 drift = p.xz * 2.0 + vec2(uTime * flow * 0.6, uTime * flow);
+      if (n.y > 0.5) base *= 0.9 + 0.2 * vnoise(vec3(drift, uTime * 0.25));
       vec2 lq = abs(inside.xz - c);
       float rim = smoothstep(0.34, 0.47, max(lq.x, lq.y)) + smoothstep(0.75, 0.97, fract(inside.y)) * step(n.y, 0.5);
+      rim += 0.6 * smoothstep(0.55, 0.8, vnoise(vec3(drift * 3.0, uTime * 0.5))) * smoothstep(0.28, 0.45, max(lq.x, lq.y));
       base = mix(base, vec3(0.93, 0.96, 1.0), clamp(rim, 0.0, 1.0) * 0.55);
     }
     return base;

@@ -53,3 +53,19 @@ test('faces: emotes for events and expressions for poses', async () => {
   assert.equal(expressionFor('walk'), 'normal');
   for (const id of ['dog-0', 'critter-0', 'critter-1', 'critter-2']) assert.ok(FACE_ANCHORS[id], id);
 });
+
+test('boops: a prop kicks when the viewer arrives, wobbles and settles; packed in its spare alpha', async () => {
+  const { stepBoop, BOOP_OFFSET } = await import('../src/game/sdf/scene-data.js');
+  const p = { type: PROP.MUSHROOM, x: 0, y: 0, z: 0, height: 0.6, yaw: 0, seed: 0.3, c1: '#ffffff', c2: '#000000' };
+  assert.equal(stepBoop(p, { x: 5, z: 0 }, 0.016), false, 'far away: at rest');
+  let peak = 0;
+  let sign = 0;
+  for (let i = 0; i < 30; i++) { stepBoop(p, { x: 0.2, z: 0 }, 0.016); peak = Math.max(peak, p.boop); if (p.boop < 0) sign = -1; }
+  assert.ok(peak > 0.05, 'squashes on arrival');
+  assert.equal(sign, -1, 'overshoots into a stretch');
+  for (let i = 0; i < 400; i++) stepBoop(p, { x: 0.2, z: 0 }, 0.016);
+  assert.equal(p.boop, 0, 'settles while you stand there');
+  p.boop = 0.2;
+  const { data } = packProps([p], { x: 0, z: 0 }, 1);
+  assert.ok(Math.abs(data[BOOP_OFFSET] - 0.2) < 1e-6);
+});
