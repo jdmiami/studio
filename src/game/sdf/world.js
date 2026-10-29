@@ -24,7 +24,7 @@ const linear = (hex) => new THREE.Color(hex);
  * is a pale powder blue, its grass a light mint, its shadows pink).
  */
 const TINTS = {
-  hub: { wall: '#e0b4a2', floor: '#e2cdc6', water: '#a9c6ee', grass: '#a8c98e', fill: '#c9d2f4', bounce: '#e7b8a6' },
+  hub: { wall: '#e2bba9', floor: '#e4d0ca', water: '#b2cdf2', grass: '#aecb8f', fill: '#c9d2f4', bounce: '#e7bcaa' },
   meadow: { wall: '#e2b5a3', floor: '#e6d0c4', water: '#9fc0ea', grass: '#a6c98b', fill: '#cbd9f6', bounce: '#d8c9a8' },
   grotto: { wall: '#e8b0b2', floor: '#e6cad0', water: '#aab4ea', grass: '#a9c093', fill: '#d6cdf6', bounce: '#e9b8bd' },
   lake: { wall: '#dfbcaf', floor: '#e2d0c9', water: '#93bdea', grass: '#a0c795', fill: '#c3dcf4', bounce: '#cfd2c6' },

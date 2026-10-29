@@ -231,8 +231,11 @@ async function boot() {
     renderer.setPixelRatio(pixelRatio());
     // The soft renderer's glow: bloom on the shafts and highlights, a gentle diorama blur above and
     // below the eye line (medium and high), the cave's warm grade.
+    // Grade fitted with sdf-compare's Lab stats: the painting is chalkier (chroma 16 vs 19) and wider
+    // in value (L p10 39 / p90 79) than the raw SDF frame.
     post = createPost(renderer, scene, camera, {
-      ...caveGrade, bloomStrength: settings.quality === 'low' ? 0 : 0.42, bloomThreshold: 0.92,
+      ...caveGrade, saturation: 0.74, contrast: 0.95,
+      bloomStrength: settings.quality === 'low' ? 0 : 0.42, bloomThreshold: 0.92,
       tiltShift: settings.quality !== 'low', tilt: { focus: 0.48, band: 0.3, radius: 1.5 },
     });
     fitView();

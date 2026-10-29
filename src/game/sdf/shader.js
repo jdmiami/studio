@@ -320,8 +320,13 @@ export const fragmentShader = /* glsl */ `
       float hem = 0.12 + 0.05 * sin(atan(p.z - c.y, p.x - c.x) * 6.0 + info.w * 20.0) + 0.04 * vnoise(p * 6.0);
       if (p.y > info.x - hem) { base = uGrass * (0.95 + 0.1 * info.w); fuzz = 0.5; }
     }
-    // Water: a soft moving marble.
-    if (kind >= 3 && topBlock && n.y > 0.5) base *= 0.9 + 0.2 * vnoise(vec3(p.xz * 2.0, uTime * 0.4));
+    // Water: a soft moving marble, icy white along its block edges (as the painting draws it).
+    if (kind >= 3 && topBlock) {
+      if (n.y > 0.5) base *= 0.9 + 0.2 * vnoise(vec3(p.xz * 2.0, uTime * 0.4));
+      vec2 lq = abs(inside.xz - c);
+      float rim = smoothstep(0.34, 0.47, max(lq.x, lq.y)) + smoothstep(0.75, 0.97, fract(inside.y)) * step(n.y, 0.5);
+      base = mix(base, vec3(0.93, 0.96, 1.0), clamp(rim, 0.0, 1.0) * 0.55);
+    }
     return base;
   }
 
