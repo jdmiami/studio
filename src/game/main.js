@@ -23,7 +23,7 @@ import { DOOR } from '../cave/level.js';
 import { createEvents } from './core/events.js';
 import { ACTIONS, EVENTS, defaultSettings, newGameState } from './core/contracts.js';
 import { createRng, codeToSeed, seedToCode, hashString } from './core/rng.js';
-import { ITEM_BY_ID, findTable } from './data/items.js';
+import { ITEMS, ITEM_BY_ID, findTable } from './data/items.js';
 import { QUESTS } from './data/quests.js';
 import { createSession } from './play/session.js';
 import { createChimeRing } from './play/puzzles.js';
@@ -910,8 +910,8 @@ function updatePlay(dt) {
     updateChime(dt);
   }
   hud.setQuest(session.quests.tracked());
-  const prog = session.progress();
-  hud.setFinds(prog.found, prog.total);
+  // Same count as the collection book: every catalogued kind, the story badge included.
+  hud.setFinds(ITEMS.filter((i) => s.collection[i.id]).length, ITEMS.length);
 
   // Autosave (throttled by the save system).
   if (playClock > 12) {
@@ -960,6 +960,8 @@ window.__phluphGame = {
   get mode() { return mode; },
   get state() { return getState(); },
   get area() { return area?.kind; },
+  get _area() { return area; },
+  get _feet() { return player.position; },
   get trip() { return trip?.data ? { code: trip.data.code, biome: trip.data.biome, name: trip.data.name, finds: trip.finds.length } : null; },
   get player() { return { position: player.position.toArray(), yaw: player.yaw }; },
   get creatures() { return creatures.map((c) => ({ kind: c.kind, state: c.brain.state(), position: [c.body?.position.x ?? c.creature.body.position.x, c.body?.position.z ?? c.creature.body.position.z] })); },

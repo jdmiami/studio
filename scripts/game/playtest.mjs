@@ -35,8 +35,10 @@ const step = async (name, fn) => {
 const shot = (name) => page.screenshot({ path: `${out}/${name}.png`, timeout: 180000 });
 const game = (fn, arg) => page.evaluate(fn, arg);
 page.setDefaultTimeout(180000);
-const wait = (ms) => page.waitForTimeout(ms);
-const press = async (key, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(key); await wait(120); } };
+const wait = async (ms) => { await page.waitForTimeout(ms); await frames(2); }; // time, and at least two frames
+/** Waits until the game has run n more frames (software WebGL can run at ~2 fps, so time is no measure). */
+const frames = (n = 3) => page.evaluate((n) => new Promise((r) => { let k = 0; const f = () => (++k > n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
+const press = async (key, n = 1) => { for (let i = 0; i < n; i++) { await page.keyboard.press(key); await frames(2); } };
 
 /** Advances a running dialogue by confirming until it closes (choices pick the focused one). */
 async function finishDialogue(max = 80) {
@@ -79,7 +81,7 @@ await step('collect the Nest finds', async () => {
   const finds = await game(() => window.__phluphGame.hubFinds);
   for (const f of finds) {
     await game(([x, z]) => window.__phluphGame.teleport(x, z), [f.position[0], f.position[2]]);
-    await wait(300);
+    await frames(4);
   }
   await shot('04-collected');
   const c = await game(() => Object.keys(window.__phluphGame.state.collection));
@@ -112,7 +114,7 @@ await step('report to Mira, get the lock note', async () => {
 
 await step('solve the felt lock', async () => {
   await game(() => window.__phluphGame.teleport(0, -12.5, 0));
-  await wait(300);
+  await frames(4);
   game(() => window.__phluphGame.interact('door'));
   await wait(700);
   await shot('06-lock');
@@ -147,10 +149,10 @@ await step('collect trip finds', async () => {
   let i = 0;
   for (const f of finds.slice(0, 7)) {
     await game(([x, z]) => window.__phluphGame.teleport(x - 1.5, z, Math.PI / 2), [f.position[0], f.position[2]]);
-    await wait(500);
+    await frames(4);
     if (i++ === 0) await shot('09-trip-find');
     await game(([x, z]) => window.__phluphGame.teleport(x, z), [f.position[0], f.position[2]]);
-    await wait(300);
+    await frames(4);
   }
   const n = await game(() => window.__phluphGame.state.flags.tripFinds ?? 0);
   if (n < 5) throw new Error(`only ${n} trip finds`);
@@ -160,7 +162,7 @@ await step('look around the trip', async () => {
   await game(() => { const g = window.__phluphGame; const s = g.trip; return s; });
   const pos = await game(() => window.__phluphGame.player.position);
   await game(([x, z]) => window.__phluphGame.teleport(x, z, 0.8), [pos[0], pos[2]]);
-  await wait(800);
+  await frames(4);
   await shot('10-trip-view');
 });
 
@@ -196,7 +198,7 @@ await step('menus', async () => {
 
 await step('decorate the Nest', async () => {
   await game(() => window.__phluphGame.teleport(4, -2, Math.PI * 0.6));
-  await wait(300);
+  await frames(4);
   await press('KeyB');
   await wait(500);
   await shot('15-decorate');
