@@ -99,10 +99,20 @@ silhouette against a light ground, which is why the figure pops.
 - Edge lines are mostly horizontal (the back wall, the door) and vertical (pillars, trunks), plus
   one family of floor diagonals.
 
-**Depth and layers** (`depth-masks.jpg`): a geometric estimate, not a learned depth map.
-- Floor and ceiling planes come from the estimated horizon.
-- Each object is placed at the depth of its floor contact. Silhouettes come from GrabCut inside
-  hand-placed boxes.
+**Depth and layers:**
+- **Learned depth** (`learned-depth.jpg`; regenerate the raw array with the script): Depth Anything V2 (small, ONNX, run
+  on CPU here by `scripts/shot/learned_depth.py`).
+  - It resolves the explorer, every floor slab, the ceiling blocks, both trees, Biscuit and the
+    critters.
+  - The surface normals derived from it show the rounded bevel on every block.
+  - Its depth is relative (bigger means nearer). It is aligned to our engine depth with scale and
+    shift before comparing.
+  - The HUD panels read as near objects and are masked out.
+- **Geometric estimate** (`depth-masks.jpg`):
+  - floor and ceiling planes from the estimated horizon;
+  - each object placed at the depth of its floor contact;
+  - silhouettes from GrabCut inside hand-placed boxes. It was the first pass and is kept for the
+    masks.
 - Layers from front to back: foreground floor and right ledges; the explorer; the pool and
   waterfall base; the mint jars and lavender pom; the critters; Biscuit; the stairs and plaza;
   the cube tree, willow, mushrooms and Mira's balcony; the door and back wall; the ceiling.
@@ -329,13 +339,12 @@ Every step is judged against the target from the same camera.
 2. **Layout reconstruction:** a block map of the cave authored from the shot. Floor contact
    points, the depth layers and the camera solve fix each block's position. A top-down tracing of
    the visible floor regions becomes the level data.
-3. **Depth:**
-   - now: the geometric depth (done);
-   - better: a learned monocular depth model (Depth Anything V2 or Marigold), which needs network
-     access (see the decisions in section 6).
-   - Our engine's depth buffer is compared with it using scale-invariant error.
+3. **Depth (done):** Depth Anything V2, run locally from its GitHub release. Our engine's depth
+   buffer is compared with it using scale-invariant error, after a scale-and-shift fit.
 4. **Segmentation:**
-   - the GrabCut silhouettes now; SAM3 masks when allowed;
+   - the GrabCut silhouettes now;
+   - SAM3 masks later, through Hugging Face Spaces (running them is switched off in the Hugging
+     Face connector's settings) or an ONNX export from GitHub;
    - the masks drive per-element metrics, so each object is scored separately.
 5. **De-lighting and albedo:**
    - estimate each material's base colour with the shading removed (`delight_albedo.py`);
@@ -355,9 +364,10 @@ Every step is judged against the target from the same camera.
     - the highlight map and shading directions place two area lights at the openings plus sky
       fill;
     - global illumination is baked into light probes or lightmaps (the cave is static).
-11. **Hidden sides:** the front of the explorer and the back of Biscuit are designed from canon
-    (the earlier painting shows the gloves and compass). An image-edit model could propose
-    turnarounds if sending the image out is allowed.
+11. **Hidden sides:**
+    - the front of the explorer and the back of Biscuit are designed from canon (the earlier
+      painting shows the gloves and compass);
+    - an image-edit model can propose turnarounds now that the reference is public in the repo.
 12. **Procedural assets in code:**
     - *Block kit:* instanced rounded blocks, each with its own bevel, slight scale and rotation
       jitter, and a puffed top face.
@@ -393,14 +403,14 @@ Each milestone ends with a side-by-side sheet, the scores, the playtests and a l
 
 The pass marks are first goals. They tighten once S0 shows what a matched blockout scores.
 
-## 6. Decisions
+## 6. Decisions (settled 2026-10-31)
 
-1. **Camera:** third-person as the default view, with first-person kept as an option.
-2. **Orientation:** the shot is portrait (a phone held upright). Choose portrait-first, landscape
-   with the same look, or both.
-3. **Outside tools:** learned depth, SAM3 masks and turnaround generation need the reference sent
-   to Hugging Face. Either allow huggingface.co in the environment's network access, so models
-   download and run here and the image stays private, or allow hosting the image publicly for
-   Hugging Face Spaces.
-4. **Renderer:** build the target look on a new WebGPU mesh renderer, with the SDF renderer
-   retired or kept as an alternative.
+1. **Camera:** third-person over the shoulder by default. The first-person view with gloves and
+   compass stays as a setting.
+2. **Orientation:** both. The portrait frame matches the shot exactly; landscape adapts the same
+   look and HUD.
+3. **Outside tools:** the repo is public, so the reference has a public URL. Models whose weights
+   are on GitHub (Depth Anything V2) run here. Hugging Face itself is still blocked from the
+   container.
+4. **Renderer:** a new WebGPU mesh renderer for strong GPUs. The current renderers stay as
+   fallbacks until it is ready.
