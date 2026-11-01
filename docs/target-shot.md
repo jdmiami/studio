@@ -173,7 +173,7 @@ Even "white" Biscuit is a warm cream, never pure white.
 - *Placement:* stands on the lit plaza in three-quarter view facing the camera's left, with a soft
   contact shadow.
 
-**Critters (two):** round puff balls, slightly flattened, of the same cream fur. Each has two tiny
+**Critters (three: two in full view, a third peeking in at the right edge):** round puff balls, slightly flattened, of the same cream fur. Each has two tiny
 black dot eyes and a tiny mouth, and sits on the plaza floor in front of and to the right of
 Biscuit. They read as dust bunnies with faces.
 
@@ -341,10 +341,15 @@ Every step is judged against the target from the same camera.
    the visible floor regions becomes the level data.
 3. **Depth (done):** Depth Anything V2, run locally from its GitHub release. Our engine's depth
    buffer is compared with it using scale-invariant error, after a scale-and-shift fit.
-4. **Segmentation:**
-   - the GrabCut silhouettes now;
-   - SAM3 masks later, through Hugging Face Spaces (running them is switched off in the Hugging
-     Face connector's settings) or an ONNX export from GitHub;
+4. **Segmentation (done):** `masks.png` is a label map, with one value per element listed in
+   `masks.json`; `masks-overlay.jpg` shows it over the shot.
+   - SAM3, through the Hugging Face Space, found the explorer, Biscuit, both trees, three critters
+     and the lavender pom ("white fluffy ball"), the pool and the door.
+   - The other elements come from Segment Anything ViT-B, run locally from box prompts
+     (`scripts/shot/sam_boxes.py`).
+   - `mask-colors.json` holds each element's shade, mid and light colour, measured inside its
+     mask.
+   - A third critter sits at the right edge of the frame, cut off by it.
    - the masks drive per-element metrics, so each object is scored separately.
 5. **De-lighting and albedo:**
    - estimate each material's base colour with the shading removed (`delight_albedo.py`);
