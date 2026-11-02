@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { rng } from '../world/util.js';
 import { buildCaveLevel, DOOR } from './level.js';
 import placement from './props-placement.json';
+import layout from './layout.json';
 import { loadKitAssets, paintKitModel, placeKitModel } from './kit-assets.js';
 import kitPaint from './kit-paint.json';
 import { buildTracedDoor } from './door.js';
@@ -51,7 +52,8 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes, sdf 
   const facing = Math.atan2(eyeXZ.x - npcPos.x, eyeXZ.y - npcPos.z);
   npc.group.position.copy(npcPos);
   npc.group.rotation.y = facing;
-  npc.group.scale.setScalar(1.88); // painted 74 px tall at 39 px per unit
+  // Painted 74 px tall at 39 px per unit in the cave painting; the target shot's placement gives her height.
+  npc.group.scale.setScalar(layout.spawn && npcSpec?.height ? npcSpec.height / 1.04 : 1.88);
   scene.add(npc.group);
   // The railing stands in front of the terrace edge, posts down the block face, its top rail at
   // her chest (painted: 0.9 above the terrace), 1.7 wide.
@@ -120,11 +122,15 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes, sdf 
 
   // The painting's shafts fall from the ceiling openings down toward the viewer: the door's skylight
   // onto the willow and the door steps, the upper-left opening down and to the right.
-  const shafts = [
-    { from: [-0.6, 9.5, -15.2], target: new THREE.Vector3(0.5, 0, -10), width: 3.6 },
-    { from: [-9.5, 9.5, -1.2], target: new THREE.Vector3(-5, 2, -1.5), width: 4.2 },
-  ];
-  const viewer = new THREE.Vector3(7.4, 3.775, 2.261); // the spawn eye: the shafts' broad side faces the room
+  // The target-shot layout places them through its two openings (scripts/shot/target_props.py).
+  const shafts = layout.spawn && placement.lights?.length
+    ? placement.lights.map((l) => ({ from: [l.x, Math.min(l.y, 9.5), l.z], target: new THREE.Vector3(l.x * 0.6 + layout.spawn.x * 0.4, 0, l.z * 0.6 + layout.spawn.z * 0.4), width: Math.max(2.5, Math.min(l.width ?? 3.6, 5)) }))
+    : [
+      { from: [-0.6, 9.5, -15.2], target: new THREE.Vector3(0.5, 0, -10), width: 3.6 },
+      { from: [-9.5, 9.5, -1.2], target: new THREE.Vector3(-5, 2, -1.5), width: 4.2 },
+    ];
+  // The spawn camera: the shafts' broad side faces the room.
+  const viewer = layout.spawn ? new THREE.Vector3(...(placement.camera?.eye ?? [layout.spawn.x, 4, layout.spawn.z])) : new THREE.Vector3(7.4, 3.775, 2.261);
   // The SDF renderer raymarches the shafts as volumes itself (src/game/sdf/shader.js).
   if (!sdf) {
     scene.add(buildLightShafts(shafts.map((s) => ({
@@ -151,7 +157,10 @@ export function buildCave(scene, { hide = null, creatures = true, blockRes, sdf 
     // The reference frame's camera pose (docs/reference/cave-door-camera.json, solved by line
     // tracing): the room's front-right corner, looking 40 degrees left of the door's axis. The feet
     // land on the spawn terrace (top 2) and the eye is EYE_HEIGHT 1.775 above: the solved 3.775.
-    spawn: { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
+    // With the target-shot layout: the explorer's spot in that shot, facing its view.
+    spawn: layout.spawn
+      ? { position: new THREE.Vector3(layout.spawn.x, 0, layout.spawn.z), yaw: THREE.MathUtils.degToRad(layout.spawn.yaw), pitch: 0 }
+      : { position: new THREE.Vector3(7.4, 0, 2.261), yaw: THREE.MathUtils.degToRad(40.43), pitch: THREE.MathUtils.degToRad(-7.99) },
     stats: { blocks: level.blockCount, caps: level.capCount },
     ceilingAt: level.ceilingAt,
     // For the game: Mira, the door, and where the painting puts the dog and the critters.

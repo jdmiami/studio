@@ -3,792 +3,347 @@
  "props": [
   {
    "name": "cube-tree",
-   "x": -2.394,
+   "x": 0.4,
    "y": 3.0,
-   "z": -4.167,
+   "z": -2.4,
    "cell": [
-    -2,
-    -4
+    0,
+    -2
    ],
    "surface": "wall",
-   "hit": "top",
-   "height": 3.247,
-   "scale": 1.015,
+   "hit": "top*",
+   "height": 3.226,
+   "scale": 1.008,
    "base": [
-    362,
-    250
+    471,
+    865
    ],
-   "heightPx": 150,
+   "heightPx": 343,
    "build": true
   },
   {
    "name": "willow",
-   "x": -0.6,
-   "y": 2.0,
-   "z": -6.4,
+   "x": 2.215,
+   "y": 1.0,
+   "z": -3.45,
    "cell": [
-    -1,
-    -6
+    2,
+    -3
    ],
    "surface": "wall",
-   "hit": "top*",
-   "height": 3.297,
-   "scale": 0.916,
+   "hit": "side",
+   "height": 2.571,
+   "scale": 0.714,
    "base": [
-    492,
-    300
+    681,
+    898
    ],
-   "heightPx": 142,
+   "heightPx": 273,
    "build": true
-  },
-  {
-   "name": "willow-2",
-   "x": 7.418,
-   "y": 2.0,
-   "z": -7.051,
-   "cell": [
-    7,
-    -7
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 4.053,
-   "scale": 1.126,
-   "base": [
-    940,
-    340
-   ],
-   "heightPx": 285,
-   "build": false
-  },
-  {
-   "name": "broom-tree",
-   "x": 6.968,
-   "y": 2.0,
-   "z": -5.835,
-   "cell": [
-    7,
-    -6
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 2.758,
-   "scale": 0.726,
-   "base": [
-    893,
-    352
-   ],
-   "heightPx": 212,
-   "build": true
-  },
-  {
-   "name": "pom",
-   "x": 6.825,
-   "y": 2.0,
-   "z": -7.665,
-   "cell": [
-    7,
-    -8
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.586,
-   "scale": 1.725,
-   "base": [
-    892,
-    327
-   ],
-   "heightPx": 37,
-   "build": false
-  },
-  {
-   "name": "knit-shrub",
-   "x": 6.987,
-   "y": 2.0,
-   "z": -5.158,
-   "cell": [
-    7,
-    -5
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.888,
-   "scale": 1.184,
-   "base": [
-    890,
-    364
-   ],
-   "heightPx": 52,
-   "build": true
-  },
-  {
-   "name": "fence",
-   "x": 7.035,
-   "y": 2.0,
-   "z": -3.746,
-   "cell": [
-    7,
-    -4
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.534,
-   "scale": 0.763,
-   "base": [
-    883,
-    397
-   ],
-   "heightPx": 54,
-   "build": true,
-   "ends": [
-    [
-     6.623,
-     2.0,
-     -3.438
-    ],
-    [
-     7.447,
-     2.0,
-     -4.054
-    ]
-   ],
-   "length": 1.029,
-   "yaw": 0.6419
   },
   {
    "name": "mushroom",
-   "x": 0.1,
+   "x": -0.35,
    "y": 3.0,
-   "z": -1.6,
+   "z": -2.278,
    "cell": [
     0,
     -2
    ],
    "surface": "wall",
-   "hit": "top*",
-   "height": 0.459,
-   "scale": 1.094,
-   "base": [
-    305,
-    288
-   ],
-   "heightPx": 31,
-   "build": true
-  },
-  {
-   "name": "mushroom",
-   "x": 0.4,
-   "y": 3.0,
-   "z": -2.0,
-   "cell": [
-    0,
-    -2
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.421,
-   "scale": 1.002,
-   "base": [
-    342,
-    280
-   ],
-   "heightPx": 28,
-   "build": true
-  },
-  {
-   "name": "mushroom",
-   "x": 0.4,
-   "y": 3.0,
-   "z": -2.2,
-   "cell": [
-    0,
-    -2
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.214,
-   "scale": 0.511,
-   "base": [
-    357,
-    282
-   ],
-   "heightPx": 14,
-   "build": true
-  },
-  {
-   "name": "mushroom",
-   "x": 1.4,
-   "y": 2.0,
-   "z": -1.7,
-   "cell": [
-    1,
-    -2
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.32,
-   "scale": 0.761,
-   "base": [
-    369,
-    360
-   ],
-   "heightPx": 23,
-   "build": true
-  },
-  {
-   "name": "mushroom",
-   "x": 6.289,
-   "y": 2.0,
-   "z": -5.398,
-   "cell": [
-    6,
-    -5
-   ],
-   "surface": "wall",
    "hit": "top",
-   "height": 0.529,
-   "scale": 1.259,
+   "height": 0.397,
+   "scale": 0.945,
    "base": [
-    826,
-    350
+    417,
+    868
    ],
    "heightPx": 40,
    "build": true
   },
   {
    "name": "mushroom",
-   "x": 7.84,
-   "y": 2.0,
-   "z": -3.368,
-   "cell": [
-    8,
-    -3
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.451,
-   "scale": 1.073,
-   "base": [
-    998,
-    432
-   ],
-   "heightPx": 54,
-   "build": true
-  },
-  {
-   "name": "stone",
-   "x": -0.4,
-   "y": 2.0,
-   "z": -2.6,
+   "x": 0.0,
+   "y": 3.0,
+   "z": -1.2,
    "cell": [
     0,
-    -3
+    -1
    ],
    "surface": "wall",
    "hit": "top*",
-   "height": 0.419,
-   "scale": 1.308,
+   "height": 0.26,
+   "scale": 0.62,
    "base": [
-    345,
-    320
-   ],
-   "heightPx": 24,
-   "build": true
-  },
-  {
-   "name": "stone",
-   "x": 0.43,
-   "y": 2.0,
-   "z": -2.912,
-   "cell": [
-    0,
-    -3
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.438,
-   "scale": 1.37,
-   "base": [
-    396,
-    321
-   ],
-   "heightPx": 26,
-   "build": true
-  },
-  {
-   "name": "stone",
-   "x": 0.721,
-   "y": 2.0,
-   "z": -3.251,
-   "cell": [
-    1,
-    -3
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.799,
-   "scale": 2.496,
-   "base": [
-    423,
-    320
-   ],
-   "heightPx": 47,
-   "build": true
-  },
-  {
-   "name": "stone",
-   "x": -4.4,
-   "y": 2.0,
-   "z": -7.7,
-   "cell": [
-    -4,
-    -8
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.686,
-   "scale": 2.143,
-   "base": [
-    427,
-    273
-   ],
-   "heightPx": 23,
-   "build": true
-  },
-  {
-   "name": "stone",
-   "x": 0.6,
-   "y": 1.0,
-   "z": -3.6,
-   "cell": [
-    1,
-    -4
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.546,
-   "scale": 1.707,
-   "base": [
-    421,
-    360
-   ],
-   "heightPx": 30,
-   "build": true
-  },
-  {
-   "name": "stone",
-   "x": 1.4,
-   "y": 1.0,
-   "z": -4.4,
-   "cell": [
-    1,
-    -4
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.276,
-   "scale": 0.861,
-   "base": [
-    519,
-    365
-   ],
-   "heightPx": 15,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": 2.179,
-   "y": 1.0,
-   "z": -2.575,
-   "cell": [
-    2,
-    -3
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.561,
-   "scale": 0.748,
-   "base": [
-    454,
-    409
-   ],
-   "heightPx": 38,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": 0.945,
-   "y": 1.0,
-   "z": -4.131,
-   "cell": [
-    1,
-    -4
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.519,
-   "scale": 0.693,
-   "base": [
-    470,
-    368
-   ],
-   "heightPx": 28,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": 1.813,
-   "y": 0.0,
-   "z": -4.596,
-   "cell": [
-    2,
-    -5
-   ],
-   "surface": "floor",
-   "hit": "top",
-   "height": 1.179,
-   "scale": 1.572,
-   "base": [
-    523,
-    425
-   ],
-   "heightPx": 63,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": 1.4,
-   "y": 1.0,
-   "z": -4.2,
-   "cell": [
-    1,
-    -4
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.543,
-   "scale": 0.723,
-   "base": [
-    493,
-    380
-   ],
-   "heightPx": 30,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": 1.4,
-   "y": 2.0,
-   "z": -3.3,
-   "cell": [
-    1,
-    -3
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.617,
-   "scale": 0.822,
-   "base": [
-    457,
-    338
-   ],
-   "heightPx": 38,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": -0.283,
-   "y": 0.0,
-   "z": -8.151,
-   "cell": [
-    0,
-    -8
-   ],
-   "surface": "floor",
-   "hit": "top",
-   "height": 1.085,
-   "scale": 1.447,
-   "base": [
-    547,
-    361
-   ],
-   "heightPx": 41,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": 1.4,
-   "y": 1.0,
-   "z": -4.4,
-   "cell": [
-    1,
-    -4
-   ],
-   "surface": "wall",
-   "hit": "top*",
-   "height": 0.404,
-   "scale": 0.539,
-   "base": [
-    508,
-    347
-   ],
-   "heightPx": 22,
-   "build": true
-  },
-  {
-   "name": "bush",
-   "x": 4.325,
-   "y": 1.0,
-   "z": -9.022,
-   "cell": [
-    4,
-    -9
-   ],
-   "surface": "step",
-   "hit": "top",
-   "height": 0.623,
-   "scale": 0.83,
-   "base": [
-    747,
-    346
+    334,
+    872
    ],
    "heightPx": 29,
    "build": true
   },
   {
-   "name": "knit-bush",
-   "x": 5.831,
-   "y": 2.0,
-   "z": -4.896,
-   "cell": [
-    6,
-    -5
-   ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.365,
-   "scale": 0.487,
-   "base": [
-    778,
-    352
-   ],
-   "heightPx": 28,
-   "build": true
-  },
-  {
-   "name": "crate",
-   "x": -0.45,
+   "name": "knit-shrub",
+   "x": 3.55,
    "y": 0.0,
-   "z": -6.703,
+   "z": -2.73,
    "cell": [
-    0,
-    -7
+    4,
+    -3
    ],
    "surface": "floor",
    "hit": "side",
-   "height": 0.737,
-   "scale": 1.474,
+   "height": 1.509,
+   "scale": 2.012,
    "base": [
-    504,
-    328
+    724,
+    1156
    ],
-   "heightPx": 30,
-   "build": false
+   "heightPx": 134,
+   "build": true
   },
   {
-   "name": "bench",
-   "x": 4.6,
+   "name": "knit-shrub",
+   "x": 2.829,
    "y": 1.0,
-   "z": -7.8,
+   "z": -3.45,
    "cell": [
-    5,
-    -8
+    3,
+    -3
    ],
    "surface": "wall",
-   "hit": "top*",
-   "height": 0.677,
-   "scale": 1.355,
+   "hit": "side",
+   "height": 0.581,
+   "scale": 0.774,
    "base": [
-    738,
-    353
+    728,
+    1040
    ],
-   "heightPx": 35,
+   "heightPx": 15,
+   "build": true
+  },
+  {
+   "name": "stone",
+   "x": 2.55,
+   "y": -1.0,
+   "z": -1.319,
+   "cell": [
+    3,
+    -1
+   ],
+   "surface": "wall",
+   "hit": "side",
+   "height": 0.652,
+   "scale": 2.036,
+   "base": [
+    497,
+    946
+   ],
+   "heightPx": 75,
+   "build": true
+  },
+  {
+   "name": "pom",
+   "x": 1.55,
+   "y": 0.0,
+   "z": -2.45,
+   "cell": [
+    2,
+    -2
+   ],
+   "surface": "water",
+   "hit": "side",
+   "height": 0.468,
+   "scale": 1.375,
+   "base": [
+    541,
+    1023
+   ],
+   "heightPx": 48,
    "build": false
   },
   {
    "name": "dog",
-   "x": 0.897,
-   "y": 0.0,
-   "z": -8.343,
+   "x": 3.664,
+   "y": 1.5,
+   "z": -4.33,
    "cell": [
-    1,
-    -8
+    4,
+    -4
    ],
-   "surface": "floor",
+   "surface": "step",
    "hit": "top",
-   "height": 1.821,
-   "scale": 1.4,
+   "height": 1.188,
+   "scale": 0.914,
    "base": [
-    590,
-    368
+    868,
+    1060
    ],
-   "heightPx": 72,
+   "heightPx": 138,
    "build": true,
-   "yaw": -1.0207
+   "yaw": -0.9824
   },
   {
    "name": "critter",
-   "x": 3.177,
+   "x": 4.45,
    "y": 0.0,
-   "z": -7.999,
+   "z": -3.45,
    "cell": [
-    3,
-    -8
+    4,
+    -3
    ],
    "surface": "floor",
-   "hit": "top",
-   "height": 0.769,
-   "scale": 2.402,
+   "hit": "side",
+   "height": 0.436,
+   "scale": 1.362,
    "base": [
-    673,
-    392
+    893,
+    1153
    ],
-   "heightPx": 35,
+   "heightPx": 54,
    "build": true
   },
   {
    "name": "critter",
-   "x": 3.03,
-   "y": 0.0,
-   "z": -5.729,
-   "cell": [
-    3,
-    -6
-   ],
-   "surface": "floor",
-   "hit": "top",
-   "height": 0.565,
-   "scale": 1.767,
-   "base": [
-    614,
-    423
-   ],
-   "heightPx": 30,
-   "build": true
-  },
-  {
-   "name": "critter",
-   "x": 4.734,
+   "x": 4.6,
    "y": 1.0,
-   "z": -5.851,
+   "z": -5.6,
    "cell": [
     5,
     -6
    ],
-   "surface": "wall",
-   "hit": "top",
-   "height": 0.262,
-   "scale": 0.818,
+   "surface": "step",
+   "hit": "top*",
+   "height": 0.478,
+   "scale": 1.495,
    "base": [
-    714,
-    389
+    1028,
+    1105
    ],
-   "heightPx": 16,
+   "heightPx": 54,
    "build": true
   },
   {
-   "name": "sprout",
-   "x": 4.902,
+   "name": "critter",
+   "x": 4.793,
    "y": 1.0,
-   "z": -4.722,
+   "z": -6.258,
    "cell": [
     5,
-    -5
+    -6
    ],
-   "surface": "wall",
+   "surface": "step",
    "hit": "top",
-   "height": 0.174,
-   "scale": 0.87,
+   "height": 0.173,
+   "scale": 0.541,
    "base": [
-    698,
-    412
+    1102,
+    1105
    ],
-   "heightPx": 12,
-   "build": false
+   "heightPx": 19,
+   "build": true
   },
   {
    "name": "npc",
-   "x": -7.575,
-   "y": 3.0,
-   "z": -2.391,
+   "x": 1.482,
+   "y": 6.0,
+   "z": 0.515,
    "cell": [
-    -8,
-    -2
+    1,
+    1
    ],
    "surface": "wall",
    "hit": "top",
-   "height": 1.963,
-   "scale": 1.227,
+   "height": 0.779,
+   "scale": 0.487,
    "base": [
     187,
-    245
+    803
    ],
-   "heightPx": 77,
+   "heightPx": 139,
    "build": false
   },
   {
-   "name": "scaffold",
-   "x": -2.7,
-   "y": 2.5,
-   "z": -0.777,
+   "name": "fence",
+   "x": 2.747,
+   "y": 1.0,
+   "z": -3.45,
    "cell": [
-    -3,
-    -1
+    3,
+    -3
    ],
-   "surface": "water",
-   "hit": "top",
-   "height": 1.432,
-   "scale": 0.716,
+   "surface": "wall",
+   "hit": "side",
+   "height": 0.376,
+   "scale": 0.538,
    "base": [
-    184,
-    289
+    728,
+    967
    ],
-   "heightPx": 83,
+   "heightPx": 42,
    "build": true,
    "ends": [
     [
-     -2.812,
-     2.5,
-     -0.441
+     2.45,
+     1.0,
+     -3.45
     ],
     [
-     -2.588,
-     2.5,
-     -1.113
+     3.044,
+     1.0,
+     -3.45
     ]
    ],
-   "length": 0.708,
-   "yaw": 1.249
+   "length": 0.594,
+   "yaw": -0.0
   }
  ],
  "lights": [
   {
-   "u": 667.5,
-   "v": 77.6,
-   "x": -0.6,
-   "y": 9.5,
-   "z": -15.5,
-   "width": 2.58,
+   "u": 1075.2,
+   "v": 450.0,
+   "x": 2.43,
+   "y": 7.66,
+   "z": -9.51,
+   "width": 1.5,
+   "hit": "ceiling"
+  },
+  {
+   "u": 67.2,
+   "v": 568.4,
+   "x": 1.49,
+   "y": 6.0,
+   "z": 1.13,
+   "width": 1.5,
    "hit": "top"
   },
   {
-   "u": 141.0,
-   "v": 109.3,
-   "x": -14.5,
-   "y": 8.0,
-   "z": -3.5,
-   "width": 2.83,
+   "u": 781.4,
+   "v": 1042.2,
+   "x": 3.4,
+   "y": 1.0,
+   "z": -3.45,
+   "width": 1.5,
+   "hit": "side"
+  },
+  {
+   "u": 913.7,
+   "v": 1091.5,
+   "x": 4.43,
+   "y": 1.5,
+   "z": -3.81,
+   "width": 1.5,
    "hit": "top"
   }
- ]
+ ],
+ "camera": {
+  "fov": 92.0,
+  "yaw": 52.0,
+  "pitch": -11.0,
+  "roll": 0.0,
+  "eye": [
+   8.27518249645405,
+   3.6420000000000003,
+   2.5801807025927985
+  ]
+ }
 }

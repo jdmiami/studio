@@ -1,0 +1,239 @@
+{
+ "_": "Props of the target shot from its element masks (scripts/shot/target_props.py).",
+ "props": [
+  {
+   "name": "cube-tree",
+   "box": [
+    316,
+    522,
+    600,
+    865
+   ],
+   "base": [
+    471,
+    865
+   ],
+   "standsOn": 1,
+   "heightPx": 343,
+   "baseVisible": true
+  },
+  {
+   "name": "willow",
+   "box": [
+    594,
+    625,
+    796,
+    898
+   ],
+   "base": [
+    681,
+    898
+   ],
+   "standsOn": 1,
+   "heightPx": 273,
+   "baseVisible": true
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    376,
+    828,
+    441,
+    868
+   ],
+   "base": [
+    417,
+    868
+   ],
+   "standsOn": 1,
+   "heightPx": 40,
+   "baseVisible": true
+  },
+  {
+   "name": "mushroom",
+   "box": [
+    315,
+    843,
+    355,
+    872
+   ],
+   "base": [
+    334,
+    872
+   ],
+   "standsOn": 1,
+   "heightPx": 29,
+   "baseVisible": true
+  },
+  {
+   "name": "knit-shrub",
+   "box": [
+    596,
+    1022,
+    768,
+    1156
+   ],
+   "base": [
+    724,
+    1156
+   ],
+   "standsOn": 4,
+   "heightPx": 134,
+   "baseVisible": true
+  },
+  {
+   "name": "knit-shrub",
+   "box": [
+    708,
+    1025,
+    740,
+    1040
+   ],
+   "base": [
+    728,
+    1040
+   ],
+   "standsOn": 4,
+   "heightPx": 15,
+   "baseVisible": true
+  },
+  {
+   "name": "stone",
+   "box": [
+    473,
+    871,
+    585,
+    946
+   ],
+   "base": [
+    497,
+    946
+   ],
+   "standsOn": 1,
+   "heightPx": 75,
+   "baseVisible": true
+  },
+  {
+   "name": "pom",
+   "box": [
+    512,
+    975,
+    569,
+    1023
+   ],
+   "base": [
+    541,
+    1023
+   ],
+   "standsOn": 1,
+   "heightPx": 48,
+   "baseVisible": true
+  },
+  {
+   "name": "dog",
+   "box": [
+    801,
+    922,
+    934,
+    1060
+   ],
+   "base": [
+    868,
+    1060
+   ],
+   "standsOn": 4,
+   "heightPx": 138,
+   "baseVisible": true
+  },
+  {
+   "name": "critter",
+   "box": [
+    867,
+    1099,
+    921,
+    1153
+   ],
+   "base": [
+    893,
+    1153
+   ],
+   "standsOn": 4,
+   "heightPx": 54,
+   "baseVisible": true
+  },
+  {
+   "name": "critter",
+   "box": [
+    996,
+    1051,
+    1054,
+    1105
+   ],
+   "base": [
+    1028,
+    1105
+   ],
+   "standsOn": 4,
+   "heightPx": 54,
+   "baseVisible": true
+  },
+  {
+   "name": "critter",
+   "box": [
+    1094,
+    1086,
+    1124,
+    1105
+   ],
+   "base": [
+    1102,
+    1105
+   ],
+   "standsOn": 4,
+   "heightPx": 19,
+   "baseVisible": true
+  },
+  {
+   "name": "npc",
+   "box": [
+    88,
+    664,
+    194,
+    803
+   ],
+   "base": [
+    187,
+    803
+   ],
+   "standsOn": 1,
+   "heightPx": 139,
+   "baseVisible": true
+  },
+  {
+   "name": "fence",
+   "box": [
+    697,
+    925,
+    752,
+    967
+   ],
+   "base": [
+    728,
+    967
+   ],
+   "standsOn": 4,
+   "heightPx": 42,
+   "baseVisible": true,
+   "bases": [
+    [
+     699,
+     967
+    ],
+    [
+     750,
+     964
+    ]
+   ]
+  }
+ ]
+}

@@ -506,7 +506,7 @@ function spawnCreatures(kind, data = null) {
     ? new THREE.Vector3(hub.cave.dogSpot.x, 0, hub.cave.dogSpot.z)
     : trip.spawn.position.clone().add(new THREE.Vector3(1.2, 0, 1.2));
   if (hasModel('dog-0')) {
-    const c = createCreature({ modelId: 'dog-0', height: 1.6, position: dogAt, heightAt: area.heightAt, name: 'Biscuit' });
+    const c = createCreature({ modelId: 'dog-0', height: kind === 'hub' && hub.cave.dogSpot?.height ? hub.cave.dogSpot.height : 1.6, position: dogAt, heightAt: area.heightAt, name: 'Biscuit' });
     const brain = createDogBrain({ rng: rng.fork('dog'), events, body: c.body, world, tuning: DOG_SCALE, affection: Math.min(1, 0.4 + (session.state.friendship.dog ?? 0) * 0.05) });
     parent.add(c.root);
     dog = { creature: c, brain, kind: 'dog' };
@@ -520,7 +520,7 @@ function spawnCreatures(kind, data = null) {
   for (const s of spots) {
     const modelId = CRITTER_MODELS[s.itemId] ?? 'critter-0';
     if (!hasModel(modelId)) continue;
-    const c = createCreature({ modelId, height: (s.height ?? 0.42) * 1.5, position: new THREE.Vector3(s.x, 0, s.z), heightAt: area.heightAt, hopScale: 1.4 });
+    const c = createCreature({ modelId, height: kind === 'hub' && s.height ? s.height : (s.height ?? 0.42) * 1.5, // the Nest's placement is at true scale position: new THREE.Vector3(s.x, 0, s.z), heightAt: area.heightAt, hopScale: 1.4 });
     const brain = createCritterBrain({
       rng: rng.fork(s.id), events, body: c.body, world, tuning: CRITTER_SCALE, itemId: s.itemId, id: s.id, home: s.home ?? { x: s.x, z: s.z },
       neighbours: () => all.filter((o) => o !== c).map((o) => o.body.position), sighted,
