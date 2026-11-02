@@ -22,7 +22,8 @@ than its neighbours). The level draws blocks instanced, one colour multiplier pe
 Writes src/cave/cell-tones.json ({"x,y,z": [r, g, b]}), read by level.js; blocks the painting does
 not show keep the procedural jitter.
 
-Usage: fit_cell_tones.py --render <game frame at the reference pose, 1024x572> [--min-px 12]
+Usage: fit_cell_tones.py --render <game frame at the reference pose> [--min-px 12]
+                         [--camera cam.json --reference ref.jpg --classes classes.png]  (default: the cave painting)
 """
 import argparse
 import json
@@ -92,13 +93,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--render', required=True)
     ap.add_argument('--min-px', type=int, default=12)
+    ap.add_argument('--camera', default=str(ROOT / 'docs/reference/cave-door-camera.json'))
+    ap.add_argument('--reference', default=str(ROOT / 'docs/reference/cave-door.jpg'))
+    ap.add_argument('--classes', default=str(ROOT / 'docs/reference/cave-door-classes.png'))
     args = ap.parse_args()
-    cam = json.load(open(ROOT / 'docs/reference/cave-door-camera.json'))
-    ref_img = Image.open(ROOT / 'docs/reference/cave-door.jpg').convert('RGB')
+    cam = json.load(open(args.camera))
+    ref_img = Image.open(args.reference).convert('RGB')
     W, H = ref_img.size
     ref = to_linear(np.asarray(ref_img))
     ren = to_linear(np.asarray(Image.open(args.render).convert('RGB').resize((W, H), Image.Resampling.BOX)))
-    ref_cls = np.asarray(Image.open(ROOT / 'docs/reference/cave-door-classes.png'))
+    ref_cls = np.asarray(Image.open(args.classes))
     blocks, valid, cls = pixel_blocks(cam, W, H)
     use = valid & (cls == ref_cls) & np.isin(cls, FIT_CLASSES)
     data = json.loads(TONES.read_text()) if TONES.exists() else {}
@@ -137,7 +141,7 @@ def main():
         tones[k] = [round(float(v), 3) for v in t]
         n += 1
     TONES.write_text(json.dumps({
-        '_': 'Fitted to docs/reference/cave-door.jpg by scripts/fp/fit_cell_tones.py. gains: per segmentation class '
+        '_': f'Fitted to {Path(args.reference).relative_to(ROOT)} by scripts/fp/fit_cell_tones.py. gains: per segmentation class '
              '(2 earth/wall, 3 water, 4 floor, 7 ceiling) a multiplier for every block of that kind; tones: per block '
              '"x,y,z" the residual multiplier over its gain (blocks the painting does not show, or where the layout '
              'differs from it, are absent).',
