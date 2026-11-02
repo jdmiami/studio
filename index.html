@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Stickerwild</title>
-<meta name="description" content="A procedural 2.5D survival game where the whole world is made of stickers.">
+<meta name="description" content="A procedural 2.5D survival RPG on a huge island where everything is a sticker.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Sniglet:wght@400;800&display=swap">
@@ -26,7 +26,16 @@
       <div class="bar"><i id="foodBar"></i></div>
       <b id="foodNum">100</b>
     </div>
-    <div id="toolbelt" aria-label="Tools"></div>
+    <div class="stat xp" id="xpStat" title="Level and experience">
+      <span class="lvl"><small>Lv</small><b id="lvlNum">1</b></span>
+      <div class="bar"><i id="xpBar"></i></div>
+      <span id="xpNum" class="xpnum">0/20</span>
+    </div>
+    <div id="toolbelt" aria-label="Tools and gear"></div>
+    <section class="questbox" aria-label="Quests">
+      <button id="questsToggle" class="qhead" type="button">Quests <kbd>Q</kbd></button>
+      <ol id="quests"></ol>
+    </section>
   </div>
 
   <div class="hud-right">
@@ -35,12 +44,26 @@
       <div class="clock-text"><span id="dayLabel">Day</span><b id="dayNum">1</b></div>
     </div>
     <div class="map-wrap">
-      <canvas id="minimap" width="64" height="64" aria-label="Map"></canvas>
-      <span id="biome">Grassland</span>
+      <canvas id="minimap" width="64" height="64" aria-label="Nearby map"></canvas>
     </div>
-    <button id="muteBtn" class="round-btn" title="Sound on (M)" aria-pressed="false">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" /></svg>
-    </button>
+    <div id="region"><b id="regionName">Somewhere</b><em id="regionDanger">Danger 1</em></div>
+    <div class="btn-col">
+      <button id="mapBtn" class="round-btn" title="World map (M)" aria-label="World map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" /><path d="M9 4v14M15 6v14" /></svg>
+      </button>
+      <button id="menuBtn" class="round-btn" title="Menu and saves (Esc)" aria-label="Menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" /></svg>
+      </button>
+      <button id="zoomIn" class="round-btn" title="Zoom in (+)" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
+      </button>
+      <button id="zoomOut" class="round-btn" title="Zoom out (-)" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+      </button>
+      <button id="muteBtn" class="round-btn" title="Sound on" aria-pressed="false" aria-label="Sound">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" /></svg>
+      </button>
+    </div>
   </div>
 
   <div id="toast" role="status"></div>
@@ -54,17 +77,35 @@
   <div id="touchUI">
     <div id="stick"><div id="knob"></div></div>
     <button id="tEat" class="tbtn"><img data-icon="itemBerry" alt=""><span>Eat</span></button>
-    <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span>Use</span></button>
+    <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span id="tActLbl">Use</span></button>
   </div>
 </div>
 
 <section id="craftPanel" hidden aria-label="Crafting">
   <header>
     <h2>Craft</h2>
-    <p>Gather stickers, then turn them into tools and camp gear.</p>
+    <p>Turn what you peel off the island into tools, gear and food.</p>
     <button id="craftClose" class="round-btn" aria-label="Close crafting">&times;</button>
   </header>
+  <nav id="craftTabs" aria-label="Recipe groups"></nav>
   <div id="craftList"></div>
+</section>
+
+<section id="mapScreen" class="screen" hidden aria-label="World map">
+  <div class="card map-card">
+    <header class="map-head">
+      <h2>Island map</h2>
+      <button id="mapClose" class="round-btn" aria-label="Close map">&times;</button>
+    </header>
+    <canvas id="worldMap" width="480" height="480"></canvas>
+    <p id="mapInfo" class="map-info"></p>
+    <ul class="legend">
+      <li><i class="dot you"></i>You</li>
+      <li><i class="dot fire"></i>Campfire (click to travel)</li>
+      <li><i class="dot quest"></i>Quest target</li>
+      <li><i class="ring"></i>Danger rises with distance</li>
+    </ul>
+  </div>
 </section>
 
 <section id="titleScreen" class="screen" hidden>
@@ -72,7 +113,7 @@
     <h1 class="logo" aria-label="Stickerwild">
       <span style="--r:-8deg;--c:var(--leaf)">S</span><span style="--r:5deg;--c:var(--sun)">t</span><span style="--r:-3deg;--c:var(--berry)">i</span><span style="--r:7deg;--c:var(--sea)">c</span><span style="--r:-6deg;--c:var(--leaf)">k</span><span style="--r:4deg;--c:var(--sun)">e</span><span style="--r:-4deg;--c:var(--berry)">r</span><span class="gap"></span><span style="--r:6deg;--c:var(--gem)">w</span><span style="--r:-7deg;--c:var(--leaf)">i</span><span style="--r:3deg;--c:var(--sea)">l</span><span style="--r:-5deg;--c:var(--berry)">d</span>
     </h1>
-    <p class="tagline">Survive a procedural island where every tree, rock and monster is a sticker. Peel the world apart, craft, and keep your fire lit until dawn.</p>
+    <p class="tagline">A survival RPG on a huge procedural island where every tree, rock and monster is a sticker. Chop, fish, fight, level up, and keep your fire lit until dawn.</p>
 
     <label class="seed" for="seedInput">
       <span>Island seed</span>
@@ -87,15 +128,17 @@
     <div class="actions">
       <button id="startBtn" class="big-btn">Peel in</button>
       <button id="continueBtn" class="big-btn alt" hidden><span>Continue</span></button>
+      <button id="cloudResumeBtn" class="big-btn gem" hidden><span>Cloud save</span></button>
     </div>
-    <p id="bestLine" class="best"></p>
+    <p class="small-actions"><button id="saveBtnTitle" class="link-btn" type="button">Load a save file or code</button></p>
 
     <ul class="keys" aria-label="Controls">
-      <li><kbd>WASD</kbd> move</li>
-      <li><kbd>Space</kbd> / click gather &amp; fight</li>
+      <li><b>Click</b> walk, chop, mine, fish, fight</li>
+      <li><kbd>WASD</kbd> move <kbd>Shift</kbd> run</li>
       <li><kbd>E</kbd> eat</li>
       <li><kbd>C</kbd> craft</li>
-      <li><kbd>1–9</kbd> use or place</li>
+      <li><kbd>M</kbd> map</li>
+      <li><kbd>1–9</kbd> use items</li>
     </ul>
   </div>
 </section>
@@ -103,24 +146,60 @@
 <section id="deathScreen" class="screen" hidden>
   <div class="card">
     <h2 class="peeled">Peeled off!</h2>
-    <p class="days"><b id="deathDays">0</b><span>days survived</span></p>
+    <p class="days"><b id="deathDays">Level 1</b><span id="deathSub">Day 1</span></p>
     <ul id="deathStats" class="stats"></ul>
-    <p id="deathBest" class="best"></p>
     <div class="actions">
-      <button id="retryBtn" class="big-btn">Same island</button>
+      <button id="retryBtn" class="big-btn">Get back up</button>
       <button id="newBtn" class="big-btn alt">New island</button>
     </div>
-    <p class="seed-note">Seed <code id="deathSeed"></code></p>
+    <p class="seed-note">You wake at your nearest campfire and drop half your materials. Seed <code id="deathSeed"></code></p>
   </div>
 </section>
 
 <section id="pauseScreen" class="screen" hidden>
   <div class="card small">
     <h2>Paused</h2>
-    <div class="actions">
+    <p id="pauseInfo" class="pause-info"></p>
+    <div class="actions stack">
       <button id="resumeBtn" class="big-btn">Resume</button>
-      <button id="quitBtn" class="big-btn alt">Save &amp; quit</button>
+      <button id="saveBtnPause" class="big-btn gem">Save &amp; load</button>
+      <button id="pauseMapBtn" class="big-btn alt">Island map</button>
+      <button id="quitBtn" class="big-btn plain">Save &amp; quit</button>
     </div>
+  </div>
+</section>
+
+<section id="savePanel" class="screen" hidden aria-label="Save and load">
+  <div class="card save-card">
+    <header class="map-head">
+      <h2>Save &amp; load</h2>
+      <button id="saveClose" class="round-btn" aria-label="Close">&times;</button>
+    </header>
+    <p class="save-summary"><span id="saveSummary"></span></p>
+    <div class="save-row">
+      <span class="lbl">Seed</span><code id="saveSeed"></code>
+      <button id="seedCopy" class="chip-btn" type="button">Copy seed</button>
+    </div>
+    <div class="save-grid">
+      <button id="dlBtn" class="big-btn">Download save file</button>
+      <button id="loadFileBtn" class="big-btn alt">Load save file</button>
+    </div>
+    <input id="fileInput" type="file" accept=".json,application/json" hidden>
+    <div id="cloudRow" class="save-grid" hidden>
+      <button id="cloudUpBtn" class="big-btn gem">Upload to cloud</button>
+      <button id="cloudDownBtn" class="big-btn plain">Resume from cloud</button>
+    </div>
+    <p id="saveStatus" class="save-status" role="status"></p>
+    <details class="code-box">
+      <summary>Save codes (copy and paste between devices)</summary>
+      <div class="code-actions">
+        <button id="copyCodeBtn" class="chip-btn" type="button">Copy save code</button>
+        <button id="loadCodeBtn" class="chip-btn" type="button">Load pasted code</button>
+      </div>
+      <label for="codeBox" class="sr">Save code</label>
+      <textarea id="codeBox" rows="3" placeholder="Paste a save code here"></textarea>
+    </details>
+    <p class="save-note">The file holds your island seed and all your progress. Load it here on any device to pick up where you left off. The game also autosaves in this browser.</p>
   </div>
 </section>
 <!--GAME-BODY-END-->
@@ -128,7 +207,9 @@
 <script src="js/util.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/world.js"></script>
+<script src="js/rpg.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/save.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

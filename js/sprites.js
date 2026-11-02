@@ -42,7 +42,7 @@
 
   // ---------- sticker builder ----------
   function makeSticker(w, h, draw, opts = {}) {
-    const S = SW.SPR;
+    const S = opts.S || SW.SPR;
     const border = opts.border ?? 3.6;
     const pad = border + 5;
     const cw = (w + pad * 2) * S, ch = (h + pad * 2) * S;
@@ -96,7 +96,7 @@
     bk.globalCompositeOperation = 'source-over';
 
     const ay = opts.anchorY ?? h;
-    return { img: fin, back, flash: out, w: cw / S, h: ch / S, ax: pad + w / 2, ay: pad + ay, url: null };
+    return { img: fin, back, flash: out, w: cw / S, h: ch / S, ax: pad + w / 2, ay: pad + ay, S };
   }
 
   // ---------- the art ----------
@@ -382,24 +382,192 @@
     shape(c, (c) => rrect(c, 4, 3, 20, 9, 3), '#b8bacb', 1.8);
   }];
 
+
+  // ---- RPG creatures ----
+  function thornArt(k) {
+    return (c) => {
+      const st = k ? 3 : 0;
+      shape(c, (c) => { ell(c, 15 - st, 35, 4.5, 3); ell(c, 33 + st, 35, 4.5, 3); }, '#5a3f2e', 1.6);
+      shape(c, (c) => {
+        for (let i = 0; i < 7; i++) {
+          const a = Math.PI + ((i + 0.5) / 7) * Math.PI;
+          const bx = 23 + Math.cos(a) * 15, by = 27 + Math.sin(a) * 12;
+          const tx = 23 + Math.cos(a) * 25, ty = 27 + Math.sin(a) * 21;
+          const px = -Math.sin(a) * 4.5, py = Math.cos(a) * 4.5;
+          polyPath(c, [[bx + px, by + py], [tx, ty], [bx - px, by - py]]);
+        }
+      }, '#efd08a', 1.8);
+      shape(c, (c) => ell(c, 23, 27, 18, 12), '#8a5a33');
+      flat(c, (c) => ell(c, 18, 21, 8, 4), '#a8743f');
+      shape(c, (c) => ell(c, 41, 29, 7, 5.5), '#f0c9a0', 1.8);
+      flat(c, blobs([[47, 28, 2.4]]), INK);
+      shape(c, blobs([[37, 24, 3]]), '#ffffff', 1.2);
+      flat(c, blobs([[38, 24.5, 1.6]]), '#d6304f');
+      line(c, [[33, 19.5], [40, 21]], INK, 1.8);
+    };
+  }
+  ART.thornback0 = [52, 40, thornArt(0)];
+  ART.thornback1 = [52, 40, thornArt(1)];
+
+  function crabArt(k) {
+    return (c) => {
+      const up = k ? -3 : 0;
+      [[14, 30, 6, 36], [20, 32, 15, 38], [30, 32, 35, 38], [36, 30, 44, 36]].forEach(([a, b, x, y]) => { line(c, [[a, b], [x, y]], INK, 4); line(c, [[a, b], [x, y]], '#e2553a', 2); });
+      shape(c, (c) => { circ(c, 7, 17 + up, 7); circ(c, 43, 17 - up, 7); }, '#ff6b4a');
+      c.save(); c.globalCompositeOperation = 'destination-out';
+      c.beginPath(); polyPath(c, [[2, 9 + up], [8, 16 + up], [0, 15 + up]]); polyPath(c, [[48, 9 - up], [42, 16 - up], [50, 15 - up]]); c.fill(); c.restore();
+      shape(c, (c) => ell(c, 25, 25, 15, 9.5), '#ff7a52');
+      flat(c, (c) => ell(c, 21, 21, 7, 3), '#ffab8f');
+      line(c, [[20, 18], [19, 9]], INK, 3.6); line(c, [[30, 18], [31, 9]], INK, 3.6);
+      shape(c, blobs([[19, 8, 3.4], [31, 8, 3.4]]), '#ffffff', 1.3);
+      flat(c, blobs([[19.6, 8.4, 1.7], [31.6, 8.4, 1.7]]), INK);
+      line(c, [[21, 29], [25, 30.5], [29, 29]], INK, 1.5);
+    };
+  }
+  ART.snapjaw0 = [50, 40, crabArt(0)];
+  ART.snapjaw1 = [50, 40, crabArt(1)];
+
+  function gloopArt(k) {
+    return (c) => {
+      const sq = k ? 3 : 0;
+      shape(c, (c) => { c.moveTo(3 - sq, 32); c.bezierCurveTo(1 - sq, 13 + sq, 11, 4 + sq * 1.4, 20, 4 + sq * 1.4); c.bezierCurveTo(29, 4 + sq * 1.4, 39 + sq, 13 + sq, 37 + sq, 32); c.closePath(); }, '#5fd3a0');
+      flat(c, (c) => ell(c, 13, 13 + sq, 5, 3, -0.5), '#c4f7dd');
+      flat(c, (c) => ell(c, 30, 30, 6, 2), '#43b386');
+      shape(c, (c) => { ell(c, 15, 20 + sq, 3.4, 4.3); ell(c, 25, 20 + sq, 3.4, 4.3); }, '#ffffff', 1.3);
+      flat(c, blobs([[15.8, 21 + sq, 1.8], [25.8, 21 + sq, 1.8]]), INK);
+      c.beginPath(); c.arc(20, 25 + sq, 3.5, 0.2, Math.PI - 0.2); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke();
+    };
+  }
+  ART.gloop0 = [40, 34, gloopArt(0)];
+  ART.gloop1 = [40, 34, gloopArt(1)];
+
+  function golemArt(k) {
+    return (c) => {
+      const a = k ? -4 : 0;
+      shape(c, (c) => { rrect(c, 14, 50, 11, 8, 3); rrect(c, 33, 50, 11, 8, 3); }, '#7d786d');
+      shape(c, P([[3, 26 + a], [11, 22 + a], [14, 38 + a], [6, 42 + a]]), '#8d887c');
+      shape(c, P([[55, 26 - a], [47, 22 - a], [44, 38 - a], [52, 42 - a]]), '#8d887c');
+      shape(c, P([[12, 52], [9, 30], [16, 18], [42, 18], [49, 30], [46, 52]]), '#9b968a');
+      flat(c, P([[16, 20], [30, 20], [26, 32], [13, 32]]), '#b9b4a7');
+      line(c, [[30, 36], [34, 42], [31, 48]], '#6f6a60', 1.6);
+      shape(c, P([[18, 18], [17, 7], [27, 2], [38, 5], [41, 18]]), '#b3aea1');
+      shape(c, blobs([[22, 4, 4], [28, 2, 3.5], [33, 4, 3.5]]), '#6bbf4a', 1.4);
+      flat(c, (c) => { rrect(c, 22, 10, 4.5, 3.5, 1); rrect(c, 32, 10, 4.5, 3.5, 1); }, '#7fe8f6');
+    };
+  }
+  ART.pebblor0 = [58, 60, golemArt(0)];
+  ART.pebblor1 = [58, 60, golemArt(1)];
+
+  // ---- new world objects ----
+  ART.chest = [42, 34, (c) => {
+    shape(c, (c) => rrect(c, 4, 13, 34, 19, 3), '#b07a46');
+    shape(c, (c) => { c.moveTo(3, 15); c.lineTo(3, 9); c.quadraticCurveTo(21, -1, 39, 9); c.lineTo(39, 15); c.closePath(); }, '#c98a4b');
+    flat(c, (c) => { rrect(c, 9, 6, 4, 26, 1); rrect(c, 29, 6, 4, 26, 1); }, '#ffc93c');
+    shape(c, (c) => rrect(c, 17.5, 12, 7, 8, 2), '#ffc93c', 1.6);
+    flat(c, blobs([[21, 16, 1.4]]), INK);
+  }];
+  ART.reeds = [28, 38, (c) => {
+    [[7, 36, 5, 10], [13, 36, 14, 4], [19, 36, 22, 9]].forEach(([x, y, tx, ty]) => { line(c, [[x, y], [tx, ty]], INK, 4.2); line(c, [[x, y], [tx, ty]], '#6b9a43', 2); });
+    shape(c, (c) => { rrect(c, 3, 9, 4.5, 11, 2.2); rrect(c, 12, 3, 4.5, 11, 2.2); rrect(c, 20, 8, 4.5, 11, 2.2); }, '#8a5a33', 1.6);
+    shape(c, (c) => ell(c, 23, 30, 5, 2, -0.6), '#7fb04f', 1.4);
+  }];
+  ART.mushroom = [26, 26, (c) => {
+    shape(c, (c) => rrect(c, 9, 12, 8, 12, 3.5), '#fff3df');
+    shape(c, (c) => { c.moveTo(1, 14); c.quadraticCurveTo(2, 1, 13, 1); c.quadraticCurveTo(24, 1, 25, 14); c.closePath(); }, '#e8354a');
+    flat(c, blobs([[8, 8, 2.2], [15, 5, 1.8], [19, 10, 2]]), '#ffffff');
+  }];
+  ART.swampTree = [70, 94, (c) => {
+    shape(c, (c) => { rrect(c, 29, 48, 12, 44, 3); polyPath(c, [[24, 92], [46, 92], [41, 84], [29, 84]]); }, '#6b5a4a');
+    shape(c, blobs([[35, 30, 24], [15, 42, 15], [55, 42, 15], [35, 46, 16]]), '#4f8a6f');
+    flat(c, blobs([[28, 21, 10], [13, 38, 5]]), '#6aa587');
+    [[10, 46, 64], [20, 50, 70], [50, 50, 68], [60, 46, 62], [30, 54, 66]].forEach(([x, y, b]) => { line(c, [[x, y], [x + 1, b]], INK, 3.6); line(c, [[x, y], [x + 1, b]], '#3f7a5f', 1.8); });
+  }];
+
+  // ---- new items & gear ----
+  ART.itemFiber = [28, 24, (c) => {
+    shape(c, (c) => { polyPath(c, [[4, 22], [9, 2], [12, 22]]); polyPath(c, [[10, 22], [15, 1], [18, 22]]); polyPath(c, [[16, 22], [23, 4], [24, 22]]); }, '#8cc152', 1.6);
+    shape(c, (c) => rrect(c, 5, 13, 18, 4, 2), '#e6c98d', 1.4);
+  }];
+  function fishArt(body, fin, light) {
+    return (c) => {
+      shape(c, P([[26, 10], [33, 3], [33, 17]]), fin, 1.8);
+      shape(c, (c) => ell(c, 15, 10, 13, 7.5), body);
+      flat(c, (c) => ell(c, 13, 13, 8, 2.6), light);
+      shape(c, P([[13, 4], [19, 0], [20, 5]]), fin, 1.4);
+      flat(c, blobs([[7, 8.5, 1.8]]), INK);
+    };
+  }
+  ART.itemFish = [35, 20, fishArt('#5fa8e8', '#3f7fc2', '#bfe2ff')];
+  ART.itemKoi = [35, 20, fishArt('#8fe8f6', '#a78bfa', '#e6fbff')];
+  ART.itemGrilledFish = [35, 20, (c) => {
+    fishArt('#c98a4b', '#9b6236', '#e6b27a')(c);
+    [[10, 4], [16, 4], [22, 5]].forEach(([x, y]) => line(c, [[x, y], [x - 4, y + 12]], '#7a4f2c', 1.6));
+  }];
+  ART.itemInk = [22, 28, (c) => {
+    shape(c, (c) => { c.moveTo(11, 2); c.bezierCurveTo(16, 10, 20, 15, 20, 19); c.arc(11, 19, 9, 0, Math.PI); c.bezierCurveTo(2, 15, 6, 10, 11, 2); }, '#2b2340');
+    flat(c, (c) => ell(c, 7.5, 19, 2, 3.5, 0.3), '#6b5f8a');
+  }];
+  ART.toolRod = [32, 36, (c) => {
+    line(c, [[6, 34], [26, 3]], INK, 5); line(c, [[6, 34], [26, 3]], '#a8743f', 2.6);
+    shape(c, blobs([[11, 26, 4]]), '#c7c9d6', 1.6);
+    c.beginPath(); c.moveTo(26, 3); c.quadraticCurveTo(31, 16, 29, 28); c.lineWidth = 1.2; c.strokeStyle = '#ffffff'; c.stroke();
+  }];
+  ART.toolInkBlade = [28, 34, (c) => {
+    shape(c, (c) => rrect(c, 11, 22, 5, 10, 2), '#2b2340', 1.8);
+    shape(c, (c) => rrect(c, 4, 19, 19, 4, 2), '#a78bfa', 1.8);
+    shape(c, P([[9.5, 19], [9.5, 6], [13.5, 0], [17.5, 6], [17.5, 19]]), '#3b2f4f', 1.8);
+    flat(c, P([[15.5, 18], [15.5, 6], [13.5, 2.5], [14.2, 18]]), '#b69cff');
+  }];
+  function armorArt(fill, light) {
+    return (c) => {
+      shape(c, (c) => { c.moveTo(6, 4); c.lineTo(11, 2); c.quadraticCurveTo(15, 7, 19, 2); c.lineTo(24, 4); c.lineTo(28, 12); c.lineTo(23, 14); c.lineTo(23, 28); c.lineTo(7, 28); c.lineTo(7, 14); c.lineTo(2, 12); c.closePath(); }, fill);
+      flat(c, (c) => rrect(c, 9, 9, 4, 16, 2), light);
+      line(c, [[15, 8], [15, 27]], INK, 1.3);
+    };
+  }
+  ART.armorBark = [30, 30, armorArt('#a8743f', '#c99a62')];
+  ART.armorStone = [30, 30, armorArt('#a3a1b5', '#c9c7da')];
+  ART.armorCrystal = [30, 30, armorArt('#8fe8f6', '#e6fbff')];
+  ART.bobber = [14, 16, (c) => {
+    shape(c, (c) => circ(c, 7, 9, 5.5), '#ffffff', 1.6);
+    flat(c, (c) => { c.moveTo(1.5, 9); c.arc(7, 9, 5.5, Math.PI, 0); c.closePath(); }, '#ff4d6d');
+    line(c, [[7, 3.5], [7, 0.5]], INK, 1.6);
+  }];
+  ART.uiBang = [24, 28, (c) => {
+    shape(c, blobs([[12, 14, 11]]), '#ffd23f');
+    flat(c, (c) => { rrect(c, 10, 5, 4, 12, 2); circ(c, 12, 21, 2.3); }, INK);
+  }];
+  ART.uiArrow = [30, 22, (c) => {
+    shape(c, P([[2, 7], [17, 7], [17, 1], [29, 11], [17, 21], [17, 15], [2, 15]]), '#ffd23f');
+  }];
+  ART.uiPin = [22, 30, (c) => {
+    shape(c, (c) => { c.moveTo(11, 29); c.bezierCurveTo(2, 18, 1, 13, 1, 11); c.arc(11, 11, 10, Math.PI, 0); c.bezierCurveTo(21, 13, 20, 18, 11, 29); }, '#ff4d6d');
+    flat(c, blobs([[11, 11, 4]]), '#ffffff');
+  }];
+
   SW.sprites = {};
-  SW.buildSprites = function () {
-    const flipNames = ['player0', 'player1', 'scribble0', 'scribble1', 'puff0', 'puff1'];
+  const FLIP = ['player0', 'player1', 'scribble0', 'scribble1', 'puff0', 'puff1', 'thornback0', 'thornback1', 'snapjaw0', 'snapjaw1', 'gloop0', 'gloop1', 'pebblor0', 'pebblor1'];
+  const ALIAS = { itemCampfire: 'campfire', itemWall: 'wall', itemAxe: 'toolAxe', itemPick: 'toolPick', itemSword: 'toolSword', itemGemSword: 'toolGemSword', itemMushroom: 'mushroom' };
+  const border = (name) => (name.startsWith('item') || name.startsWith('ui') ? 3 : 3.6);
+  // World stickers are rendered at the exact on-screen scale so most of them
+  // can be copied 1:1 every frame; rebuilt when the zoom changes.
+  SW.buildSprites = function (S) {
+    SW.SPR = S;
     for (const name in ART) {
       const [w, h, fn] = ART[name];
-      const isIcon = name.startsWith('item') || name.startsWith('ui');
-      SW.sprites[name] = makeSticker(w, h, fn, { border: isIcon ? 3 : 3.6 });
-      if (flipNames.includes(name)) SW.sprites[name + 'L'] = makeSticker(w, h, fn, { flip: true });
+      SW.sprites[name] = makeSticker(w, h, fn, { border: border(name), S });
+      if (FLIP.includes(name)) SW.sprites[name + 'L'] = makeSticker(w, h, fn, { flip: true, S });
     }
-    // icon aliases used by the inventory
-    const s = SW.sprites;
-    s.itemCampfire = s.campfire; s.itemWall = s.wall;
-    s.itemAxe = s.toolAxe; s.itemPick = s.toolPick; s.itemSword = s.toolSword; s.itemGemSword = s.toolGemSword;
+    for (const a in ALIAS) SW.sprites[a] = SW.sprites[ALIAS[a]];
   };
+  // HUD icons get their own crisp 2x stickers, made once.
+  const urls = {};
   SW.spriteURL = function (name) {
-    const s = SW.sprites[name];
-    if (!s) return '';
-    if (!s.url) s.url = s.img.toDataURL('image/png');
-    return s.url;
+    if (urls[name]) return urls[name];
+    const art = ART[ALIAS[name] || name];
+    if (!art) return '';
+    const [w, h, fn] = art;
+    urls[name] = makeSticker(w, h, fn, { border: border(name), S: 2 }).img.toDataURL('image/png');
+    return urls[name];
   };
 })();

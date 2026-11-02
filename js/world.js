@@ -10,8 +10,9 @@
   const STEP = 4;
   const CELL = 32;
 
-  const B = (SW.BIOME = { DEEP: 0, WATER: 1, SHALLOW: 2, SAND: 3, MEADOW: 4, GRASS: 5, FOREST: 6, HIGH: 7, PEAK: 8 });
-  SW.BIOME_NAME = ['Deep Sea', 'Sea', 'Shallows', 'Beach', 'Meadow', 'Grassland', 'Forest', 'Highlands', 'Crystal Peaks'];
+  const ISLAND_R = (SW.ISLAND_R = 20000);
+  const B = (SW.BIOME = { DEEP: 0, WATER: 1, SHALLOW: 2, SAND: 3, MEADOW: 4, GRASS: 5, FOREST: 6, HIGH: 7, PEAK: 8, SWAMP: 9 });
+  SW.BIOME_NAME = ['Deep Sea', 'Sea', 'Shallows', 'Beach', 'Meadow', 'Grassland', 'Forest', 'Highlands', 'Crystal Peaks', 'Swamp'];
   const TOP = {
     [B.SAND]: ['#f3d58b', '#ecca7a', '#f8e0a4'],
     [B.MEADOW]: ['#a5da5e', '#98d052', '#b3e270'],
@@ -19,13 +20,14 @@
     [B.FOREST]: ['#56a64c', '#4c9a43', '#61b057'],
     [B.HIGH]: ['#bdb6a4', '#b1aa97', '#c8c1b0'],
     [B.PEAK]: ['#dcd8ce', '#d0ccc1', '#e7e4dc'],
+    [B.SWAMP]: ['#6e9f6a', '#64945f', '#79aa74'],
   };
   const SIDE = {
     [B.SAND]: '#d4a95d', [B.MEADOW]: '#8b6239', [B.GRASS]: '#8b6239', [B.FOREST]: '#7c5532',
-    [B.HIGH]: '#8f8778', [B.PEAK]: '#a29c8f',
+    [B.HIGH]: '#8f8778', [B.PEAK]: '#a29c8f', [B.SWAMP]: '#5a5a3a',
   };
   const WATER = { [B.DEEP]: '#3b86c9', [B.WATER]: '#4f9fdb', [B.SHALLOW]: '#79c3ea' };
-  SW.MAP_COLOR = ['#3b86c9', '#4f9fdb', '#79c3ea', '#f3d58b', '#a5da5e', '#7cc34f', '#4c9a43', '#b1aa97', '#e7e4dc'];
+  SW.MAP_COLOR = ['#3b86c9', '#4f9fdb', '#79c3ea', '#f3d58b', '#a5da5e', '#7cc34f', '#4c9a43', '#b1aa97', '#e7e4dc', '#64945f'];
 
   // What lives in the world and what it gives back.
   SW.OBJ = {
@@ -41,15 +43,27 @@
     flowerGold: { hp: 1, r: 0, drops: { petal: 1 }, regrow: 110, sound: 'rustle', sway: 1.4 },
     flowerLilac: { hp: 1, r: 0, drops: { petal: 1 }, regrow: 110, sound: 'rustle', sway: 1.4 },
     driftwood: { hp: 1, r: 0, drops: { wood: 2 }, regrow: 220, sound: 'chop' },
-    tuft: { decor: true, r: 0, sway: 1.6 },
+    tuft: { hp: 1, r: 0, drops: { fiber: 1 }, regrow: 90, sound: 'rustle', sway: 1.6 },
+    reeds: { hp: 1, r: 0, drops: { fiber: 2 }, regrow: 120, sound: 'rustle', sway: 1.2 },
+    mushroom: { hp: 1, r: 0, drops: { mushroom: 1 }, regrow: 150, sound: 'rustle' },
+    swampTree: { hp: 5, r: 11, tool: 'axe', drops: { wood: 3, fiber: 1 }, after: 'stump', regrow: 300, sway: 0.6, sound: 'chop' },
+    chest: { hp: 1, r: 13, chest: true, sound: 'chop' },
   };
+  SW.OBJ_NAME = {
+    treeRound: 'Oak', treeBlossom: 'Blossom Tree', treePine: 'Pine', treePineSnow: 'Snowy Pine', rock: 'Boulder', rock2: 'Rock',
+    bush: 'Berry Bush', crystal: 'Crystal', flowerPink: 'Flower', flowerGold: 'Flower', flowerLilac: 'Flower', driftwood: 'Driftwood',
+    tuft: 'Grass', reeds: 'Reeds', mushroom: 'Mushroom', swampTree: 'Willow', chest: 'Treasure Chest',
+  };
+  SW.objVerb = (type) => { const d = SW.OBJ[type]; return d.chest ? 'Open' : d.tool === 'axe' ? 'Chop' : d.tool === 'pick' ? 'Mine' : 'Pick'; };
 
   class World {
     constructor(seed) {
       this.seed = seed;
       const s = seed * 7;
       this.nE = makeNoise(s + 1); this.nC = makeNoise(s + 2); this.nM = makeNoise(s + 3);
-      this.nD = makeNoise(s + 4); this.nT = makeNoise(s + 5);
+      this.nD = makeNoise(s + 4); this.nT = makeNoise(s + 5); this.nK = makeNoise(s + 6);
+      this.spawn = { x: 0, y: 0 };
+      this.regionNames = new Map();
       this.chunks = new Map();
       this.removed = new Map(); // object id -> game time it was taken
       this.damage = new Map();  // object id -> hits remaining
@@ -58,26 +72,45 @@
       this.nextId = 1;
     }
 
+    // One huge island: a noisy coastline around the origin, inland lakes,
+    // and mountain ranges from a slow ridge noise.
     elev(x, y) {
-      const c = fbm(this.nC, x / 2600, y / 2600, 2);
-      const e = fbm(this.nE, x / 560, y / 560, 5);
-      let v = e * 0.62 + c * 0.55 - 0.13;
       const d = Math.hypot(x, y);
-      if (d < 900) v += 0.16 * (1 - d / 900);
-      return v;
+      const cn = fbm(this.nC, x / 3400, y / 3400, 3);
+      const t = d / (ISLAND_R * (0.72 + cn * 0.5));
+      const mask = t < 1 ? 1 - t * t * t : -(t - 1) * 3;
+      const e = fbm(this.nE, x / 640, y / 640, 5);
+      const mtn = fbm(this.nK, x / 2600, y / 2600, 3);
+      return 0.37 + mask * 0.16 + (e - 0.5) * 0.44 + Math.max(0, mtn - 0.58) * 0.95;
     }
-    moist(x, y) { return fbm(this.nM, x / 760, y / 760, 3); }
+    moist(x, y) { return fbm(this.nM, x / 1300, y / 1300, 3); }
     classify(e, m) {
       if (e < 0.37) return B.DEEP;
       if (e < 0.405) return B.WATER;
       if (e < 0.425) return B.SHALLOW;
       if (e < 0.45) return B.SAND;
-      if (e < 0.6) { if (m > 0.56) return B.FOREST; if (m < 0.42) return B.MEADOW; return B.GRASS; }
+      if (e < 0.6) {
+        if (m > 0.67 && e < 0.52) return B.SWAMP;
+        if (m > 0.55) return B.FOREST; if (m < 0.42) return B.MEADOW; return B.GRASS;
+      }
       if (e < 0.68) return B.HIGH;
       return B.PEAK;
     }
     biomeAt(x, y) { return this.classify(this.elev(x, y), this.moist(x, y)); }
-    static levelOf(b) { return b <= B.SHALLOW ? 0 : b >= B.HIGH ? 2 : 1; }
+    static levelOf(b) { return b <= B.SHALLOW ? 0 : b === B.HIGH || b === B.PEAK ? 2 : 1; }
+    // Danger rises the further a region is from where you washed ashore.
+    dangerAt(x, y) {
+      const R = SW.REGION;
+      const cx = (Math.floor(x / R) + 0.5) * R, cy = (Math.floor(y / R) + 0.5) * R;
+      return Math.min(15, 1 + Math.floor(Math.max(0, Math.hypot(cx - this.spawn.x, cy - this.spawn.y) - 1100) / 1500));
+    }
+    regionAt(x, y) {
+      const R = SW.REGION;
+      const rx = Math.floor(x / R), ry = Math.floor(y / R), id = rx + ',' + ry;
+      let name = this.regionNames.get(id);
+      if (!name) { name = SW.regionName(this, rx, ry); this.regionNames.set(id, name); }
+      return { id, rx, ry, name, danger: this.dangerAt(x, y) };
+    }
     levelAt(x, y) { return World.levelOf(this.biomeAt(x, y)); }
     isWater(x, y) { return this.elev(x, y) < 0.425; }
 
@@ -102,11 +135,13 @@
           const dens = fbm(this.nT, x / 300, y / 300, 2);
           const flower = r1 < 0.33 ? 'flowerPink' : r1 < 0.66 ? 'flowerGold' : 'flowerLilac';
           let type = null;
-          switch (b) {
+          if (b >= B.SAND && hash(GX, GY, seed + 99) < 0.0035) type = 'chest';
+          else switch (b) {
             case B.FOREST: {
               const t = 0.12 + dens * 0.3;
               if (p < t) type = m > 0.66 || r2 < 0.3 ? 'treePine' : 'treeRound';
               else if (p < t + 0.05) type = 'bush';
+              else if (p < t + 0.07) type = 'mushroom';
               else if (p < t + 0.15) type = 'tuft';
               break;
             }
@@ -123,6 +158,12 @@
               else if (p < 0.065) type = 'rock2';
               else if (p < 0.21) type = flower;
               else if (p < 0.32) type = 'tuft';
+              break;
+            case B.SWAMP:
+              if (p < 0.09) type = 'swampTree';
+              else if (p < 0.24) type = 'reeds';
+              else if (p < 0.3) type = 'mushroom';
+              else if (p < 0.32) type = 'bush';
               break;
             case B.SAND:
               if (p < 0.04) type = 'driftwood';
@@ -180,16 +221,16 @@
     }
 
     findSpawn() {
-      for (let ring = 0; ring < 60; ring++) {
+      for (let ring = 0; ring < 200; ring++) {
         const steps = Math.max(1, ring * 8);
         for (let i = 0; i < steps; i++) {
           const a = (i / steps) * Math.PI * 2;
           const x = Math.cos(a) * ring * 40, y = Math.sin(a) * ring * 40;
           const e = this.elev(x, y), b = this.classify(e, this.moist(x, y));
-          if ((b === B.GRASS || b === B.MEADOW) && e > 0.47 && e < 0.55) return { x, y };
+          if ((b === B.GRASS || b === B.MEADOW) && e > 0.47 && e < 0.55) return (this.spawn = { x, y });
         }
       }
-      return { x: 0, y: 0 };
+      return (this.spawn = { x: 0, y: 0 });
     }
 
     // ---------- chunk ground art ----------
