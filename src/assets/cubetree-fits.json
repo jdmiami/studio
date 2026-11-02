@@ -1,0 +1,59 @@
+{
+ "_": "Cube trees fitted from their painted cut-outs (scripts/assets/fit_cubetrees.py): canopy cube size, the cells per row (front view, x from canopy.x0 in cubes, rows up from canopy.y0), the trunk; world units in the tree's frame (x across as the painter sees it, y up).",
+ "fits": {
+  "cube-tree-0": {
+   "family": "cube-tree",
+   "cube": 0.465,
+   "canopy": {
+    "x0": -0.842,
+    "y0": 0.793,
+    "rows": [
+     {
+      "row": 0,
+      "cols": [
+       0,
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "row": 1,
+      "cols": [
+       0,
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "row": 2,
+      "cols": [
+       1,
+       2
+      ]
+     }
+    ]
+   },
+   "trunk": {
+    "x": 0.053,
+    "width": 0.42,
+    "height": 0.932
+   },
+   "place": [
+    1.95,
+    3.0,
+    -1.443
+   ],
+   "facing": [
+    0.8271,
+    0.5621
+   ],
+   "paint": {
+    "src": "/assets/ref/cube-tree-0.png",
+    "x": 284,
+    "y": 92
+   }
+  }
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "fov": 92.0,
+ "yaw": 52.0,
+ "pitch": -11.0,
+ "roll": 0.0,
+ "eye": [
+  8.27518249645405,
+  3.6420000000000003,
+  2.5801807025927985
+ ],
+ "feet": {
+  "x": 5.0,
+  "y": -0.5,
+  "z": 0.6,
+  "yaw": 52.0
+ },
+ "door_edge_error_px": 65.3,
+ "_": "The target camera in world units for the layout fit (scripts/shot/fit_target_layout.py)."
+}

@@ -1,0 +1,1091 @@
+[
+ {
+  "iteration": 0,
+  "time": "2026-10-25T23:26:49",
+  "note": "blocks: first pass (rounded felt cubes, grass cap, seam stones)",
+  "render": "screenshots/kit/b00-first.png",
+  "mean": 0.7809,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.7927,
+    "fidelity": 0.6509,
+    "iou": 0.9235,
+    "color": 0.8509,
+    "deltaE": 4.47,
+    "offset": [
+     0,
+     0
+    ],
+    "ssim": 0.7718,
+    "edges": 0.4455,
+    "objectness": 0.7379,
+    "scaleDelta": 0.1885,
+    "aspectDelta": 0.0369
+   },
+   "block-grass-b": {
+    "composite": 0.7802,
+    "fidelity": 0.6383,
+    "iou": 0.9173,
+    "color": 0.8322,
+    "deltaE": 5.03,
+    "offset": [
+     0,
+     0
+    ],
+    "ssim": 0.7431,
+    "edges": 0.4306,
+    "objectness": 0.7539,
+    "scaleDelta": 0.2461,
+    "aspectDelta": 0.1243
+   },
+   "block-pink": {
+    "composite": 0.7674,
+    "fidelity": 0.6161,
+    "iou": 0.8883,
+    "color": 0.8481,
+    "deltaE": 4.56,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.6992,
+    "edges": 0.3782,
+    "objectness": 0.7132,
+    "scaleDelta": 0.2706,
+    "aspectDelta": 0.1343
+   },
+   "block-water": {
+    "composite": 0.7319,
+    "fidelity": 0.5638,
+    "iou": 0.902,
+    "color": 0.7859,
+    "deltaE": 6.42,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7739,
+    "edges": 0.3276,
+    "objectness": 0.7048,
+    "scaleDelta": 0.2711,
+    "aspectDelta": 0.1042
+   },
+   "block-stone-plain": {
+    "composite": 0.7982,
+    "fidelity": 0.6868,
+    "iou": 0.8672,
+    "color": 0.8776,
+    "deltaE": 3.67,
+    "offset": [
+     2,
+     0
+    ],
+    "ssim": 0.6767,
+    "edges": 0.2898,
+    "objectness": 0.7361,
+    "scaleDelta": 0.2513,
+    "aspectDelta": 0.025
+   },
+   "block-stone-seam-a": {
+    "composite": 0.7982,
+    "fidelity": 0.66,
+    "iou": 0.9071,
+    "color": 0.8734,
+    "deltaE": 3.8,
+    "offset": [
+     1,
+     0
+    ],
+    "ssim": 0.6916,
+    "edges": 0.4718,
+    "objectness": 0.7302,
+    "scaleDelta": 0.1995,
+    "aspectDelta": 0.1106
+   },
+   "block-stone-seam-b": {
+    "composite": 0.798,
+    "fidelity": 0.6472,
+    "iou": 0.9127,
+    "color": 0.8843,
+    "deltaE": 3.47,
+    "offset": [
+     0,
+     0
+    ],
+    "ssim": 0.7138,
+    "edges": 0.4627,
+    "objectness": 0.737,
+    "scaleDelta": 0.1909,
+    "aspectDelta": 0.1107
+   }
+  }
+ },
+ {
+  "iteration": 1,
+  "time": "2026-10-25T23:28:30",
+  "note": "stage: elevation 35, 39.5 px/unit",
+  "render": "screenshots/kit/b01-elev35.png",
+  "mean": 0.798,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.8136,
+    "fidelity": 0.6596,
+    "iou": 0.9415,
+    "color": 0.8911,
+    "deltaE": 3.27,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.8548,
+    "edges": 0.5147,
+    "objectness": 0.7523,
+    "scaleDelta": 0.0774,
+    "aspectDelta": 0.0868
+   },
+   "block-grass-b": {
+    "composite": 0.8143,
+    "fidelity": 0.668,
+    "iou": 0.9401,
+    "color": 0.8834,
+    "deltaE": 3.5,
+    "offset": [
+     0,
+     0
+    ],
+    "ssim": 0.8441,
+    "edges": 0.4856,
+    "objectness": 0.7538,
+    "scaleDelta": 0.134,
+    "aspectDelta": 0.1516
+   },
+   "block-pink": {
+    "composite": 0.8039,
+    "fidelity": 0.6629,
+    "iou": 0.9358,
+    "color": 0.86,
+    "deltaE": 4.2,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7574,
+    "edges": 0.4499,
+    "objectness": 0.7222,
+    "scaleDelta": 0.1826,
+    "aspectDelta": 0.1655
+   },
+   "block-water": {
+    "composite": 0.7564,
+    "fidelity": 0.5808,
+    "iou": 0.9413,
+    "color": 0.8055,
+    "deltaE": 5.83,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.8094,
+    "edges": 0.3227,
+    "objectness": 0.699,
+    "scaleDelta": 0.1738,
+    "aspectDelta": 0.1565
+   },
+   "block-stone-plain": {
+    "composite": 0.8012,
+    "fidelity": 0.6384,
+    "iou": 0.9306,
+    "color": 0.889,
+    "deltaE": 3.33,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7291,
+    "edges": 0.4241,
+    "objectness": 0.7551,
+    "scaleDelta": 0.1574,
+    "aspectDelta": 0.0634
+   },
+   "block-stone-seam-a": {
+    "composite": 0.7949,
+    "fidelity": 0.6434,
+    "iou": 0.9146,
+    "color": 0.8772,
+    "deltaE": 3.68,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.748,
+    "edges": 0.4123,
+    "objectness": 0.7095,
+    "scaleDelta": 0.0799,
+    "aspectDelta": 0.1593
+   },
+   "block-stone-seam-b": {
+    "composite": 0.8017,
+    "fidelity": 0.6481,
+    "iou": 0.9238,
+    "color": 0.8844,
+    "deltaE": 3.47,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7468,
+    "edges": 0.4026,
+    "objectness": 0.7296,
+    "scaleDelta": 0.0798,
+    "aspectDelta": 0.1509
+   }
+  }
+ },
+ {
+  "iteration": 2,
+  "time": "2026-10-25T23:30:01",
+  "note": "felt grain 2.6, round scallop grass cap, marbled water, flush seam slabs, pillow stone, lighter outline",
+  "render": "screenshots/kit/b02-felt.png",
+  "mean": 0.797,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.8084,
+    "fidelity": 0.659,
+    "iou": 0.9491,
+    "color": 0.8669,
+    "deltaE": 3.99,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.8222,
+    "edges": 0.4541,
+    "objectness": 0.7468,
+    "scaleDelta": 0.0915,
+    "aspectDelta": 0.0726
+   },
+   "block-grass-b": {
+    "composite": 0.7948,
+    "fidelity": 0.6556,
+    "iou": 0.9361,
+    "color": 0.8392,
+    "deltaE": 4.82,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.8133,
+    "edges": 0.4241,
+    "objectness": 0.7686,
+    "scaleDelta": 0.1428,
+    "aspectDelta": 0.1339
+   },
+   "block-pink": {
+    "composite": 0.804,
+    "fidelity": 0.6679,
+    "iou": 0.9334,
+    "color": 0.8562,
+    "deltaE": 4.31,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7546,
+    "edges": 0.4422,
+    "objectness": 0.7705,
+    "scaleDelta": 0.1826,
+    "aspectDelta": 0.1655
+   },
+   "block-water": {
+    "composite": 0.7631,
+    "fidelity": 0.6077,
+    "iou": 0.9373,
+    "color": 0.796,
+    "deltaE": 6.12,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7895,
+    "edges": 0.3708,
+    "objectness": 0.7078,
+    "scaleDelta": 0.1824,
+    "aspectDelta": 0.1476
+   },
+   "block-stone-plain": {
+    "composite": 0.7952,
+    "fidelity": 0.6343,
+    "iou": 0.912,
+    "color": 0.893,
+    "deltaE": 3.21,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.7149,
+    "edges": 0.3353,
+    "objectness": 0.7601,
+    "scaleDelta": 0.1757,
+    "aspectDelta": 0.0634
+   },
+   "block-stone-seam-a": {
+    "composite": 0.8063,
+    "fidelity": 0.6536,
+    "iou": 0.9413,
+    "color": 0.875,
+    "deltaE": 3.75,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7746,
+    "edges": 0.4498,
+    "objectness": 0.7473,
+    "scaleDelta": 0.1117,
+    "aspectDelta": 0.1556
+   },
+   "block-stone-seam-b": {
+    "composite": 0.807,
+    "fidelity": 0.6642,
+    "iou": 0.9243,
+    "color": 0.88,
+    "deltaE": 3.6,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7716,
+    "edges": 0.4292,
+    "objectness": 0.7145,
+    "scaleDelta": 0.0935,
+    "aspectDelta": 0.1468
+   }
+  }
+ },
+ {
+  "iteration": 3,
+  "time": "2026-10-25T23:31:11",
+  "note": "welded boxes (no seam cracks), grass cap = slab + ring of felt drops",
+  "render": "screenshots/kit/b03-weld.png",
+  "mean": 0.7966,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.8257,
+    "fidelity": 0.7612,
+    "iou": 0.93,
+    "color": 0.8073,
+    "deltaE": 5.78,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.798,
+    "edges": 0.4331,
+    "objectness": 0.7417,
+    "scaleDelta": 0.0103,
+    "aspectDelta": 0.0104
+   },
+   "block-grass-b": {
+    "composite": 0.787,
+    "fidelity": 0.688,
+    "iou": 0.917,
+    "color": 0.7891,
+    "deltaE": 6.33,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7722,
+    "edges": 0.4355,
+    "objectness": 0.7605,
+    "scaleDelta": 0.0673,
+    "aspectDelta": 0.0576
+   },
+   "block-pink": {
+    "composite": 0.8025,
+    "fidelity": 0.6636,
+    "iou": 0.9331,
+    "color": 0.857,
+    "deltaE": 4.29,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7564,
+    "edges": 0.4313,
+    "objectness": 0.7609,
+    "scaleDelta": 0.1826,
+    "aspectDelta": 0.1655
+   },
+   "block-water": {
+    "composite": 0.7599,
+    "fidelity": 0.5888,
+    "iou": 0.9387,
+    "color": 0.8091,
+    "deltaE": 5.73,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.8061,
+    "edges": 0.3243,
+    "objectness": 0.7093,
+    "scaleDelta": 0.1824,
+    "aspectDelta": 0.1476
+   },
+   "block-stone-plain": {
+    "composite": 0.7936,
+    "fidelity": 0.6328,
+    "iou": 0.9116,
+    "color": 0.89,
+    "deltaE": 3.3,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.74,
+    "edges": 0.3391,
+    "objectness": 0.7623,
+    "scaleDelta": 0.1757,
+    "aspectDelta": 0.0634
+   },
+   "block-stone-seam-a": {
+    "composite": 0.8028,
+    "fidelity": 0.6441,
+    "iou": 0.9413,
+    "color": 0.8757,
+    "deltaE": 3.73,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7711,
+    "edges": 0.4293,
+    "objectness": 0.735,
+    "scaleDelta": 0.1209,
+    "aspectDelta": 0.1643
+   },
+   "block-stone-seam-b": {
+    "composite": 0.8046,
+    "fidelity": 0.6568,
+    "iou": 0.9261,
+    "color": 0.8803,
+    "deltaE": 3.59,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7685,
+    "edges": 0.4212,
+    "objectness": 0.6927,
+    "scaleDelta": 0.0935,
+    "aspectDelta": 0.1468
+   }
+  }
+ },
+ {
+  "iteration": 4,
+  "time": "2026-10-25T23:31:57",
+  "note": "smaller flatter grass drops merged into the cap; water folds and stronger marbling",
+  "render": "screenshots/kit/b04-drops.png",
+  "mean": 0.7984,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.8283,
+    "fidelity": 0.732,
+    "iou": 0.9402,
+    "color": 0.8447,
+    "deltaE": 4.66,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.8222,
+    "edges": 0.4554,
+    "objectness": 0.7446,
+    "scaleDelta": 0.0437,
+    "aspectDelta": 0.0238
+   },
+   "block-grass-b": {
+    "composite": 0.7972,
+    "fidelity": 0.6823,
+    "iou": 0.9269,
+    "color": 0.8206,
+    "deltaE": 5.38,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.8028,
+    "edges": 0.4731,
+    "objectness": 0.7574,
+    "scaleDelta": 0.0984,
+    "aspectDelta": 0.0891
+   },
+   "block-pink": {
+    "composite": 0.8025,
+    "fidelity": 0.6638,
+    "iou": 0.9328,
+    "color": 0.857,
+    "deltaE": 4.29,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7564,
+    "edges": 0.4321,
+    "objectness": 0.7606,
+    "scaleDelta": 0.1826,
+    "aspectDelta": 0.1655
+   },
+   "block-water": {
+    "composite": 0.7597,
+    "fidelity": 0.5911,
+    "iou": 0.9383,
+    "color": 0.8059,
+    "deltaE": 5.82,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7983,
+    "edges": 0.3346,
+    "objectness": 0.7079,
+    "scaleDelta": 0.1824,
+    "aspectDelta": 0.1476
+   },
+   "block-stone-plain": {
+    "composite": 0.7936,
+    "fidelity": 0.6328,
+    "iou": 0.9116,
+    "color": 0.89,
+    "deltaE": 3.3,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.74,
+    "edges": 0.3391,
+    "objectness": 0.7623,
+    "scaleDelta": 0.1757,
+    "aspectDelta": 0.0634
+   },
+   "block-stone-seam-a": {
+    "composite": 0.8028,
+    "fidelity": 0.6441,
+    "iou": 0.9413,
+    "color": 0.8757,
+    "deltaE": 3.73,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7711,
+    "edges": 0.4293,
+    "objectness": 0.735,
+    "scaleDelta": 0.1209,
+    "aspectDelta": 0.1643
+   },
+   "block-stone-seam-b": {
+    "composite": 0.8046,
+    "fidelity": 0.6568,
+    "iou": 0.9261,
+    "color": 0.8803,
+    "deltaE": 3.59,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7685,
+    "edges": 0.4212,
+    "objectness": 0.6927,
+    "scaleDelta": 0.0935,
+    "aspectDelta": 0.1468
+   }
+  }
+ },
+ {
+  "iteration": 5,
+  "time": "2026-10-25T23:33:07",
+  "note": "evenly subdivided rounded boxes so lumps and mottling show",
+  "render": "screenshots/kit/b05-subdiv.png",
+  "mean": 0.2207,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.1849,
+    "fidelity": 0.1933,
+    "iou": 0.0,
+    "color": 0.3585,
+    "deltaE": 19.24,
+    "offset": [
+     -6,
+     -6
+    ],
+    "ssim": 0.0469,
+    "edges": 0.0,
+    "objectness": 0.0,
+    "scaleDelta": 0.2431,
+    "aspectDelta": 0.058
+   },
+   "block-grass-b": {
+    "composite": 0.1847,
+    "fidelity": 0.2056,
+    "iou": 0.0,
+    "color": 0.3415,
+    "deltaE": 19.75,
+    "offset": [
+     -6,
+     -6
+    ],
+    "ssim": 0.0479,
+    "edges": 0.0,
+    "objectness": 0.0,
+    "scaleDelta": 0.1546,
+    "aspectDelta": 0.1339
+   },
+   "block-pink": {
+    "composite": 0.2289,
+    "fidelity": 0.2116,
+    "iou": 0.0,
+    "color": 0.481,
+    "deltaE": 15.57,
+    "offset": [
+     -6,
+     -6
+    ],
+    "ssim": 0.0485,
+    "edges": 0.0,
+    "objectness": 0.0,
+    "scaleDelta": 0.1487,
+    "aspectDelta": 0.1295
+   },
+   "block-water": {
+    "composite": 0.177,
+    "fidelity": 0.2044,
+    "iou": 0.0,
+    "color": 0.3173,
+    "deltaE": 20.48,
+    "offset": [
+     -6,
+     -6
+    ],
+    "ssim": 0.0357,
+    "edges": 0.0,
+    "objectness": 0.0,
+    "scaleDelta": 0.1546,
+    "aspectDelta": 0.1339
+   },
+   "block-stone-plain": {
+    "composite": 0.263,
+    "fidelity": 0.2055,
+    "iou": 0.0,
+    "color": 0.6027,
+    "deltaE": 11.92,
+    "offset": [
+     -6,
+     -6
+    ],
+    "ssim": 0.0517,
+    "edges": 0.0,
+    "objectness": 0.0,
+    "scaleDelta": 0.2555,
+    "aspectDelta": 0.0583
+   },
+   "block-stone-seam-a": {
+    "composite": 0.2513,
+    "fidelity": 0.202,
+    "iou": 0.0,
+    "color": 0.5684,
+    "deltaE": 12.95,
+    "offset": [
+     -6,
+     -6
+    ],
+    "ssim": 0.0478,
+    "edges": 0.0,
+    "objectness": 0.0,
+    "scaleDelta": 0.1487,
+    "aspectDelta": 0.1295
+   },
+   "block-stone-seam-b": {
+    "composite": 0.2554,
+    "fidelity": 0.2006,
+    "iou": 0.0,
+    "color": 0.584,
+    "deltaE": 12.48,
+    "offset": [
+     -6,
+     -6
+    ],
+    "ssim": 0.053,
+    "edges": 0.0,
+    "objectness": 0.0,
+    "scaleDelta": 0.1487,
+    "aspectDelta": 0.1295
+   }
+  }
+ },
+ {
+  "iteration": 6,
+  "time": "2026-10-25T23:33:45",
+  "note": "evenly subdivided rounded boxes so lumps and mottling show (b05 was a broken page)",
+  "render": "screenshots/kit/b06-subdiv.png",
+  "mean": 0.7994,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.8276,
+    "fidelity": 0.7311,
+    "iou": 0.9415,
+    "color": 0.8422,
+    "deltaE": 4.73,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.8214,
+    "edges": 0.4373,
+    "objectness": 0.7383,
+    "scaleDelta": 0.0437,
+    "aspectDelta": 0.0238
+   },
+   "block-grass-b": {
+    "composite": 0.805,
+    "fidelity": 0.6891,
+    "iou": 0.934,
+    "color": 0.8307,
+    "deltaE": 5.08,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.8204,
+    "edges": 0.4682,
+    "objectness": 0.7532,
+    "scaleDelta": 0.0984,
+    "aspectDelta": 0.0891
+   },
+   "block-pink": {
+    "composite": 0.8032,
+    "fidelity": 0.6647,
+    "iou": 0.9363,
+    "color": 0.8546,
+    "deltaE": 4.36,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7562,
+    "edges": 0.4317,
+    "objectness": 0.7681,
+    "scaleDelta": 0.1826,
+    "aspectDelta": 0.1655
+   },
+   "block-water": {
+    "composite": 0.7669,
+    "fidelity": 0.6227,
+    "iou": 0.9297,
+    "color": 0.7964,
+    "deltaE": 6.11,
+    "offset": [
+     0,
+     2
+    ],
+    "ssim": 0.8142,
+    "edges": 0.3869,
+    "objectness": 0.6769,
+    "scaleDelta": 0.1428,
+    "aspectDelta": 0.1339
+   },
+   "block-stone-plain": {
+    "composite": 0.789,
+    "fidelity": 0.6266,
+    "iou": 0.9152,
+    "color": 0.8793,
+    "deltaE": 3.62,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.6953,
+    "edges": 0.3664,
+    "objectness": 0.7601,
+    "scaleDelta": 0.1848,
+    "aspectDelta": 0.053
+   },
+   "block-stone-seam-a": {
+    "composite": 0.8005,
+    "fidelity": 0.6408,
+    "iou": 0.9428,
+    "color": 0.8713,
+    "deltaE": 3.86,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7684,
+    "edges": 0.4238,
+    "objectness": 0.7277,
+    "scaleDelta": 0.1253,
+    "aspectDelta": 0.1601
+   },
+   "block-stone-seam-b": {
+    "composite": 0.8037,
+    "fidelity": 0.6565,
+    "iou": 0.9243,
+    "color": 0.8793,
+    "deltaE": 3.62,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7627,
+    "edges": 0.408,
+    "objectness": 0.7221,
+    "scaleDelta": 0.0935,
+    "aspectDelta": 0.1468
+   }
+  }
+ },
+ {
+  "iteration": 7,
+  "time": "2026-10-25T23:34:41",
+  "note": "ridged fold creases on water, smoother water silhouette, grain 3.4, flatter varied drops",
+  "render": "screenshots/kit/b07-crease.png",
+  "mean": 0.8076,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.8459,
+    "fidelity": 0.7723,
+    "iou": 0.9434,
+    "color": 0.8466,
+    "deltaE": 4.6,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.8206,
+    "edges": 0.4457,
+    "objectness": 0.7513,
+    "scaleDelta": 0.0294,
+    "aspectDelta": 0.0092
+   },
+   "block-grass-b": {
+    "composite": 0.8086,
+    "fidelity": 0.6948,
+    "iou": 0.9346,
+    "color": 0.8343,
+    "deltaE": 4.97,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.8226,
+    "edges": 0.4705,
+    "objectness": 0.7561,
+    "scaleDelta": 0.0984,
+    "aspectDelta": 0.0891
+   },
+   "block-pink": {
+    "composite": 0.8066,
+    "fidelity": 0.6729,
+    "iou": 0.9363,
+    "color": 0.855,
+    "deltaE": 4.35,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7551,
+    "edges": 0.4251,
+    "objectness": 0.7651,
+    "scaleDelta": 0.1826,
+    "aspectDelta": 0.1655
+   },
+   "block-water": {
+    "composite": 0.7908,
+    "fidelity": 0.6661,
+    "iou": 0.9348,
+    "color": 0.8131,
+    "deltaE": 5.61,
+    "offset": [
+     0,
+     2
+    ],
+    "ssim": 0.8226,
+    "edges": 0.417,
+    "objectness": 0.6831,
+    "scaleDelta": 0.1561,
+    "aspectDelta": 0.1384
+   },
+   "block-stone-plain": {
+    "composite": 0.7927,
+    "fidelity": 0.6334,
+    "iou": 0.9152,
+    "color": 0.8826,
+    "deltaE": 3.52,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.6942,
+    "edges": 0.3625,
+    "objectness": 0.7544,
+    "scaleDelta": 0.1848,
+    "aspectDelta": 0.053
+   },
+   "block-stone-seam-a": {
+    "composite": 0.8053,
+    "fidelity": 0.6517,
+    "iou": 0.9421,
+    "color": 0.8734,
+    "deltaE": 3.8,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7687,
+    "edges": 0.4195,
+    "objectness": 0.7278,
+    "scaleDelta": 0.1253,
+    "aspectDelta": 0.1601
+   },
+   "block-stone-seam-b": {
+    "composite": 0.8034,
+    "fidelity": 0.6536,
+    "iou": 0.924,
+    "color": 0.8825,
+    "deltaE": 3.52,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7629,
+    "edges": 0.4072,
+    "objectness": 0.7208,
+    "scaleDelta": 0.0935,
+    "aspectDelta": 0.1468
+   }
+  }
+ },
+ {
+  "iteration": 8,
+  "time": "2026-10-25T23:37:11",
+  "note": "scorer: Divine Eye soft fidelity without mask-derived proportion/symmetry; isolated crops (no geometry change since b07)",
+  "render": "screenshots/kit/b08-rescore.png",
+  "mean": 0.8466,
+  "items": {
+   "block-grass-a": {
+    "composite": 0.86,
+    "fidelity": 0.8075,
+    "iou": 0.9434,
+    "color": 0.8466,
+    "deltaE": 4.6,
+    "offset": [
+     1,
+     1
+    ],
+    "ssim": 0.8214,
+    "edges": 0.444,
+    "objectness": 0.7855,
+    "phash": 0.7812,
+    "tonal": 0.9084
+   },
+   "block-grass-b": {
+    "composite": 0.8557,
+    "fidelity": 0.8125,
+    "iou": 0.9346,
+    "color": 0.8343,
+    "deltaE": 4.97,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.8237,
+    "edges": 0.4677,
+    "objectness": 0.7886,
+    "phash": 0.8438,
+    "tonal": 0.9036
+   },
+   "block-pink": {
+    "composite": 0.8413,
+    "fidelity": 0.7598,
+    "iou": 0.9363,
+    "color": 0.855,
+    "deltaE": 4.35,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.7565,
+    "edges": 0.4229,
+    "objectness": 0.7926,
+    "phash": 0.75,
+    "tonal": 0.8936
+   },
+   "block-water": {
+    "composite": 0.8324,
+    "fidelity": 0.7702,
+    "iou": 0.9348,
+    "color": 0.8131,
+    "deltaE": 5.61,
+    "offset": [
+     0,
+     2
+    ],
+    "ssim": 0.8243,
+    "edges": 0.4152,
+    "objectness": 0.6864,
+    "phash": 0.6875,
+    "tonal": 0.897
+   },
+   "block-stone-plain": {
+    "composite": 0.841,
+    "fidelity": 0.7542,
+    "iou": 0.9152,
+    "color": 0.8826,
+    "deltaE": 3.52,
+    "offset": [
+     1,
+     2
+    ],
+    "ssim": 0.6952,
+    "edges": 0.3619,
+    "objectness": 0.7731,
+    "phash": 0.75,
+    "tonal": 0.866
+   },
+   "block-stone-seam-a": {
+    "composite": 0.8472,
+    "fidelity": 0.7563,
+    "iou": 0.9421,
+    "color": 0.8734,
+    "deltaE": 3.8,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7692,
+    "edges": 0.4156,
+    "objectness": 0.7506,
+    "phash": 0.75,
+    "tonal": 0.7749
+   },
+   "block-stone-seam-b": {
+    "composite": 0.8483,
+    "fidelity": 0.766,
+    "iou": 0.924,
+    "color": 0.8825,
+    "deltaE": 3.52,
+    "offset": [
+     0,
+     1
+    ],
+    "ssim": 0.7635,
+    "edges": 0.4041,
+    "objectness": 0.7306,
+    "phash": 0.7812,
+    "tonal": 0.8398
+   }
+  }
+ }
+]

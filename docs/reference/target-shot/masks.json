@@ -1,0 +1,74 @@
+{
+ "1": {
+  "name": "door",
+  "source": "SAM3 \"wooden door\""
+ },
+ "2": {
+  "name": "door-pillar",
+  "source": "SAM box"
+ },
+ "3": {
+  "name": "cascade",
+  "source": "SAM box"
+ },
+ "4": {
+  "name": "pool",
+  "source": "SAM3 \"blue water\""
+ },
+ "6": {
+  "name": "mira",
+  "source": "SAM box"
+ },
+ "7": {
+  "name": "cube-tree",
+  "source": "SAM3 \"tree\""
+ },
+ "8": {
+  "name": "willow",
+  "source": "SAM3 \"tree\""
+ },
+ "9": {
+  "name": "mushrooms",
+  "source": "SAM box"
+ },
+ "10": {
+  "name": "little-fence",
+  "source": "SAM box"
+ },
+ "11": {
+  "name": "jars-cream",
+  "source": "SAM box"
+ },
+ "12": {
+  "name": "stairs",
+  "source": "SAM box"
+ },
+ "13": {
+  "name": "dog",
+  "source": "SAM box (SAM3 agrees)"
+ },
+ "14": {
+  "name": "critter-a",
+  "source": "SAM3 \"white fluffy ball\""
+ },
+ "15": {
+  "name": "critter-b",
+  "source": "SAM3 \"white fluffy ball\""
+ },
+ "16": {
+  "name": "critter-c",
+  "source": "SAM3 \"white fluffy ball\" (cut by the frame edge)"
+ },
+ "17": {
+  "name": "jars-mint",
+  "source": "SAM box"
+ },
+ "18": {
+  "name": "lavender-pom",
+  "source": "SAM3 \"white fluffy ball\""
+ },
+ "19": {
+  "name": "player",
+  "source": "SAM3 \"child with backpack\""
+ }
+}

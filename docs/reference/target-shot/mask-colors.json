@@ -1,0 +1,146 @@
+{
+ "door": {
+  "px": 53355,
+  "L": 50.9,
+  "chroma": 10.8,
+  "shade": "#77665b",
+  "mid": "#8a786c",
+  "light": "#9b8577"
+ },
+ "door-pillar": {
+  "px": 29853,
+  "L": 54.7,
+  "chroma": 12.8,
+  "shade": "#806c60",
+  "mid": "#957e70",
+  "light": "#ab9281"
+ },
+ "cascade": {
+  "px": 74389,
+  "L": 54.8,
+  "chroma": 15.0,
+  "shade": "#4d5e7c",
+  "mid": "#6f8099",
+  "light": "#a9b7c8"
+ },
+ "pool": {
+  "px": 38283,
+  "L": 59.8,
+  "chroma": 15.1,
+  "shade": "#6d7e9c",
+  "mid": "#7f91aa",
+  "light": "#98a7bb"
+ },
+ "mira": {
+  "px": 7639,
+  "L": 58.9,
+  "chroma": 12.8,
+  "shade": "#7b695a",
+  "mid": "#9c8775",
+  "light": "#ccb9a8"
+ },
+ "cube-tree": {
+  "px": 61587,
+  "L": 57.5,
+  "chroma": 7.8,
+  "shade": "#6e6a60",
+  "mid": "#8b877b",
+  "light": "#b7b3a0"
+ },
+ "willow": {
+  "px": 34133,
+  "L": 63.0,
+  "chroma": 15.4,
+  "shade": "#7d765e",
+  "mid": "#9f9f83",
+  "light": "#b8b99b"
+ },
+ "mushrooms": {
+  "px": 2494,
+  "L": 59.4,
+  "chroma": 11.4,
+  "shade": "#766658",
+  "mid": "#a69284",
+  "light": "#c2b0a1"
+ },
+ "little-fence": {
+  "px": 1832,
+  "L": 63.2,
+  "chroma": 15.1,
+  "shade": "#97806c",
+  "mid": "#ad9482",
+  "light": "#c3ab96"
+ },
+ "jars-cream": {
+  "px": 5702,
+  "L": 67.5,
+  "chroma": 13.3,
+  "shade": "#8b7e6a",
+  "mid": "#b6a791",
+  "light": "#d7c8b1"
+ },
+ "stairs": {
+  "px": 30806,
+  "L": 60.8,
+  "chroma": 8.1,
+  "shade": "#76655f",
+  "mid": "#978781",
+  "light": "#d4c6bd"
+ },
+ "dog": {
+  "px": 14113,
+  "L": 75.0,
+  "chroma": 7.6,
+  "shade": "#a19489",
+  "mid": "#c3b7ac",
+  "light": "#e8e0d4"
+ },
+ "critter-a": {
+  "px": 2399,
+  "L": 69.0,
+  "chroma": 7.3,
+  "shade": "#8a7b73",
+  "mid": "#b7aaa1",
+  "light": "#e0d3ca"
+ },
+ "critter-b": {
+  "px": 2503,
+  "L": 71.2,
+  "chroma": 8.5,
+  "shade": "#8d8274",
+  "mid": "#bcb0a4",
+  "light": "#e5d9cb"
+ },
+ "critter-c": {
+  "px": 437,
+  "L": 73.9,
+  "chroma": 10.8,
+  "shade": "#8f8a77",
+  "mid": "#c5c0ad",
+  "light": "#e0dbc7"
+ },
+ "jars-mint": {
+  "px": 14053,
+  "L": 61.8,
+  "chroma": 11.6,
+  "shade": "#6b7766",
+  "mid": "#899482",
+  "light": "#c5c8b0"
+ },
+ "lavender-pom": {
+  "px": 2290,
+  "L": 64.3,
+  "chroma": 6.8,
+  "shade": "#77727a",
+  "mid": "#a89fac",
+  "light": "#cbc0c8"
+ },
+ "player": {
+  "px": 154744,
+  "L": 23.7,
+  "chroma": 5.6,
+  "shade": "#211b1c",
+  "mid": "#342f2d",
+  "light": "#6a6563"
+ }
+}
