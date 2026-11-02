@@ -10,7 +10,7 @@ import { buildBlockWorld } from './blockworld.js';
 import { KIND_ASSETS, hasModel, placeModel } from './models.js';
 import { ITEM_BY_ID } from '../data/items.js';
 
-const COLLECT_RADIUS = 0.95;
+const COLLECT_RADIUS = 1.6; // the explorer stands 4 blocks tall
 
 function feltMesh(geometry, color, options = {}) {
   geometry = geometry.index ? geometry.toNonIndexed() : geometry;
@@ -214,7 +214,7 @@ export function buildTripWorld(trip, { pool, collected = new Set(), blockRes = 8
       for (let i = finds.length - 1; i >= 0; i--) {
         const f = finds[i];
         tmp.copy(f.root.position);
-        if (Math.hypot(tmp.x - feet.x, tmp.z - feet.z) < COLLECT_RADIUS && Math.abs(tmp.y - feet.y) < 1.4) {
+        if (Math.hypot(tmp.x - feet.x, tmp.z - feet.z) < COLLECT_RADIUS && Math.abs(tmp.y - feet.y) < 2.8) {
           finds.splice(i, 1);
           pool.release(f);
           out.push(f.data);

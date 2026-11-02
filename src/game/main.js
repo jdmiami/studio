@@ -49,7 +49,7 @@ import { createHands } from '../fp/hands.js';
 import { shotCamera, createPlaceholderExplorer } from './shot.js';
 import { createBall } from './world/ball.js';
 import { applyTripLook } from './world/look.js';
-import { createPlayerController, EYE_HEIGHT, fovFor } from './player/controller.js';
+import { createPlayerController, BODY, EXPLORER_HEIGHT, fovFor } from './player/controller.js';
 import { createGameHud } from './hud.js';
 import { chooseRenderer } from './renderer-choice.js';
 import { createSdfWorld } from './sdf/world.js';
@@ -62,7 +62,7 @@ const BUDGET = { ms: 16.7, calls: 600, tris: 3e6 };
 // ~6 * res^2 * 2 triangles a block, thousands of blocks per area.
 const BLOCK_RES = { low: 5, medium: 7, high: 9 };
 const blockRes = () => BLOCK_RES[settings.quality] ?? 7;
-const REACH = 4.5;
+const REACH = 4.5 * 1.6; // the explorer is twice the old body; reach grows a little less
 const CRITTER_KINDS = { cream: 'critter-cream', mint: 'critter-mint', blush: 'critter-blush' };
 const CRITTER_MODELS = { 'critter-cream': 'critter-0', 'critter-mint': 'critter-1', 'critter-blush': 'critter-2' };
 const HUB_FINDS = ['fluff-stone', 'button-mushroom', 'tiered-dome', 'fluff-stone', 'button-mushroom', 'critter-cream'];
@@ -146,8 +146,11 @@ const pops = createPickupPops(scene, camera);
 // The knit gloves and the compass from the painting, in play (?nohands hides them).
 // ?frame=target: the target shot's third-person camera and a stand-in explorer (src/game/shot.js).
 const shotMode = params.get('frame') === 'target';
-const explorer = shotMode ? createPlaceholderExplorer() : null;
-if (explorer) scene.add(explorer);
+// The explorer, seen in third person (a stand-in until the real one is built).
+const explorer = createPlaceholderExplorer(EXPLORER_HEIGHT);
+explorer.visible = false;
+scene.add(explorer);
+const thirdPerson = () => shotMode || settings.camera !== 'first';
 const hands = params.has('nohands') || noHud || shotMode ? null : createHands(camera, Math.random);
 const pool = createFindPool();
 const ball = createBall();
@@ -332,7 +335,7 @@ function buildHub() {
       const out = [];
       for (let i = finds.length - 1; i >= 0; i--) {
         const f = finds[i];
-        if (Math.hypot(f.root.position.x - feet.x, f.root.position.z - feet.z) < 0.95 && Math.abs(f.root.position.y - feet.y) < 1.4) {
+        if (Math.hypot(f.root.position.x - feet.x, f.root.position.z - feet.z) < 1.6 && Math.abs(f.root.position.y - feet.y) < 2.8) {
           finds.splice(i, 1);
           pool.release(f);
           out.push(f.data);
@@ -487,6 +490,11 @@ function clearCreatures() {
   dog = null;
 }
 
+// Brain distances and speeds for the 2x explorer (the brains' defaults were set for the old body).
+const DOG_SCALE = { followDist: 4, followStart: 5.6, dropDist: 2.6, walkSpeed: 3.6, trotSpeed: 5.8, runSpeed: 9.5 };
+const CRITTER_SCALE = { threatDist: 4.5, threatSpeed: 4.8, safeDist: 10, approachDist: 2.2, curiousDist: 7, separationRadius: 1.3, fleeSpeed: 7 };
+const NPC_SCALE = { lookRadius: 9, waveRadius: 7.5, waveExit: 8.6 };
+
 function spawnCreatures(kind, data = null) {
   clearCreatures();
   if (!session) return;
@@ -498,8 +506,8 @@ function spawnCreatures(kind, data = null) {
     ? new THREE.Vector3(hub.cave.dogSpot.x, 0, hub.cave.dogSpot.z)
     : trip.spawn.position.clone().add(new THREE.Vector3(1.2, 0, 1.2));
   if (hasModel('dog-0')) {
-    const c = createCreature({ modelId: 'dog-0', height: 0.9, position: dogAt, heightAt: area.heightAt, name: 'Biscuit' });
-    const brain = createDogBrain({ rng: rng.fork('dog'), events, body: c.body, world, affection: Math.min(1, 0.4 + (session.state.friendship.dog ?? 0) * 0.05) });
+    const c = createCreature({ modelId: 'dog-0', height: 1.6, position: dogAt, heightAt: area.heightAt, name: 'Biscuit' });
+    const brain = createDogBrain({ rng: rng.fork('dog'), events, body: c.body, world, tuning: DOG_SCALE, affection: Math.min(1, 0.4 + (session.state.friendship.dog ?? 0) * 0.05) });
     parent.add(c.root);
     dog = { creature: c, brain, kind: 'dog' };
     creatures.push(dog);
@@ -512,9 +520,9 @@ function spawnCreatures(kind, data = null) {
   for (const s of spots) {
     const modelId = CRITTER_MODELS[s.itemId] ?? 'critter-0';
     if (!hasModel(modelId)) continue;
-    const c = createCreature({ modelId, height: s.height ?? 0.42, position: new THREE.Vector3(s.x, 0, s.z), heightAt: area.heightAt, hopScale: 1.4 });
+    const c = createCreature({ modelId, height: (s.height ?? 0.42) * 1.5, position: new THREE.Vector3(s.x, 0, s.z), heightAt: area.heightAt, hopScale: 1.4 });
     const brain = createCritterBrain({
-      rng: rng.fork(s.id), events, body: c.body, world, itemId: s.itemId, id: s.id, home: s.home ?? { x: s.x, z: s.z },
+      rng: rng.fork(s.id), events, body: c.body, world, tuning: CRITTER_SCALE, itemId: s.itemId, id: s.id, home: s.home ?? { x: s.x, z: s.z },
       neighbours: () => all.filter((o) => o !== c).map((o) => o.body.position), sighted,
     });
     all.push(c);
@@ -530,7 +538,7 @@ function spawnCreatures(kind, data = null) {
       setPose(p) { body.pose = p; }, lookAt(p) { body.look = p ? { x: p.x, z: p.z } : null; },
     };
     const home = { x: body.position.x, z: body.position.z };
-    const brain = createNpcBrain({ rng: rng.fork('mira'), events, body, world: { ...world, walkable: (x, z) => Math.hypot(x - home.x, z - home.z) < 0.6 }, routine: [{ ...home, idle: 6 }] });
+    const brain = createNpcBrain({ rng: rng.fork('mira'), events, body, tuning: NPC_SCALE, world: { ...world, walkable: (x, z) => Math.hypot(x - home.x, z - home.z) < 0.6 }, routine: [{ ...home, idle: 6 }] });
     let wave = 0;
     let turn = hub.cave.npcFacing;
     const bubble = createFace(npc.group, 'mira'); // a bubble only: her face is painted
@@ -795,11 +803,16 @@ let wheel = 0;
 addEventListener('wheel', (e) => { wheel += Math.sign(e.deltaY); }, { passive: true });
 addEventListener('keydown', (e) => { if (decorating && !e.repeat && (e.code === 'KeyQ' || e.code === 'Tab')) { wheel += e.code === 'KeyQ' ? -1 : 1; e.preventDefault(); } });
 
+/** Where the player's view starts and points: the head in third person, the camera in first. */
+function viewRay() {
+  const dir = camera.getWorldDirection(new THREE.Vector3());
+  const origin = thirdPerson() ? player.eye() : camera.position.clone();
+  return { origin, dir };
+}
+
 /** The block top the view ray first meets within reach, or null. */
 function aimSpot() {
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  const p = camera.position.clone();
+  const { origin: p, dir } = viewRay();
   let prevY = p.y;
   for (let d = 0; d < REACH; d += 0.04) {
     p.addScaledVector(dir, 0.04);
@@ -940,16 +953,15 @@ function areaInteractables() {
 function nearestInteractable() {
   const list = [...areaInteractables()];
   if (dog) list.push({ id: 'dog', kind: 'dog', label: 'Pet Biscuit', position: dog.creature.root.position.clone().add(new THREE.Vector3(0, 0.4, 0)), radius: 1.9 });
-  const eye = camera.position;
-  const fwd = camera.getWorldDirection(new THREE.Vector3());
+  const { origin: eye, dir: fwd } = viewRay();
   let best = null;
   let bestScore = Infinity;
   for (const it of list) {
     const d = tmp.copy(it.position).sub(eye);
     const dist = Math.hypot(d.x, d.z);
-    if (dist > it.radius + 0.6) continue;
+    if (dist > it.radius * 1.5 + 0.6) continue; // radii were set for the old, half-size body
     const facing = d.normalize().dot(fwd);
-    if (facing < 0.35 && dist > 1.2) continue;
+    if (facing < 0.35 && dist > 1.8) continue;
     const score = dist - facing * 1.5;
     if (score < bestScore) { bestScore = score; best = it; }
   }
@@ -991,7 +1003,7 @@ function frame() {
   butterflies.update(dt, time, area ? player.position : null);
   pops.update(dt);
   if (hands) {
-    hands.root.visible = mode === 'play' && !touchActive();
+    hands.root.visible = mode === 'play' && !touchActive() && !thirdPerson();
     hands.setTarget(compassBearing());
     hands.update(player.walkPhase, Math.min(1, player.speed / 3), dt, time);
   }
@@ -1047,8 +1059,8 @@ function updatePlay(dt) {
       touchUi.setState({ interact: near?.label ?? null, canThrow: !!s.flags.hasBall && ball.state === 'held', canDecorate: area.kind === 'hub' && !!s.flags.basket });
       if (near && input.pressed(ACTIONS.INTERACT)) interact(near);
       if (s.flags.hasBall && ball.state === 'held' && input.pressed(ACTIONS.THROW)) {
-        const dir = camera.getWorldDirection(new THREE.Vector3());
-        ball.throw(camera.position.clone().addScaledVector(dir, 0.5).add(new THREE.Vector3(0, -0.25, 0)), dir, 9);
+        const { origin, dir } = viewRay();
+        ball.throw(origin.addScaledVector(dir, 0.5 * BODY).add(new THREE.Vector3(0, -0.25 * BODY, 0)), dir, 9 * 1.4);
         audio.play?.('throw');
       }
     }
@@ -1061,11 +1073,12 @@ function updatePlay(dt) {
   }
   if (faceTarget) player.faceToward(faceTarget, 0.08);
   player.update(dt);
-  if (explorer) {
-    // Third person for the target shot: the explorer at the feet, the camera over the shoulder.
-    explorer.position.copy(player.position);
-    explorer.rotation.y = player.yaw;
-    const c = shotCamera(player.position, player.yaw);
+  explorer.visible = thirdPerson() && mode === 'play';
+  explorer.position.copy(player.position);
+  explorer.rotation.y = shotMode ? player.yaw : player.facing;
+  if (shotMode) {
+    // The target shot pins the camera to its solved pose behind the explorer.
+    const c = shotCamera(player.position, player.yaw, undefined, EXPLORER_HEIGHT);
     camera.position.copy(c.position);
     camera.rotation.set(c.pitch, c.yaw, 0, 'YXZ');
     if (camera.fov !== c.fov) { camera.fov = c.fov; camera.updateProjectionMatrix(); }
@@ -1085,7 +1098,7 @@ function updatePlay(dt) {
   // Creatures.
   for (const c of creatures) {
     if (!debugFreeze) c.brain.tick(dt);
-    c.creature.update(time, dt, camera.position);
+    c.creature.update(time, dt, thirdPerson() ? player.eye(tmp) : camera.position);
   }
   if (ball.state === 'carried' && dog) ball.mesh.position.copy(dog.creature.mouth(tmp));
   ball.update(dt);

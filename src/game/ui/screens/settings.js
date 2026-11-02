@@ -107,6 +107,9 @@ export default {
     function video() {
       return [
         h('div.phl-section-title', {}, 'View'),
+        row('Camera', stepper({ key: 'camera', label: 'Camera', value: s.camera ?? 'third',
+          options: [{ value: 'third', label: 'Over the shoulder' }, { value: 'first', label: 'First person' }],
+          onChange: (x) => set((n) => { n.camera = x; }) }), 'See your explorer, or look through their eyes'),
         row('Field of view', slider({ key: 'fov', label: 'Field of view', value: s.fov ?? 70, min: 60, max: 100, step: 1, format: (v) => `${Math.round(v)}°`,
           onChange: (x) => set((n) => { n.fov = x; }) })),
         row('Renderer', stepper({ key: 'renderer', label: 'Renderer', value: s.renderer ?? 'ask',

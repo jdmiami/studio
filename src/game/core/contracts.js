@@ -58,6 +58,7 @@ export function defaultSettings() {
     touchControls: 'auto', touchLookSensitivity: 1, touchButtonScale: 1,
     // How the world is drawn: 'threejs' (painted meshes), 'sdf' (raymarched), or 'ask' before loading.
     renderer: 'ask',
+    camera: 'third', // 'third' (over the shoulder) | 'first'
     bindings: null, // null = the input system's defaults; else { [action]: [binding, ...] }
   };
 }
