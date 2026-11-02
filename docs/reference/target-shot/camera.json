@@ -1,0 +1,15 @@
+{
+ "image": [1125, 1979],
+ "principal_point": [562.5, 989.5],
+ "focal_px": {"from_floor_vps": 1042, "from_vertical_vp": 860, "used": 950},
+ "vfov_deg": 92,
+ "hfov_deg": 61,
+ "pitch_down_deg": 11,
+ "horizon_y": 822,
+ "vanishing_points": {"floor_a": [-273, 820], "floor_b": [1895, 825], "vertical": [567, 5399]},
+ "grid_yaw_deg": {"floor_a": -38.7, "floor_b": 52.0},
+ "camera_over_feet_explorer_heights": 1.09,
+ "camera_behind_feet_explorer_heights": 1.0,
+ "explorer_screen": {"head_top_y": 905, "boots_y": 1690, "x": 450},
+ "source": "scripts/shot (LSD line segments, robust least-squares vanishing points); see docs/target-shot.md"
+}

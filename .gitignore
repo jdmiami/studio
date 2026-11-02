@@ -12,3 +12,4 @@ __pycache__/
 # Regenerable depth maps (scripts/fp/depth_ref.py)
 docs/reference/cave-door-depth.npy
 docs/reference/cave-door-disparity.npy
+.cache/

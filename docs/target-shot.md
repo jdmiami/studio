@@ -329,6 +329,40 @@ Every step is judged against the target from the same camera.
 - A comparison page shows the two frames side by side, with an onion-skin slider and per-pixel
   difference heat maps.
 
+### S0 status: the target kit
+
+- **Camera solve** (`docs/reference/target-shot/camera.json`):
+  - from line-segment vanishing points: two floor directions at about -39 and +52 degrees from
+    the view, and the verticals;
+  - focal length about 950 px, so the field of view is about 92 degrees vertical and 61
+    horizontal;
+  - tilt about 11 degrees down, horizon at y 822;
+  - the camera sits about 1.1 explorer-heights up and 1 explorer-height behind the boots.
+- **Framing mode:** `?frame=target` in the game (`src/game/shot.js`) puts the camera there every
+  frame and stands a placeholder explorer at the player's feet.
+  `scripts/shot/capture.mjs` renders it at 1125 x 1979 with no HUD.
+- **Scoring:** `scripts/shot/score.py` measures:
+  - colour (CIEDE2000, lightness, chroma, warmth);
+  - SSIM and edges;
+  - detail and attention (saliency) map correlation;
+  - learned-depth layout (Depth Anything V2 on both frames);
+  - colour difference per element mask.
+
+  `scripts/shot/report.py` builds the comparison page (an onion-skin wipe, the heat maps and the
+  scores). `scripts/shot/fetch_models.sh` downloads the models into `.cache/models`.
+- **Baseline** (today's Nest at spawn, Soft renderer, medium quality):
+
+  | Metric | Score |
+  |---|---|
+  | Colour difference (mean / 90th percentile) | 21.3 / 35.3 |
+  | Lightness | 57.9 (target 51.3) |
+  | Chroma | 14.2 (target 11.2) |
+  | SSIM | 0.41 |
+  | Edge recall / precision | 0.24 / 0.36 |
+  | Detail match | 0.10 |
+  | Attention match | 0.19 |
+  | Depth layout match | 0.79 |
+
 ### Techniques
 
 1. **Camera solve:**

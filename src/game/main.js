@@ -46,6 +46,7 @@ import { createAmbient } from './world/ambient.js';
 import { createButterflies } from './world/butterflies.js';
 import { createPickupPops } from './world/pickup-pop.js';
 import { createHands } from '../fp/hands.js';
+import { shotCamera, createPlaceholderExplorer } from './shot.js';
 import { createBall } from './world/ball.js';
 import { applyTripLook } from './world/look.js';
 import { createPlayerController, EYE_HEIGHT, fovFor } from './player/controller.js';
@@ -143,7 +144,11 @@ const butterflies = createButterflies();
 scene.add(butterflies.group);
 const pops = createPickupPops(scene, camera);
 // The knit gloves and the compass from the painting, in play (?nohands hides them).
-const hands = params.has('nohands') || noHud ? null : createHands(camera, Math.random);
+// ?frame=target: the target shot's third-person camera and a stand-in explorer (src/game/shot.js).
+const shotMode = params.get('frame') === 'target';
+const explorer = shotMode ? createPlaceholderExplorer() : null;
+if (explorer) scene.add(explorer);
+const hands = params.has('nohands') || noHud || shotMode ? null : createHands(camera, Math.random);
 const pool = createFindPool();
 const ball = createBall();
 scene.add(ball.mesh);
@@ -1056,6 +1061,15 @@ function updatePlay(dt) {
   }
   if (faceTarget) player.faceToward(faceTarget, 0.08);
   player.update(dt);
+  if (explorer) {
+    // Third person for the target shot: the explorer at the feet, the camera over the shoulder.
+    explorer.position.copy(player.position);
+    explorer.rotation.y = player.yaw;
+    const c = shotCamera(player.position, player.yaw);
+    camera.position.copy(c.position);
+    camera.rotation.set(c.pitch, c.yaw, 0, 'YXZ');
+    if (camera.fov !== c.fov) { camera.fov = c.fov; camera.updateProjectionMatrix(); }
+  }
 
   // Finds underfoot.
   const taken = area.takeNear(player.position);
