@@ -453,3 +453,6 @@ The pass marks are first goals. They tighten once S0 shows what a matched blocko
    container.
 4. **Renderer:** a new WebGPU mesh renderer for strong GPUs. The current renderers stay as
    fallbacks until it is ready.
+5. **Scale:** bigger characters on the same grid. The block grid and level data stay at 1 unit.
+   The explorer (about 4 blocks tall in the shot), Biscuit, the critters, the camera, speeds and
+   jumps scale up about 2x, so 1-block steps are walkable and jumps clear 2 blocks.
