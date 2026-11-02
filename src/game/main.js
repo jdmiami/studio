@@ -520,7 +520,7 @@ function spawnCreatures(kind, data = null) {
   for (const s of spots) {
     const modelId = CRITTER_MODELS[s.itemId] ?? 'critter-0';
     if (!hasModel(modelId)) continue;
-    const c = createCreature({ modelId, height: kind === 'hub' && s.height ? s.height : (s.height ?? 0.42) * 1.5, // the Nest's placement is at true scale position: new THREE.Vector3(s.x, 0, s.z), heightAt: area.heightAt, hopScale: 1.4 });
+    const c = createCreature({ modelId, height: kind === 'hub' && s.height ? s.height : (s.height ?? 0.42) * 1.5, position: new THREE.Vector3(s.x, 0, s.z), heightAt: area.heightAt, hopScale: 1.4 }); // the Nest's placement is at true scale
     const brain = createCritterBrain({
       rng: rng.fork(s.id), events, body: c.body, world, tuning: CRITTER_SCALE, itemId: s.itemId, id: s.id, home: s.home ?? { x: s.x, z: s.z },
       neighbours: () => all.filter((o) => o !== c).map((o) => o.body.position), sighted,
