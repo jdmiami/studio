@@ -28,6 +28,7 @@ For a single shareable file, run `node tools/bundle.mjs`. It writes `dist/sticke
 | Q / E, right-drag, two-finger twist | Turn the view to any angle |
 | ↺ ↻ buttons | Tap to turn 45°, hold to spin |
 | N, compass button | Turn back to north |
+| V, eye button | Switch view: 2.5D, third person, first person |
 | G, Glide button | Take off or land with the Glider |
 | F, Eat button | Eat the best food you have |
 | C | Crafting |
@@ -39,6 +40,18 @@ For a single shareable file, run `node tools/bundle.mjs`. It writes `dist/sticke
 | Gamepad | Left stick moves. Right stick or LB/RB turns the view. A acts, B eats, X crafts, Y opens the map, RT glides, Start pauses |
 
 If you stand still and something attacks you, your character fights back on its own.
+
+## Views
+
+Press **V** or tap the eye button to switch between three cameras. Zoom works in all of them, and your choice is remembered.
+
+- **2.5D** (the default): the camera looks down at Pip on the curved planet, and you can turn it to any angle.
+- **Third person**: the camera drops low behind Pip and follows them, so you see Pip's back and the world stretching out ahead. Left and right turn Pip, up and down walk forward and back, and clicking or tapping still walks you there.
+- **First person**: the camera is at Pip's eyes, with your tool or weapon held low in view. It bobs as you walk and swings when you act. Same controls as third person.
+
+All three use the same sticker world and planet projection. The lower cameras just flatten the ground more and push the horizon further out. Caves are always 2D side view.
+
+Pip bobs, rocks from foot to foot and squashes a little on each step. Tools are drawn behind Pip, so they never cover the face: carried on the back, with the blade over the shoulder, and moved to the front hand to swing or fish.
 
 ## The HUD
 

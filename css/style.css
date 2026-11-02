@@ -398,7 +398,7 @@ canvas.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 #quests li.tribe { background: #e8f1ff; }
 #quests li.tribe i { background: var(--sea); }
 /* underground: no compass, turning or minimap, the map button stays */
-body.in-cave .rail #rotL, body.in-cave .rail #rotR, body.in-cave #compassBtn, body.in-cave .rail .desk, body.in-cave .mini { display: none; }
+body.in-cave .rail #rotL, body.in-cave .rail #rotR, body.in-cave #compassBtn, body.in-cave #viewBtn, body.in-cave .rail .desk, body.in-cave .mini { display: none; }
 @media (max-width: 560px) { .talk { bottom: calc(var(--sb) + 64px); padding: 10px 12px; } .talk header img { width: 44px; height: 44px; } }
 @media (max-height: 500px) { .talk { bottom: calc(var(--sb) + 6px); max-height: calc(100vh - 20px); } }
 .legend .village { background: #6bbf4a; border-radius: 3px; }

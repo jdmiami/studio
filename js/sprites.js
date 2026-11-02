@@ -256,6 +256,22 @@
       shape(c, (c) => ell(c, 27, 6, 6, 3, -0.45), '#6bbf4a', 1.6);
     };
   }
+  // Pip from behind, for the third-person view: backpack front and centre
+  function playerBackArt(frame) {
+    return (c) => {
+      const st = frame === 1 ? 3 : 0;
+      shape(c, (c) => { ell(c, 14, 45 - st, 6, 3.6); ell(c, 28, 45 - (3 - st), 6, 3.6); }, '#5a3f2e', 1.8);
+      shape(c, blobs([[21, 29, 15]]), '#ffcf5a');
+      flat(c, blobs([[14, 22, 4.5]]), '#ffe08f');
+      shape(c, (c) => rrect(c, 11, 20, 20, 21, 6), '#2fb3a1');
+      flat(c, (c) => rrect(c, 14, 23, 14, 6, 3), '#6fd6c6');
+      shape(c, (c) => rrect(c, 15, 31, 12, 7, 3), '#249484', 1.4);
+      line(c, [[21, 14], [21, 7]], INK, 3.6); line(c, [[21, 14], [21, 7]], '#4fa64a', 1.6);
+      shape(c, (c) => ell(c, 26, 6, 6, 3, -0.45), '#6bbf4a', 1.6);
+    };
+  }
+  ART.playerBack0 = [42, 49, playerBackArt(0)];
+  ART.playerBack1 = [42, 49, playerBackArt(1)];
   ART.player0 = [42, 49, playerArt(0)];
   ART.player1 = [42, 49, playerArt(1)];
 

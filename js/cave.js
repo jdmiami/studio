@@ -429,13 +429,13 @@
       else if (ch === 'm') drawSpr(g, SW.ITEMS[C.def.mod].icon, x + s / 2, y + s * 0.85 + Math.sin(C.t * 3 + c) * 2 * k, s * 0.75, 1, 1);
       else if (ch === '$') drawSpr(g, 'itemShell', x + s / 2, y + s * 0.85, s * 0.7, 1, 1);
     }
-    function drawSpr(g, name, x, y, hPx, face, alpha) {
+    function drawSpr(g, name, x, y, hPx, face, alpha, rot, ky) {
       const spr = SW.sprites[name];
       if (!spr) return;
       const sc = hPx / spr.h;
       g.save();
       g.globalAlpha = alpha === undefined ? 1 : alpha;
-      g.translate(x, y); if (face < 0) g.scale(-1, 1);
+      g.translate(x, y); if (rot) g.rotate(rot); if (face < 0) g.scale(-1, 1); if (ky) g.scale(2 - ky, ky);
       g.drawImage(spr.img, -spr.ax * sc, -spr.ay * sc, spr.w * sc, spr.h * sc);
       g.restore();
     }
@@ -466,7 +466,10 @@
         const spr = SW.sprites[tool];
         if (spr) { g.save(); g.translate(x + h.face * 14 * k, y - 22 * k); g.rotate(a); const sc = 26 * k / spr.h; g.drawImage(spr.img, -spr.ax * sc, -spr.ay * sc, spr.w * sc, spr.h * sc); g.restore(); }
       }
-      drawSpr(g, 'player' + fr, x, y, 46 * k, h.face, flick ? 0.5 : 1);
+      // walking: a hop, a rock from foot to foot, and a squash as each foot lands
+      const step = moving ? Math.sin(h.walkT * 9 * Math.PI / 2) : 0;
+      const land = moving ? Math.pow(1 - Math.abs(step), 3) : 0;
+      drawSpr(g, 'player' + fr, x + step * 1.2 * k, y - Math.abs(step) * 3 * k, 46 * k, h.face, flick ? 0.5 : 1, step * 0.08, 1 - 0.08 * land);
       if (h.slide) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(x - h.slide * 18 * k, y - 4 * k, 12 * k, 4 * k, 0, 0, TAU); g.fill(); }
     }
     // darkness with a pool of light around the hero; lit runes and treasure glow

@@ -3,7 +3,7 @@
 'use strict';
 (function () {
   const { clamp, lerp, TAU, dist } = SW;
-  const TILT = SW.TILT, LH = SW.LEVEL_H, CHUNK = SW.CHUNK, OBJ = SW.OBJ;
+  const LH = SW.LEVEL_H, CHUNK = SW.CHUNK, OBJ = SW.OBJ;
   const TS = SW.TEX_SCALE, MARGIN = SW.TEX_MARGIN;
   const ITEMS = SW.ITEMS, ORDER = SW.ITEM_ORDER, TOOLS = SW.TOOLS, RECIPES = SW.RECIPES, ENEMIES = SW.ENEMIES;
   const WX = SW.weather;
@@ -24,6 +24,20 @@
   let VW = 0, VH = 0, VCX = 0, VCY = 0;
   let zoomMul = clamp(SW.store.get('zoom', 1), 0.55, 1.6);
   const curve = { yA: 0, yTop: 0, R: 1, K: 0.75, a: 0, TH: 1.3, Rs: 1e9, Dk: 0.42, globe: false, bands: [] };
+  // ---------------- views ----------------
+  // Three cameras over the same sticker world. 2.5D looks down at Pip from
+  // above. Third person drops the camera low behind Pip and turns with them.
+  // First person puts it at Pip's eyes, with your tool held in view. The
+  // lower the camera, the flatter the ground (tilt) and the further the
+  // horizon; zoom still works in all three.
+  const VIEWS = {
+    classic: { name: '2.5D view', tilt: 0.625, yA: 0.6, yTop: 0.11, th: 0, follow: false, hero: true, zoom: 1 },
+    third: { name: 'Third-person view', tilt: 0.42, yA: 0.78, yTop: 0.14, th: 0.12, follow: true, hero: true, zoom: 1.3 },
+    first: { name: 'First-person view', tilt: 0.3, yA: 1.05, yTop: 0.18, th: 0.18, follow: true, hero: false, zoom: 1.1 },
+  };
+  const VIEW_ORDER = ['classic', 'third', 'first'];
+  let view = VIEWS[SW.store.get('view', 'classic')] ? SW.store.get('view', 'classic') : 'classic';
+  let TILT = VIEWS[view].tilt;
   const globe = SW.makeGlobe ? SW.makeGlobe() : null;   // WebGL planet; null means draw strips instead
   // Layers: #game holds the sky; the planet canvas (WebGL) sits on it, and a thin
   // effects canvas (weather gloom, grain) on top. The browser composites them,
@@ -45,7 +59,7 @@
     maxDPR = Math.min(SDPR, matchMedia('(pointer: coarse)').matches ? 1.25 : 1.5);
     if (!resize.done) { DPR = maxDPR; resize.done = true; } else DPR = Math.min(DPR, maxDPR);
     Zb = clamp(Math.min(W, H * 1.7) / 740, 0.9, 2.1);
-    Z = Zb * zoomMul;
+    Z = Zb * zoomMul * VIEWS[view].zoom;
     buildCurve();
     sizeBuffers();
     layoutHUD();
@@ -56,7 +70,7 @@
   }
   function setZoom(z) {
     zoomMul = clamp(z, 0.55, 1.6);
-    Z = Zb * zoomMul;
+    Z = Zb * zoomMul * VIEWS[view].zoom;
     buildCurve(); sizeBuffers();
     SW.store.set('zoom', zoomMul);
     clearTimeout(setZoom.t);
@@ -81,13 +95,14 @@
     const c = curve;
     const t = clamp((zoomMul - 0.55) / 1.05, 0, 1);
     c.globe = !!(globe && !globe.lost);
-    c.TH = 1.0 + 0.55 * t;
+    const V = VIEWS[view];
+    c.TH = 1.0 + 0.55 * t + V.th;
     c.Rs = c.globe ? W * (1.5 - 0.95 * t) : 1e9;
-    c.yA = H * 0.6; c.yTop = H * 0.11;
+    c.yA = H * V.yA; c.yTop = H * V.yTop;
     c.R = (c.yA - c.yTop) / Math.sin(c.TH);
     c.a = 0.09 / c.R;
     const dTop = c.R * c.TH;
-    const dBot = (-1 + Math.sqrt(1 + 4 * c.a * (H - c.yA))) / (2 * c.a);
+    const dBot = H > c.yA ? (-1 + Math.sqrt(1 + 4 * c.a * (H - c.yA))) / (2 * c.a) : -(c.yA - H);
     VCY = Math.ceil(dTop + 6);
     VH = Math.ceil(VCY + dBot + 10);
     const half = c.globe ? c.Rs * Math.asin(Math.min(0.999, W / 2 / c.Rs)) : W / 2;
@@ -1202,6 +1217,16 @@
     // camera rotation (Q/E, gamepad, buttons, gestures) and its smooth reset
     let spin = input.spin;
     if (G.mode === 'play') { if (keys.has('KeyQ')) spin -= 1; if (keys.has('KeyE')) spin += 1; }
+    if (VIEWS[view].follow && !G.inCave) {
+      if (spin) { p.hd = (p.hd ?? Math.atan2(p.fy, p.fx)) + spin * 2.2 * dt; p.fx = Math.cos(p.hd); p.fy = Math.sin(p.hd); }
+      if (camGoal !== null) { p.hd = camGoal - Math.PI / 2; p.fx = Math.cos(p.hd); p.fy = Math.sin(p.hd); camGoal = null; }
+      const want = Math.atan2(p.fx, -p.fy);
+      const dA = ((want - camA + Math.PI * 3) % TAU) - Math.PI;
+      // settle once it's behind Pip, so the ground cache stays valid while walking straight
+      if (Math.abs(dA) > 0.004) setAngle(camA + dA * Math.min(1, dt * (view === 'first' ? 9 : 5)));
+      else if (dA !== 0 && Math.abs(dA) > 1e-6) setAngle(want);
+      spin = 0;
+    }
     if (spin) { setAngle(camA + spin * 1.7 * dt); camGoal = null; saveAngle(); }
     if (camGoal !== null) {
       const dA = ((camGoal - camA + Math.PI * 3) % TAU) - Math.PI;
@@ -1229,12 +1254,20 @@
       if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
       if (keys.has('KeyW') || keys.has('ArrowUp')) iy -= 1;
       if (keys.has('KeyS') || keys.has('ArrowDown')) iy += 1;
+      // third and first person: left/right turn Pip, up/down walk forward and back
+      const follow = VIEWS[view].follow;
+      let tank = false;
+      if (follow) {
+        if (p.hd === undefined) p.hd = Math.atan2(p.fy, p.fx);
+        if (Math.abs(ix) > 0.15) { G.order = null; p.hd += ix * 2.6 * dt; p.fx = Math.cos(p.hd); p.fy = Math.sin(p.hd); }
+        ix = 0; tank = Math.abs(iy) > 0.15;
+      }
       let il = Math.hypot(ix, iy);
       p.running = keys.has('ShiftLeft') || keys.has('ShiftRight') || (il > 0.97 && !!(input.x || input.y));
       let mx = 0, my = 0;
       if (il > 0.15) {
         G.order = null; G.fishing = null; G.marker = null;
-        [mx, my] = worldDir(ix, iy);
+        [mx, my] = tank ? [p.fx * -iy, p.fy * -iy] : worldDir(ix, iy);
         if (Math.abs(ix) > 0.2) p.face = ix > 0 ? 1 : -1;
       } else if (input.holdMove && input.mouseX >= 0 && screenToFlat(input.mouseX, input.mouseY)) {
         const f = screenToFlat(input.mouseX, input.mouseY);
@@ -1263,7 +1296,7 @@
       p.vx = lerp(p.vx, mx * spd + windX * drift, k); p.vy = lerp(p.vy, my * spd + windY * drift, k);
       p.moving = il > 0.15 && spd > 0;
       if (p.moving) {
-        p.fx = mx / il; p.fy = my / il;
+        if (!tank) { p.fx = mx / il; p.fy = my / il; p.hd = Math.atan2(p.fy, p.fx); }
         p.walkT += dt * (p.running ? 1.4 : 1);
         p.dustT -= dt * (p.running ? 1.8 : 1);
         if (p.dustT <= 0 && !p.flying) {
@@ -1641,7 +1674,7 @@
   gc.g = gc.cv.getContext('2d');
   function drawGround(v) {
     const world = G.world;
-    const key = camA.toFixed(5) + '|' + Z + '|' + DPR + '|' + VW + '|' + VH + '|' + Math.round(world.frozen * 20) + '|' + Math.round(WX.snow * 20) + '|' + world.seed;
+    const key = camA.toFixed(5) + '|' + TILT + '|' + Z + '|' + DPR + '|' + VW + '|' + VH + '|' + Math.round(world.frozen * 20) + '|' + Math.round(WX.snow * 20) + '|' + world.seed;
     if (gc.world !== world) { gc.world = world; gc.dirty = true; }
     const rx = gc.x - G.cam.x, ry = gc.y - G.cam.y;
     let dx = (rx * cosA + ry * sinA) * Z, dy = ((-rx * sinA + ry * cosA) * TILT + G.cam.lv - gc.lv) * Z;
@@ -1740,7 +1773,7 @@
     const c = curve;
     popZone.x = (0.36 * W) / Z;
     popZone.far = (0.5 * c.R * c.TH) / (Z * TILT);
-    popZone.near = (1.6 * (H - c.yA)) / (Z * TILT);
+    popZone.near = Math.max(160, 1.6 * (H - c.yA)) / (Z * TILT);
     popFrame++;
     if (popFrame % 240 === 0) for (const [id, st] of popState) if (popFrame - st.seen > 240) popState.delete(id);
   }
@@ -1816,11 +1849,12 @@
         if (pt.x < -100 * Z || pt.x > VW + 100 * Z || pt.y < -30 || pt.y > VH + 140 * Z) continue;
         const st = world.objState(o, t);
         if (st === 'gone') continue;
+        if (view === 'first' && pt.d > -26) continue;
         drawList.push({ d: pt.d, k: 0, o, spr: st === 'after' ? OBJ[o.type].after : o.type, pop: popOf(o.id, o.x, o.y, dt) });
       }
     }
     for (const s of world.structures) drawList.push({ d: depthOf(s.x - G.cam.x, s.y - G.cam.y), k: 1, s, spr: s.type === 'campfire' ? 'campfire' : 'wall', pop: popOf('s' + s.id, s.x, s.y, dt) });
-    for (const m of G.mobs) drawList.push({ d: depthOf(m.x - G.cam.x, m.y - G.cam.y), k: 2, m, spr: mobSprite(m), sc: m.scale });
+    for (const m of G.mobs) { if (view === 'first' && depthOf(m.x - G.cam.x, m.y - G.cam.y) > -20) continue; drawList.push({ d: depthOf(m.x - G.cam.x, m.y - G.cam.y), k: 2, m, spr: mobSprite(m), sc: m.scale }); }
     if (G.realm) {
       const near = (x, y) => Math.abs(x - G.cam.x) < 2600 && Math.abs(y - G.cam.y) < 2600;
       for (const t of G.realm.tribes) {
@@ -2141,13 +2175,20 @@
     const pt = proj(p.x, p.y, p.lvlOff);
     const gx = pt.x, gy = pt.y;
     const sx = gx, sy = gy - p.alt * Z;
+    if (!VIEWS[view].hero) return;                     // first person: you are the camera
     const ground = !p.flying && !p.boat;
     const frame = p.moving && ground ? Math.floor(p.walkT * 9) % 2 : 0;
-    const name = 'player' + frame + (p.face < 0 ? 'L' : '');
-    const bob = p.moving && ground ? Math.abs(Math.sin(p.walkT * 9 * Math.PI / 2)) * 3 * Z : p.boat ? Math.sin(G.time * 3) * 2 * Z : 0;
-    const ky = p.moving ? 1 + Math.sin(p.walkT * 18) * 0.04 : 1 + Math.sin(G.time * 3) * 0.025;
-    const kx = 2 - ky;
-    const rot = p.flying ? p.face * 0.18 + Math.sin(G.time * 2) * 0.05 : p.moving ? p.face * (p.running ? 0.12 : 0.06) : 0;
+    const back = view === 'third';
+    const name = back ? 'playerBack' + frame : 'player' + frame + (p.face < 0 ? 'L' : '');
+    // every step: a hop, a little side-to-side rock, and a squash as the foot lands
+    const step = p.moving && ground ? Math.sin(p.walkT * 9 * Math.PI / 2) : 0;
+    const bob = p.moving && ground ? Math.abs(step) * 3 * Z : p.boat ? Math.sin(G.time * 3) * 2 * Z : 0;
+    const land = p.moving && ground ? Math.pow(1 - Math.abs(step), 3) : 0;
+    const ky = (p.moving ? 1 + Math.sin(p.walkT * 18) * 0.03 : 1 + Math.sin(G.time * 3) * 0.025) * (1 - 0.08 * land);
+    const kx = (2 - ky) * (1 + 0.04 * land);
+    const rock = step * (p.running ? 0.11 : 0.075);
+    const rot = p.flying ? p.face * 0.18 + Math.sin(G.time * 2) * 0.05 : p.moving ? (back ? 0 : p.face * (p.running ? 0.12 : 0.06)) + rock : 0;
+    const sway = step * 1.2 * Z;
     // a soggy raft sags and curls up at the edges
     if (p.boat) drawFolded('raft', gx, gy + 6 * Z + bob, Math.sin(G.time * 2) * 0.03, 1 - p.raftWet * 0.12, 1 - p.raftWet * 0.2, 0.55, p.raftWet * 1.1);
     const fishing = !!G.fishing;
@@ -2156,18 +2197,19 @@
     let tRot;
     if (fishing) tRot = G.fishing.phase === 'cast' ? lerp(-1.2, 0.5, Math.min(1, G.fishing.t / 0.3)) : G.fishing.phase === 'bite' ? 0.2 + Math.sin(G.time * 30) * 0.15 : 0.35;
     else if (p.swingT > 0) { const k = 1 - p.swingT / 0.24; tRot = lerp(-1.9, 1.3, Math.sin(k * Math.PI / 2)); }
-    else tRot = toolSpr === 'toolHand' ? 0.2 : -0.35;
-    const hx = sx + p.face * 15 * Z, hy = sy - 16 * Z - bob;
-    const drawTool = () => {
-      if (p.flying || (toolSpr === 'toolHand' && p.swingT <= 0)) return;
-      const hand = toolSpr === 'toolHand';
-      drawSprite(toolSpr, hx, hy + (hand ? 4 : 8) * Z, tRot * p.face, hand ? 1 : 0.85 * p.face, hand ? 1 : 0.85);
-    };
-    if (p.fy < -0.5 && !fishing) drawTool();
+    else tRot = toolSpr === 'toolHand' ? 0.2 : -0.6;
+    // idle: carried on the back, blade showing over the shoulder; swinging or fishing: in the front hand.
+    // Either way it is drawn behind Pip, so it never covers the face.
+    const inHand = p.swingT > 0 || fishing;
+    const hx = sx + sway + (back ? 15 : inHand ? p.face * 15 : -p.face * 12) * Z, hy = sy - (inHand ? 16 : 13) * Z - bob;
+    // the tool is always drawn behind Pip, so it never covers their face
+    if (!p.flying && !(toolSpr === 'toolHand' && p.swingT <= 0)) {
+      const hand = toolSpr === 'toolHand', f = back ? 1 : p.face;
+      drawSprite(toolSpr, hx, hy + (hand ? 4 : 8) * Z, tRot * f + rock * 0.5, hand ? 1 : 0.85 * f, hand ? 1 : 0.85);
+    }
     const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
-    drawSprite(name, sx, sy - bob, rot, kx, ky);
-    if (p.hurtT > 0 || flick) { ctx.globalAlpha = 0.75; drawSprite(name, sx, sy - bob, rot, kx, ky, 'flash'); ctx.globalAlpha = 1; }
-    if (p.fy >= -0.5 || fishing) drawTool();
+    drawSprite(name, sx + sway, sy - bob, rot, kx, ky);
+    if (p.hurtT > 0 || flick) { ctx.globalAlpha = 0.75; drawSprite(name, sx + sway, sy - bob, rot, kx, ky, 'flash'); ctx.globalAlpha = 1; }
     // the leaf banks with the wind and droops as it gets wet
     if (p.flying || p.alt > 4) {
       const bank = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.here.gust * 0.22;
@@ -2349,6 +2391,7 @@
       fxctx.clearRect(0, 0, W, H);
       WX.overlay(fxctx, W, H);
       if (grain) { fxctx.fillStyle = grain; fxctx.fillRect(0, 0, W, H); }
+      drawFirstPersonHand(fxctx);
       return;
     }
     if (!c.globe) {
@@ -2362,7 +2405,42 @@
     }
     WX.overlay(sctx, W, H);
     if (grain) { sctx.fillStyle = grain; sctx.fillRect(0, 0, W, H); }
+    drawFirstPersonHand(sctx);
   }
+  // first person: your tool, held low on the right, bobbing with your steps and swinging when you act
+  function drawFirstPersonHand(g) {
+    if (view !== 'first' || G.mode === 'title' || G.inCave) return;
+    const p = G.player;
+    const w = bestWeapon();
+    const name = G.fishing ? 'toolRod' : p.swingT > 0 && p.swingTool ? { axe: 'toolAxe', pick: 'toolPick', sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade' }[p.swingTool] || 'toolHand'
+      : w ? { sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade' }[w] : G.tools.axe ? 'toolAxe' : 'toolHand';
+    const hPx = Math.min(W, H) * 0.34;
+    const S = Math.max(1, Math.round((hPx / 34) * SDPR * 2) / 2);
+    const spr = SW.bigSprite(name, S);
+    if (!spr) return;
+    const step = p.moving ? Math.sin(p.walkT * 9 * Math.PI / 2) : 0;
+    const swing = p.swingT > 0 ? Math.sin((1 - p.swingT / 0.24) * Math.PI) : 0;
+    const x = W * (touchMode() ? 0.44 : 0.8) + step * W * 0.012 - swing * W * 0.12, y = H + 6 + Math.abs(step) * H * 0.02 - swing * H * 0.05;
+    g.save();
+    g.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    g.translate(x, y); g.rotate(-0.35 - swing * 1.1 + step * 0.04);
+    const sc = hPx / spr.h;
+    g.drawImage(spr.img, -spr.ax * sc, -spr.ay * sc, spr.w * sc, spr.h * sc);
+    g.restore();
+  }
+  function setView(v) {
+    if (!VIEWS[v] || G.inCave) return;
+    const was = view;
+    view = v; TILT = VIEWS[v].tilt;
+    SW.store.set('view', v);
+    if (v === 'classic' && was !== 'classic') setAngle(SW.store.get('camA', 0));
+    if (G && G.player) { const p = G.player; p.hd = Math.atan2(p.fy, p.fx); }
+    Z = Zb * zoomMul * VIEWS[v].zoom;
+    buildCurve(); rescale(); layoutHUD();
+    toast(VIEWS[v].name + (v === 'classic' ? '.' : '. Left and right turn, up and down walk. Press V to switch views.'), 3400);
+  }
+  const nextView = () => setView(VIEW_ORDER[(VIEW_ORDER.indexOf(view) + 1) % VIEW_ORDER.length]);
+
   const clouds = [];
   for (let i = 0; i < 8; i++) clouds.push({ x: Math.random(), y: 0.15 + Math.random() * 0.6, s: 0.6 + Math.random() * 0.8, v: 0.004 + Math.random() * 0.006 });
   function drawClouds(yTop, d, overcast) {
@@ -2966,6 +3044,7 @@
         else if (e.code === 'KeyL') toggleQuests();
         else if (e.code === 'KeyG') toggleFly();
         else if (e.code === 'KeyN') camGoal = 0;
+        else if (e.code === 'KeyV') nextView();
         else if (/^Digit[1-9]$/.test(e.code)) {
           const items = ORDER.filter((k) => G.inv[k] > 0);
           const it = items[+e.code.slice(5) - 1];
@@ -3064,6 +3143,7 @@
     $('fullBtn').addEventListener('click', toggleFullscreen);
     $('zoomIn').addEventListener('click', () => setZoom(zoomMul * 1.15));
     $('zoomOut').addEventListener('click', () => setZoom(zoomMul / 1.15));
+    $('viewBtn').addEventListener('click', nextView);
 
     // touch: tap to act, drag to steer, two fingers to twist (turn the view) and pinch (zoom)
     const stick = $('stick'), knob = $('knob');
@@ -3210,7 +3290,7 @@
     setAngle(a) { setAngle(a); }, get angle() { return camA; },
     toScreen: (x, y, lv = 0) => { const pt = proj(x, y, lv); return flatToScreen(pt.x, pt.y); },
     toWorld: (sx, sy) => { const f = screenToFlat(sx, sy); return f && screenToWorld(f.x, f.y); },
-    get caves() { return caves; }, enterCave: (i) => enterCave(G.realm.caves[i]), exitCave: () => exitCave(), openTalk: (t) => openTalk(t),
+    get caves() { return caves; }, setView: (v) => setView(v), get view() { return view; }, enterCave: (i) => enterCave(G.realm.caves[i]), exitCave: () => exitCave(), openTalk: (t) => openTalk(t),
     get dpr() { return DPR; },
   };
   try { window.claude?.hot?.snapshot?.(() => ({ save: G && (G.mode === 'play' || G.mode === 'paused') ? serialize() : null })); } catch (e) { /* not in a viewer */ }
