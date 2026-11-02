@@ -13,3 +13,4 @@ __pycache__/
 docs/reference/cave-door-depth.npy
 docs/reference/cave-door-disparity.npy
 .cache/
+scratch/
