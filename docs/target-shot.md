@@ -363,6 +363,21 @@ Every step is judged against the target from the same camera.
   | Attention match | 0.19 |
   | Depth layout match | 0.79 |
 
+- **Progress** (Painted renderer, `?frame=target`):
+
+  | Run | Mean colour difference | SSIM | Edge recall | Depth match |
+  |---|---|---|---|---|
+  | S0 baseline (old Nest) | 21.3 | 0.41 | 0.24 | 0.79 |
+  | S1 blockout, shot layout | 19.6 | — | 0.33 | 0.89 |
+  | S2 grade + block tones | 16.4 | — | — | — |
+  | S2 depth-aware layout fit + tones | **15.9** | 0.42 | 0.27 | 0.86 |
+
+  The layout fit (`scripts/shot/fit_target_layout.py`) scores each candidate against the shot's
+  learned depth as well as its class map. That term is on by default; `--no-depth` turns it off.
+  The learned depth is calibrated to world units on the door, its frame and the floor at the
+  explorer's feet. Adding it cut the fit's depth error from 0.42 to 0.19 and raised class
+  agreement from 0.80 to 0.84.
+
 ### Techniques
 
 1. **Camera solve:**
