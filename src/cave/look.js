@@ -10,16 +10,17 @@ import { sharedFurUniforms } from '../fur.js';
 export function applyCaveLook(renderer, params, sky = null) {
   // Warm light from above-left, behind the player, so the great door is lit.
   sharedFurUniforms.uSunDir.value.set(-0.4, 0.8, 0.45).normalize();
-  sharedFurUniforms.uSunColor.value.set('#fff6f1').multiplyScalar(1.25);
+  sharedFurUniforms.uSunColor.value.set('#fff8f3').multiplyScalar(1.2);
   sharedFurUniforms.uSkyColor.value.set('#f3e4e2');
   sharedFurUniforms.uGroundColor.value.set('#dcb4a4');
   sharedFurUniforms.uFogColor.value.set('#f2dfd2');
   sharedFurUniforms.uFogDensity.value = 0.004;
-  // The painting is cel shaded: flat tones per face, no plastic highlights (?cel=0 for smooth).
-  sharedFurUniforms.uCel.value = params.has('cel') ? Number(params.get('cel')) : 1;
-  // Grade fitted to the painting's Lab statistics (lightness mean, spread and 10th/90th percentiles
-  // within 1, chroma 18 against 17): brighter, flatter, warm shadows.
-  renderer.toneMappingExposure = params.has('exposure') ? Number(params.get('exposure')) : 1.25;
+  // The target shot (docs/target-shot.md) is softly shaded clay and felt, not cel-flat
+  // (?cel=1 for the old flat tones).
+  sharedFurUniforms.uCel.value = params.has('cel') ? Number(params.get('cel')) : 0.35;
+  // Grade fitted to the target shot's Lab statistics (lightness mean 51, 5th/95th percentiles
+  // 21/80, chroma 11, warmth 6): muted, near-neutral shadows, a touch darker.
+  renderer.toneMappingExposure = params.has('exposure') ? Number(params.get('exposure')) : 1.15;
   if (sky) {
     const u = sky.material.uniforms;
     u.uZenith.value.set('#9cc2ec');
@@ -28,9 +29,10 @@ export function applyCaveLook(renderer, params, sky = null) {
   }
   return {
     godRays: false, tiltShift: false,
-    saturation: params.has('sat') ? Number(params.get('sat')) : 0.85,
-    contrast: params.has('contrast') ? Number(params.get('contrast')) : 0.75,
-    shadowTint: params.has('stint') ? `#${params.get('stint')}` : '#c0957a',
-    outline: params.get('outline') === '0' ? null : true,
+    saturation: params.has('sat') ? Number(params.get('sat')) : 0.55,
+    contrast: params.has('contrast') ? Number(params.get('contrast')) : 0.7,
+    shadowTint: params.has('stint') ? `#${params.get('stint')}` : '#9d8f88',
+    // The target shot draws no ink lines: shapes read by shading (?outline=1 for the old ink).
+    outline: params.get('outline') === '1' ? true : null,
   };
 }

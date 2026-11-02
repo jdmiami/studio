@@ -141,7 +141,7 @@ def main():
         tones[k] = [round(float(v), 3) for v in t]
         n += 1
     TONES.write_text(json.dumps({
-        '_': f'Fitted to {Path(args.reference).relative_to(ROOT)} by scripts/fp/fit_cell_tones.py. gains: per segmentation class '
+        '_': f'Fitted to {Path(args.reference).resolve().relative_to(ROOT)} by scripts/fp/fit_cell_tones.py. gains: per segmentation class '
              '(2 earth/wall, 3 water, 4 floor, 7 ceiling) a multiplier for every block of that kind; tones: per block '
              '"x,y,z" the residual multiplier over its gain (blocks the painting does not show, or where the layout '
              'differs from it, are absent).',
