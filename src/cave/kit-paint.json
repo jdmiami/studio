@@ -1,0 +1,173 @@
+{
+ "_": "Painted crops of the kit models placed in the cave, by prop name and base pixel (scripts/fp/paint_props.py); the game projection-paints each placed model from its crop.",
+ "paints": [
+  {
+   "name": "cube-tree",
+   "base": [
+    362,
+    250
+   ],
+   "src": "/cave/props/kit-0.png",
+   "x": 286,
+   "y": 94,
+   "shift": [
+    0.112,
+    -0.171
+   ]
+  },
+  {
+   "name": "willow",
+   "base": [
+    492,
+    300
+   ],
+   "src": "/cave/props/kit-1.png",
+   "x": 430,
+   "y": 152,
+   "shift": [
+    0.007,
+    -0.007
+   ]
+  },
+  {
+   "name": "knit-shrub",
+   "base": [
+    890,
+    364
+   ],
+   "src": "/cave/props/kit-2.png",
+   "x": 829,
+   "y": 306,
+   "shift": [
+    -0.048,
+    0.003
+   ]
+  },
+  {
+   "name": "fence",
+   "base": [
+    883,
+    397
+   ],
+   "src": "/cave/props/kit-3.png",
+   "x": 814,
+   "y": 337,
+   "shift": [
+    -0.023,
+    0.001
+   ]
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    305,
+    288
+   ],
+   "src": "/cave/props/kit-4.png",
+   "x": 286,
+   "y": 251,
+   "shift": [
+    -0.026,
+    0.049
+   ]
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    342,
+    280
+   ],
+   "src": "/cave/props/kit-5.png",
+   "x": 319,
+   "y": 246,
+   "shift": [
+    -0.019,
+    0.031
+   ]
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    357,
+    282
+   ],
+   "src": "/cave/props/kit-6.png",
+   "x": 343,
+   "y": 262,
+   "shift": [
+    0.006,
+    -0.009
+   ]
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    369,
+    360
+   ],
+   "src": "/cave/props/kit-7.png",
+   "x": 348,
+   "y": 331,
+   "shift": [
+    0.011,
+    -0.017
+   ]
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    826,
+    350
+   ],
+   "src": "/cave/props/kit-8.png",
+   "x": 797,
+   "y": 304,
+   "shift": [
+    -0.077,
+    0.011
+   ]
+  },
+  {
+   "name": "mushroom",
+   "base": [
+    998,
+    432
+   ],
+   "src": "/cave/props/kit-9.png",
+   "x": 959,
+   "y": 372,
+   "shift": [
+    -0.049,
+    -0.004
+   ]
+  },
+  {
+   "name": "knit-bush",
+   "base": [
+    778,
+    352
+   ],
+   "src": "/cave/props/kit-10.png",
+   "x": 754,
+   "y": 318,
+   "shift": [
+    -0.01,
+    0.002
+   ]
+  },
+  {
+   "name": "dog",
+   "base": [
+    590,
+    368
+   ],
+   "src": "/cave/props/kit-11.png",
+   "x": 546,
+   "y": 290,
+   "shift": [
+    -0.036,
+    0.022
+   ]
+  }
+ ]
+}

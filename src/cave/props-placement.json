@@ -1,0 +1,349 @@
+{
+ "_": "Prop placements for src/cave/index.js, computed by scripts/fp/place_props.py from docs/reference/cave-door-props.json, the reference camera and src/cave/layout.json: each prop stands where its base pixel's ray meets the layout, scaled so its rendered height matches the painted one (height = world units; scale = height / the builder's native height). Regenerate after changing the layout.",
+ "props": [
+  {
+   "name": "cube-tree",
+   "x": 0.6,
+   "y": 3.0,
+   "z": -2.3,
+   "cell": [
+    1,
+    -2
+   ],
+   "surface": "wall",
+   "hit": "top*",
+   "height": 3.15,
+   "scale": 0.984,
+   "base": [
+    471,
+    865
+   ],
+   "heightPx": 343,
+   "build": true
+  },
+  {
+   "name": "willow",
+   "x": 3.214,
+   "y": 2.0,
+   "z": -2.45,
+   "cell": [
+    3,
+    -2
+   ],
+   "surface": "wall",
+   "hit": "side",
+   "height": 2.074,
+   "scale": 0.576,
+   "base": [
+    681,
+    898
+   ],
+   "heightPx": 273,
+   "build": true
+  },
+  {
+   "name": "mushroom",
+   "x": 0.7,
+   "y": 3.0,
+   "z": -1.7,
+   "cell": [
+    1,
+    -2
+   ],
+   "surface": "wall",
+   "hit": "top*",
+   "height": 0.349,
+   "scale": 0.832,
+   "base": [
+    417,
+    868
+   ],
+   "heightPx": 40,
+   "build": true
+  },
+  {
+   "name": "mushroom",
+   "x": 1.6,
+   "y": 3.0,
+   "z": -0.6,
+   "cell": [
+    2,
+    -1
+   ],
+   "surface": "wall",
+   "hit": "top*",
+   "height": 0.213,
+   "scale": 0.506,
+   "base": [
+    334,
+    872
+   ],
+   "heightPx": 29,
+   "build": true
+  },
+  {
+   "name": "knit-shrub",
+   "x": 4.624,
+   "y": 0.0,
+   "z": -1.45,
+   "cell": [
+    5,
+    -1
+   ],
+   "surface": "floor",
+   "hit": "side",
+   "height": 1.213,
+   "scale": 1.618,
+   "base": [
+    724,
+    1156
+   ],
+   "heightPx": 134,
+   "build": true
+  },
+  {
+   "name": "knit-shrub",
+   "x": 4.618,
+   "y": 0.0,
+   "z": -1.45,
+   "cell": [
+    5,
+    -1
+   ],
+   "surface": "floor",
+   "hit": "side",
+   "height": 0.436,
+   "scale": 0.581,
+   "base": [
+    728,
+    1040
+   ],
+   "heightPx": 15,
+   "build": true
+  },
+  {
+   "name": "stone",
+   "x": 2.55,
+   "y": 1.0,
+   "z": -1.319,
+   "cell": [
+    3,
+    -1
+   ],
+   "surface": "water",
+   "hit": "side",
+   "height": 0.588,
+   "scale": 1.836,
+   "base": [
+    497,
+    946
+   ],
+   "heightPx": 75,
+   "build": true
+  },
+  {
+   "name": "pom",
+   "x": 2.571,
+   "y": 2.0,
+   "z": -1.668,
+   "cell": [
+    3,
+    -2
+   ],
+   "surface": "wall",
+   "hit": "top",
+   "height": 0.366,
+   "scale": 1.076,
+   "base": [
+    541,
+    1023
+   ],
+   "heightPx": 48,
+   "build": false
+  },
+  {
+   "name": "dog",
+   "x": 6.222,
+   "y": -0.5,
+   "z": -0.45,
+   "cell": [
+    6,
+    0
+   ],
+   "surface": "floor",
+   "hit": "side",
+   "height": 0.701,
+   "scale": 0.54,
+   "base": [
+    868,
+    1060
+   ],
+   "heightPx": 138,
+   "build": true,
+   "yaw": -0.9753
+  },
+  {
+   "name": "critter",
+   "x": 6.359,
+   "y": -0.5,
+   "z": -0.45,
+   "cell": [
+    6,
+    0
+   ],
+   "surface": "floor",
+   "hit": "side",
+   "height": 0.269,
+   "scale": 0.84,
+   "base": [
+    893,
+    1153
+   ],
+   "heightPx": 54,
+   "build": true
+  },
+  {
+   "name": "critter",
+   "x": 6.55,
+   "y": 2.0,
+   "z": -1.215,
+   "cell": [
+    7,
+    -1
+   ],
+   "surface": "wall",
+   "hit": "side",
+   "height": 0.226,
+   "scale": 0.706,
+   "base": [
+    1028,
+    1105
+   ],
+   "heightPx": 54,
+   "build": true
+  },
+  {
+   "name": "critter",
+   "x": 6.107,
+   "y": 2.0,
+   "z": -2.924,
+   "cell": [
+    6,
+    -3
+   ],
+   "surface": "wall",
+   "hit": "top",
+   "height": 0.106,
+   "scale": 0.332,
+   "base": [
+    1102,
+    1105
+   ],
+   "heightPx": 19,
+   "build": true
+  },
+  {
+   "name": "npc",
+   "x": -1.503,
+   "y": 4.0,
+   "z": -0.392,
+   "cell": [
+    -2,
+    0
+   ],
+   "surface": "wall",
+   "hit": "top",
+   "height": 1.29,
+   "scale": 0.806,
+   "base": [
+    187,
+    803
+   ],
+   "heightPx": 139,
+   "build": false
+  },
+  {
+   "name": "fence",
+   "x": 4.51,
+   "y": 2.0,
+   "z": -1.525,
+   "cell": [
+    5,
+    -1
+   ],
+   "surface": "floor",
+   "hit": "side",
+   "height": 0.282,
+   "scale": 0.403,
+   "base": [
+    728,
+    967
+   ],
+   "heightPx": 42,
+   "build": true,
+   "ends": [
+    [
+     3.419,
+     2.0,
+     -2.45
+    ],
+    [
+     5.6,
+     3.0,
+     -0.6
+    ]
+   ],
+   "length": 2.86,
+   "yaw": -0.7035
+  }
+ ],
+ "lights": [
+  {
+   "u": 1075.2,
+   "v": 450.0,
+   "x": -0.46,
+   "y": 9.5,
+   "z": -15.5,
+   "width": 1.67,
+   "hit": "top"
+  },
+  {
+   "u": 67.2,
+   "v": 568.4,
+   "x": -0.5,
+   "y": 7.0,
+   "z": 0.7,
+   "width": 1.5,
+   "hit": "top"
+  },
+  {
+   "u": 781.4,
+   "v": 1042.2,
+   "x": 5.81,
+   "y": -0.5,
+   "z": -0.45,
+   "width": 1.5,
+   "hit": "side"
+  },
+  {
+   "u": 913.7,
+   "v": 1091.5,
+   "x": 6.42,
+   "y": -0.5,
+   "z": -0.45,
+   "width": 1.5,
+   "hit": "side"
+  }
+ ],
+ "camera": {
+  "fov": 92.0,
+  "yaw": 52.0,
+  "pitch": -11.0,
+  "roll": 0.0,
+  "eye": [
+   8.27518249645405,
+   3.6420000000000003,
+   2.5801807025927985
+  ]
+ }
+}

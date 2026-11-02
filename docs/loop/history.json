@@ -1,0 +1,968 @@
+[
+ {
+  "render": "screenshots/loop/i00-baseline.png",
+  "composite": 0.5522,
+  "fidelity": 0.6237,
+  "colorLayout": 0.4807,
+  "meanDeltaE": 20.77,
+  "signals": {
+   "silhouetteIoU": 0.83,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.0,
+   "phashSimilarity": 0.5,
+   "ssim": 0.1574,
+   "edgeOverlap": 0.7273,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.6243,
+   "tonalParity": 0.7158,
+   "objectness": 0.8007,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    7,
+    1
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    8,
+    13
+   ]
+  ],
+  "note": "baseline: first-person pass from commit 0487ecb",
+  "time": "2026-10-25T22:37:16",
+  "iteration": 0
+ },
+ {
+  "render": "screenshots/loop/i01-camera.png",
+  "composite": 0.526,
+  "fidelity": 0.595,
+  "colorLayout": 0.457,
+  "meanDeltaE": 21.72,
+  "signals": {
+   "silhouetteIoU": 0.829,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.0,
+   "phashSimilarity": 0.5,
+   "ssim": 0.1752,
+   "edgeOverlap": 0.6863,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.4422,
+   "tonalParity": 0.6653,
+   "objectness": 0.7671,
+   "hueZoneParity": 0.125
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    7,
+    1
+   ],
+   [
+    7,
+    13
+   ],
+   [
+    8,
+    13
+   ],
+   [
+    7,
+    14
+   ]
+  ],
+  "note": "camera: spawn (-1.2,-4.5), yaw -0.12, pitch -0.1",
+  "time": "2026-10-25T22:39:30",
+  "iteration": 1
+ },
+ {
+  "render": "screenshots/loop/i02-camera.png",
+  "composite": 0.5463,
+  "fidelity": 0.6508,
+  "colorLayout": 0.4419,
+  "meanDeltaE": 22.32,
+  "signals": {
+   "silhouetteIoU": 0.765,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.8342,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.0705,
+   "edgeOverlap": 0.7158,
+   "blowoutParity": 0.959,
+   "flatRegionScore": 0.5411,
+   "tonalParity": 0.7073,
+   "objectness": 0.7884,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    7,
+    1
+   ],
+   [
+    7,
+    13
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    1,
+    2
+   ]
+  ],
+  "note": "camera: (-1.8,-3) yaw +0.22 (door 23deg right of center like the reference), pitch -0.12",
+  "time": "2026-10-25T22:40:36",
+  "iteration": 2
+ },
+ {
+  "render": "screenshots/loop/i03-layout.png",
+  "composite": 0.5311,
+  "fidelity": 0.6175,
+  "colorLayout": 0.4448,
+  "meanDeltaE": 22.21,
+  "signals": {
+   "silhouetteIoU": 0.8281,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.0482,
+   "phashSimilarity": 0.5,
+   "ssim": 0.1007,
+   "edgeOverlap": 0.7215,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.6233,
+   "tonalParity": 0.7544,
+   "objectness": 0.7823,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    6,
+    6
+   ],
+   [
+    7,
+    1
+   ],
+   [
+    6,
+    5
+   ],
+   [
+    5,
+    2
+   ]
+  ],
+  "note": "layout: spawn (-5.5,y1,-1.5) yaw 0 pitch -0.1 left of door axis; water left, terraces, right terrace, lower ceiling, door height 6",
+  "time": "2026-10-25T22:49:58",
+  "iteration": 3
+ },
+ {
+  "render": "screenshots/loop/i04-pool.png",
+  "composite": 0.567,
+  "fidelity": 0.6466,
+  "colorLayout": 0.4875,
+  "meanDeltaE": 20.5,
+  "signals": {
+   "silhouetteIoU": 0.8107,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.3407,
+   "phashSimilarity": 0.5312,
+   "ssim": 0.124,
+   "edgeOverlap": 0.7349,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.6785,
+   "tonalParity": 0.7395,
+   "objectness": 0.7889,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    7,
+    1
+   ],
+   [
+    7,
+    15
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    7,
+    13
+   ]
+  ],
+  "note": "layout: pool in lower-left (x<=-6, z -4..-6), terraces start at z=-7, cascade steeper",
+  "time": "2026-10-25T22:51:15",
+  "iteration": 4
+ },
+ {
+  "render": "screenshots/loop/i05-hands.png",
+  "composite": 0.5782,
+  "fidelity": 0.6576,
+  "colorLayout": 0.4988,
+  "meanDeltaE": 20.05,
+  "signals": {
+   "silhouetteIoU": 0.8136,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.1004,
+   "phashSimilarity": 0.4688,
+   "ssim": 0.1957,
+   "edgeOverlap": 0.7606,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.8117,
+   "tonalParity": 0.76,
+   "objectness": 0.8038,
+   "hueZoneParity": 0.125
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    11
+   ],
+   [
+    6,
+    11
+   ],
+   [
+    4,
+    14
+   ]
+  ],
+  "note": "silhouette: hands 1.45x placed like the reference (stone ~(435,510), compass ~(770,475)), darker green gloves; dark player-centered minimap",
+  "time": "2026-10-25T22:53:53",
+  "iteration": 5
+ },
+ {
+  "render": "screenshots/loop/i06-held.png",
+  "composite": 0.5878,
+  "fidelity": 0.6611,
+  "colorLayout": 0.5144,
+  "meanDeltaE": 19.42,
+  "signals": {
+   "silhouetteIoU": 0.8081,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.2203,
+   "phashSimilarity": 0.4062,
+   "ssim": 0.2528,
+   "edgeOverlap": 0.7493,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7575,
+   "tonalParity": 0.7563,
+   "objectness": 0.8082,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    7,
+    1
+   ],
+   [
+    1,
+    2
+   ]
+  ],
+  "note": "silhouette: held stone and compass scaled to the reference size (compass r~62px)",
+  "time": "2026-10-25T22:54:43",
+  "iteration": 6
+ },
+ {
+  "render": "screenshots/loop/i07-palette.png",
+  "composite": 0.5999,
+  "fidelity": 0.6589,
+  "colorLayout": 0.541,
+  "meanDeltaE": 18.36,
+  "signals": {
+   "silhouetteIoU": 0.8135,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.0258,
+   "phashSimilarity": 0.4688,
+   "ssim": 0.2423,
+   "edgeOverlap": 0.7496,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7586,
+   "tonalParity": 0.7942,
+   "objectness": 0.8028,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    7,
+    1
+   ]
+  ],
+  "note": "materials: lower-chroma beige walls/ceiling, sage caps, uniform pink-beige floor, softer water",
+  "time": "2026-10-25T22:55:53",
+  "iteration": 7
+ },
+ {
+  "render": "screenshots/loop/i08-cascade.png",
+  "composite": 0.6014,
+  "fidelity": 0.6592,
+  "colorLayout": 0.5436,
+  "meanDeltaE": 18.26,
+  "signals": {
+   "silhouetteIoU": 0.8141,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.0023,
+   "phashSimilarity": 0.4688,
+   "ssim": 0.245,
+   "edgeOverlap": 0.7453,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7648,
+   "tonalParity": 0.8035,
+   "objectness": 0.8031,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    7,
+    1
+   ]
+  ],
+  "note": "silhouette: water cascade lower (max 3, slower rise), bluish foam caps",
+  "time": "2026-10-25T22:56:57",
+  "iteration": 8
+ },
+ {
+  "render": "screenshots/loop/i09-trees.png",
+  "composite": 0.6043,
+  "fidelity": 0.6561,
+  "colorLayout": 0.5525,
+  "meanDeltaE": 17.9,
+  "signals": {
+   "silhouetteIoU": 0.8146,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.0,
+   "phashSimilarity": 0.4688,
+   "ssim": 0.2396,
+   "edgeOverlap": 0.7443,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7544,
+   "tonalParity": 0.8081,
+   "objectness": 0.7936,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    7,
+    1
+   ]
+  ],
+  "note": "silhouette: cube tree short trunk + broad low crown at x=-8; willows scaled 0.7",
+  "time": "2026-10-25T22:57:52",
+  "iteration": 9
+ },
+ {
+  "render": "screenshots/loop/i10-light.png",
+  "composite": 0.6491,
+  "fidelity": 0.7178,
+  "colorLayout": 0.5803,
+  "meanDeltaE": 16.79,
+  "signals": {
+   "silhouetteIoU": 0.7776,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.6943,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3079,
+   "edgeOverlap": 0.7394,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7149,
+   "tonalParity": 0.8264,
+   "objectness": 0.7969,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    7,
+    1
+   ],
+   [
+    8,
+    15
+   ]
+  ],
+  "note": "lighting: daylight opening high in the left wall (z -13..-9), lighter ceiling without AO",
+  "time": "2026-10-25T22:59:16",
+  "iteration": 10
+ },
+ {
+  "render": "screenshots/loop/i11-shade.png",
+  "composite": 0.6554,
+  "fidelity": 0.7236,
+  "colorLayout": 0.5872,
+  "meanDeltaE": 16.51,
+  "signals": {
+   "silhouetteIoU": 0.7771,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.7034,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3247,
+   "edgeOverlap": 0.7404,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7138,
+   "tonalParity": 0.8511,
+   "objectness": 0.7957,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    7,
+    1
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    8,
+    15
+   ]
+  ],
+  "note": "lighting: right side in shadow (blocks and caps darken up to 40% toward the right wall)",
+  "time": "2026-10-25T23:00:15",
+  "iteration": 11
+ },
+ {
+  "render": "screenshots/loop/i12-shade2.png",
+  "composite": 0.6575,
+  "fidelity": 0.7272,
+  "colorLayout": 0.5878,
+  "meanDeltaE": 16.49,
+  "signals": {
+   "silhouetteIoU": 0.7748,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.7497,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3272,
+   "edgeOverlap": 0.7398,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7222,
+   "tonalParity": 0.8538,
+   "objectness": 0.7938,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    7,
+    1
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    4,
+    14
+   ]
+  ],
+  "note": "lighting: right-side shadow starts at the floor edge (x>-2), up to 45%",
+  "time": "2026-10-25T23:01:20",
+  "iteration": 12
+ },
+ {
+  "render": "screenshots/loop/i13-shelf.png",
+  "composite": 0.6576,
+  "fidelity": 0.7258,
+  "colorLayout": 0.5895,
+  "meanDeltaE": 16.42,
+  "signals": {
+   "silhouetteIoU": 0.7759,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.7142,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3275,
+   "edgeOverlap": 0.7394,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7201,
+   "tonalParity": 0.856,
+   "objectness": 0.7966,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    7,
+    1
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    4,
+    14
+   ]
+  ],
+  "note": "silhouette: low grassy shelf (top 0.5) beside the steps at x=-6/-7, z=-5/-6",
+  "time": "2026-10-25T23:02:56",
+  "iteration": 13
+ },
+ {
+  "render": "screenshots/loop/i14-minimap.png",
+  "composite": 0.6683,
+  "fidelity": 0.7405,
+  "colorLayout": 0.5961,
+  "meanDeltaE": 16.16,
+  "signals": {
+   "silhouetteIoU": 0.7647,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.9554,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3444,
+   "edgeOverlap": 0.7407,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.719,
+   "tonalParity": 0.8477,
+   "objectness": 0.7936,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    6,
+    6
+   ]
+  ],
+  "note": "hud: darker minimap colors with an explored radius (rest stays near-black)",
+  "time": "2026-10-25T23:03:43",
+  "iteration": 14
+ },
+ {
+  "render": "screenshots/loop/i15-window.png",
+  "composite": 0.6641,
+  "fidelity": 0.7274,
+  "colorLayout": 0.6009,
+  "meanDeltaE": 15.96,
+  "signals": {
+   "silhouetteIoU": 0.7766,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.7429,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3572,
+   "edgeOverlap": 0.7412,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.6785,
+   "tonalParity": 0.8447,
+   "objectness": 0.796,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    6,
+    6
+   ]
+  ],
+  "note": "lighting: left opening becomes a window (lintel at y=7) with a warm daylight card behind it",
+  "time": "2026-10-25T23:04:47",
+  "iteration": 15
+ },
+ {
+  "render": "screenshots/loop/i16-gloves.png",
+  "composite": 0.6655,
+  "fidelity": 0.7323,
+  "colorLayout": 0.5987,
+  "meanDeltaE": 16.05,
+  "signals": {
+   "silhouetteIoU": 0.7653,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.9414,
+   "phashSimilarity": 0.5312,
+   "ssim": 0.3349,
+   "edgeOverlap": 0.7417,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7253,
+   "tonalParity": 0.8511,
+   "objectness": 0.7939,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    4,
+    14
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    6,
+    6
+   ]
+  ],
+  "note": "materials: lighter Fair Isle gloves (half cream), pinker skin, smooth felt pebble instead of the fluff stone",
+  "time": "2026-10-25T23:05:55",
+  "iteration": 16
+ },
+ {
+  "render": "screenshots/loop/i17-shrub.png",
+  "composite": 0.6734,
+  "fidelity": 0.7446,
+  "colorLayout": 0.6021,
+  "meanDeltaE": 15.92,
+  "signals": {
+   "silhouetteIoU": 0.7652,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.9522,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3638,
+   "edgeOverlap": 0.7417,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7149,
+   "tonalParity": 0.8582,
+   "objectness": 0.795,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    6,
+    6
+   ],
+   [
+    1,
+    10
+   ]
+  ],
+  "note": "silhouette: knit shrub darker green with a small pom-pom (was a big white fluff ball)",
+  "time": "2026-10-25T23:07:12",
+  "iteration": 17
+ },
+ {
+  "render": "screenshots/loop/i18-skylight.png",
+  "composite": 0.6734,
+  "fidelity": 0.7446,
+  "colorLayout": 0.6021,
+  "meanDeltaE": 15.92,
+  "signals": {
+   "silhouetteIoU": 0.7652,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.9522,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3638,
+   "edgeOverlap": 0.7417,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7149,
+   "tonalParity": 0.8582,
+   "objectness": 0.795,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    6,
+    6
+   ],
+   [
+    1,
+    10
+   ]
+  ],
+  "note": "lighting: bright daylight card over the skylight gap above the door",
+  "time": "2026-10-25T23:08:02",
+  "iteration": 18
+ },
+ {
+  "render": "screenshots/loop/i19-skylight.png",
+  "composite": 0.6661,
+  "fidelity": 0.7311,
+  "colorLayout": 0.6012,
+  "meanDeltaE": 15.95,
+  "signals": {
+   "silhouetteIoU": 0.7532,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.8087,
+   "phashSimilarity": 0.5625,
+   "ssim": 0.377,
+   "edgeOverlap": 0.7413,
+   "blowoutParity": 0.9912,
+   "flatRegionScore": 0.7014,
+   "tonalParity": 0.8389,
+   "objectness": 0.7909,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    6,
+    6
+   ],
+   [
+    8,
+    4
+   ]
+  ],
+  "note": "lighting: skylight glow card flush with the ceiling underside",
+  "time": "2026-10-25T23:09:05",
+  "iteration": 19
+ },
+ {
+  "render": "screenshots/loop/i20-grade.png",
+  "composite": 0.6704,
+  "fidelity": 0.7153,
+  "colorLayout": 0.6255,
+  "meanDeltaE": 14.98,
+  "signals": {
+   "silhouetteIoU": 0.7368,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.4029,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3647,
+   "edgeOverlap": 0.7447,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7211,
+   "tonalParity": 0.8542,
+   "objectness": 0.7969,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    8,
+    4
+   ],
+   [
+    6,
+    6
+   ]
+  ],
+  "note": "lighting/grade: cave scene saturation 0.8 (render chroma 17.9 vs reference 13.8)",
+  "time": "2026-10-25T23:10:07",
+  "iteration": 20
+ },
+ {
+  "render": "screenshots/loop/i21-grade.png",
+  "composite": 0.6777,
+  "fidelity": 0.7375,
+  "colorLayout": 0.618,
+  "meanDeltaE": 15.28,
+  "signals": {
+   "silhouetteIoU": 0.7561,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.8222,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3642,
+   "edgeOverlap": 0.743,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7138,
+   "tonalParity": 0.8555,
+   "objectness": 0.7962,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    6,
+    6
+   ],
+   [
+    1,
+    10
+   ]
+  ],
+  "note": "lighting/grade: cave scene saturation 0.9",
+  "time": "2026-10-25T23:10:53",
+  "iteration": 21
+ },
+ {
+  "render": "screenshots/loop/i22-final.png",
+  "composite": 0.6777,
+  "fidelity": 0.7375,
+  "colorLayout": 0.618,
+  "meanDeltaE": 15.28,
+  "signals": {
+   "silhouetteIoU": 0.7561,
+   "scaleDelta": 0.0,
+   "aspectRatioDelta": 0.0,
+   "symmetryParity": 0.8222,
+   "phashSimilarity": 0.5938,
+   "ssim": 0.3642,
+   "edgeOverlap": 0.743,
+   "blowoutParity": 0.9951,
+   "flatRegionScore": 0.7138,
+   "tonalParity": 0.8555,
+   "objectness": 0.7962,
+   "hueZoneParity": 0.0
+  },
+  "worstRegions_row_col_of_9x16": [
+   [
+    8,
+    3
+   ],
+   [
+    8,
+    15
+   ],
+   [
+    6,
+    6
+   ],
+   [
+    1,
+    10
+   ]
+  ],
+  "note": "verification: code cleanup after round 21 (no visual change intended)",
+  "time": "2026-10-25T23:13:52",
+  "iteration": 22
+ }
+]

@@ -1,0 +1,155 @@
+{
+ "_": "Fences fitted in 3D from their painted cut-outs (scripts/assets/fit_fences.py): the line on the ground (ends, length, yaw: local +x along the fence), posts (distance along t, width, height) and the rails' top; world units.",
+ "fits": {
+  "fence-0": {
+   "family": "fence",
+   "ends": [
+    [
+     6.445,
+     2.0,
+     -4.053
+    ],
+    [
+     7.501,
+     2.0,
+     -4.317
+    ]
+   ],
+   "length": 1.089,
+   "yaw": 1.8162,
+   "posts": [
+    {
+     "t": 0.04,
+     "w": 0.128,
+     "h": 0.398
+    },
+    {
+     "t": 0.436,
+     "w": 0.104,
+     "h": 0.369
+    },
+    {
+     "t": 0.591,
+     "w": 0.119,
+     "h": 0.366
+    },
+    {
+     "t": 1.006,
+     "w": 0.087,
+     "h": 0.352
+    }
+   ],
+   "railTop": 0.312,
+   "paint": {
+    "src": "/assets/ref/fence-0.png",
+    "x": 814,
+    "y": 337
+   }
+  },
+  "crate-0": {
+   "family": "wood-fence",
+   "ends": [
+    [
+     -4.567,
+     0.0,
+     -11.095
+    ],
+    [
+     -4.074,
+     -0.0,
+     -11.284
+    ]
+   ],
+   "length": 0.528,
+   "yaw": 1.9378,
+   "posts": [
+    {
+     "t": 0.037,
+     "w": 0.074,
+     "h": 0.475
+    },
+    {
+     "t": 0.491,
+     "w": 0.074,
+     "h": 0.571
+    }
+   ],
+   "railTop": 0.475,
+   "paint": {
+    "src": "/assets/ref/crate-0.png",
+    "x": 482,
+    "y": 292
+   }
+  },
+  "bench-0": {
+   "family": "wood-fence",
+   "ends": [
+    [
+     4.181,
+     1.0,
+     -8.162
+    ],
+    [
+     4.52,
+     1.0,
+     -8.645
+    ]
+   ],
+   "length": 0.59,
+   "yaw": 2.5298,
+   "posts": [
+    {
+     "t": 0.041,
+     "w": 0.083,
+     "h": 0.451
+    },
+    {
+     "t": 0.548,
+     "w": 0.083,
+     "h": 0.318
+    }
+   ],
+   "railTop": 0.295,
+   "paint": {
+    "src": "/assets/ref/bench-0.png",
+    "x": 716,
+    "y": 312
+   }
+  },
+  "scaffold-0": {
+   "family": "scaffold",
+   "ends": [
+    [
+     -7.255,
+     1.921,
+     -1.839
+    ],
+    [
+     -6.978,
+     1.921,
+     -2.76
+    ]
+   ],
+   "length": 0.962,
+   "yaw": 2.8501,
+   "posts": [
+    {
+     "t": 0.067,
+     "w": 0.135,
+     "h": 1.311
+    },
+    {
+     "t": 0.894,
+     "w": 0.135,
+     "h": 1.468
+    }
+   ],
+   "railTop": 1.472,
+   "paint": {
+    "src": "/assets/ref/scaffold-0.png",
+    "x": 144,
+    "y": 200
+   }
+  }
+ }
+}

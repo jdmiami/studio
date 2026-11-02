@@ -1,0 +1,15 @@
+node_modules/
+dist/
+screenshots/
+.DS_Store
+.superstack/
+.img2threejs/
+__pycache__/
+
+# Throwaway worktrees for parallel experiments
+.claude/worktrees/
+
+# Regenerable depth maps (scripts/fp/depth_ref.py)
+docs/reference/cave-door-depth.npy
+docs/reference/cave-door-disparity.npy
+.cache/
