@@ -76,10 +76,16 @@ The seed alone (shown in the save panel, with a copy button) recreates the same 
 
 Each region has a climate (temperate, cold or hot) and its own weather, which changes every few minutes. You get a short note when it turns.
 
+Weather moves across the island instead of switching on everywhere at once:
+
+- **Wind is a field.** Gusts are blobs of fast air (two octaves of noise) carried downwind at the wind's speed. A plant bends only when a gust is over it, so you see gust fronts roll across meadows, one patch after another. White wind curls ride the strongest gusts. The arrow next to the weather name shows which way the wind blows on your screen and how hard it is where you stand.
+- **Showers pass over.** Rain and snow fall from cells (larger, slower noise) that drift downwind. Rain only falls inside a cell, and its cloud shadow darkens the ground beneath it.
+- **The ground remembers.** A soak map around you records where it has rained or snowed. Puddles, wet plants and snow caps follow it, and it dries out or melts afterwards (faster in wind).
+
 | Weather | What it does |
 | --- | --- |
-| Wind | Grass, flowers, bushes and trees sway with the wind and bend harder in gusts. Fire flames lean with it, clouds drift with it, and the waves pick up |
-| Rain | Plants droop, rocks get wet tops, puddles form, fires burn out faster, fish bite sooner, and rain washes Scribbles away. Things regrow faster once the ground is wet |
+| Wind | Plants bend as each gust passes over them. Flames lean with the local gust, clouds drift with the wind, and the waves pick up. The glider and raft get pushed along |
+| Rain | Where a shower has passed, trees and plants fold over a little at the top like damp paper (never all the way), rocks get wet tops, and puddles form. Fires under the shower burn out faster, fish bite sooner, and rain washes Scribbles away. Things regrow faster once the ground is wet |
 | Thunderstorm | Heavy rain plus lightning flashes. Fires drown quickly and Scribbles melt |
 | Snow | Snow caps build on trees, rocks and cliff tops. The ground gets slippery (you slide when you stop or turn), you get hungry faster away from a fire, and shallow water freezes so you can walk on it. Fish don't bite through ice |
 | Blizzard | Heavier snow and even less grip |
@@ -104,8 +110,8 @@ Pick a **World density** on the title screen: Sparse, Normal or Lush. It sets ho
 
 ## Getting around
 
-- **Raft** (Travel tab: 10 wood, 6 fiber). Walk or tap onto water and you sail. Click far out on the water to sail there. Wind speeds you up when it's behind you.
-- **Glider** (Travel tab: 6 wood, 10 fiber, 6 petals). Press G or tap Glide to take off. You fly over water, cliffs and creatures until the blue energy bar runs out, then land. Energy refills on the ground.
+- **Raft** (Travel tab: 10 wood, 6 fiber). Walk or tap onto water and you sail. Click far out on the water to sail there. Wind behind you speeds you up, and gusts push you along. The raft soaks up water while you sail, faster in rain and choppy gusts, and its bar in the top-left drains. When it is soggy it folds up and you swim ashore. It dries out on land, and you can't launch it again until it has dried a bit.
+- **Leaf glider** (Travel tab: 6 wood, 10 fiber, 6 petals). Press G or tap Glide. You hop up (higher from a cliff top), then sink steadily, so it's a glide, not free flight. Gusts give lift, and flying with the wind gives more, so a good flier can ride the wind a long way. The wind also drifts you sideways whether you steer or not. Rain soaks the leaf: a wet leaf droops and sinks faster, and you have to let it dry on the ground before the next launch. Its bar shows your height while gliding and the leaf's dryness on the ground.
 
 ## Adventures
 
@@ -119,7 +125,8 @@ Pick a **World density** on the title screen: Sparse, Normal or Lush. It sets ho
 - The composed ground is cached in a padded offscreen buffer. While you only walk, each frame copies that buffer once. It's redrawn when the view turns or zooms, when you walk past its edge, or when snow or ice changes.
 - Objects are placed on a jittered grid with a seeded hash, so they're identical every visit. Trees leave stumps and regrow, and bushes refill.
 - Stickers are pre-rendered at the exact on-screen scale and copied pixel-for-pixel each frame. They re-render when you zoom.
-- **The round world.** The flat scene is drawn into an offscreen buffer, then bent onto the screen in thin horizontal strips. Above the player, rows follow `y = yA + R·sin(d/R)` and shrink horizontally, rolling away to the horizon. Below the player they swell slightly (`y = yA + d + a·d²`). Taps and clicks go through the inverse mapping and the camera rotation, so they land on what's under your finger.
+- **The planet.** The flat scene is drawn into an offscreen buffer, and a WebGL fragment shader wraps it onto a small planet. For each screen pixel it works out which flat-world point lands there. Rows above the hero roll away over the horizon (`y = yA + R·sin(d/R)`) and rows below swell toward the camera. Columns wrap round a second radius (`x = W/2 + Rs·sin(t)`, `y += Dk·Rs·(1 − cos t)`), so the sides fall away and the horizon is an arc. Zooming in makes the planet rounder and zooming out flattens it, like changing a lens. Clicks go through the same mapping in reverse. The planet canvas is its own layer between the sky and a thin effects layer, so it's never copied back into a 2D canvas. Without WebGL, the game bends the scene in horizontal strips instead (no side curve).
+- **Pop-up book.** Stickers in a zone around the hero stand up, and those farther out fold back flat onto the page. Each one hangs on a damped spring, so when it crosses the edge of the zone (because you walked, or turned the view) it flaps up or flips down with a small bounce.
 - **Device features.** Adaptive resolution lowers the world's render resolution when frames run slow and raises it when there's headroom. Gamepads work through the Gamepad API. Phones vibrate when you chop, hit or get hurt, the screen stays awake while you play (Wake Lock), and the pause menu has a fullscreen toggle.
 
 ## Code layout
@@ -131,7 +138,8 @@ Pick a **World density** on the title screen: Sparse, Normal or Lush. It sets ho
 | `js/world.js` | Island shape, biomes, temperature, regions and danger, object placement and density, chunk textures |
 | `js/rpg.js` | Items, gear, recipes, creatures, fish, XP curve, quest generator, region names, chest loot, Lost Pages and treasure maps |
 | `js/audio.js` | Synthesised sound effects (no audio files) |
-| `js/weather.js` | Weather by climate, wind and gusts, rain, snow, fog and sand particles, weather effects, moon phases |
+| `js/weather.js` | Weather by climate, travelling gust field, drifting rain and snow cells, soak map, particles and cloud shadows, weather effects, moon phases |
+| `js/globe.js` | The WebGL planet projection (fragment shader) |
 | `js/save.js` | Save files, save codes, cloud save |
 | `js/intro.js` | The animated manga story intro (panels, speed lines, screentone, SFX) |
 | `js/game.js` | Game loop, rotating camera, click-to-act orders, fishing, combat, AI, transport, day/night and moon lighting, HUD layout, map, input (touch, mouse, keyboard, gamepad) |

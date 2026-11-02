@@ -28,8 +28,11 @@
       <div class="vrow xp" title="Level and experience">
         <span class="lvl"><small>Lv</small><b id="lvlNum">1</b></span><div class="bar"><i id="xpBar"></i></div><span id="xpNum" class="xpnum">0/20</span>
       </div>
-      <div class="vrow energy" id="energyRow" title="Glider energy" hidden>
+      <div class="vrow energy" id="energyRow" title="Leaf glider: height while gliding, dryness on the ground" hidden>
         <img data-icon="glider" alt="Glider"><div class="bar"><i id="energyBar"></i></div>
+      </div>
+      <div class="vrow raftrow" id="raftRow" title="Raft dryness: it soaks up water while you sail and dries on land" hidden>
+        <img data-icon="raft" alt="Raft"><div class="bar"><i id="raftBar"></i></div>
       </div>
       <div id="toolbelt" aria-label="Tools and gear"></div>
     </div>
@@ -45,7 +48,7 @@
       <canvas id="dial" width="88" height="88"></canvas>
       <div class="status-text">
         <span id="dayLabel">Day</span><b>Day <span id="dayNum">1</span></b>
-        <span class="weather"><i id="weatherIcon" data-kind="clear" aria-hidden="true"></i><span id="weatherName">Clear</span></span>
+        <span class="weather"><i id="weatherIcon" data-kind="clear" aria-hidden="true"></i><span id="weatherName">Clear</span><span class="wind" title="Wind"><i id="windArrow" aria-hidden="true"></i></span></span>
       </div>
     </div>
     <div class="mini">
@@ -243,6 +246,7 @@
 <script src="js/rpg.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/weather.js"></script>
+<script src="js/globe.js"></script>
 <script src="js/save.js"></script>
 <script src="js/intro.js"></script>
 <script src="js/game.js"></script>

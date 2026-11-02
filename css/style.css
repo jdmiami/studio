@@ -61,7 +61,14 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 .vrow.xp .bar { height: 7px; }
 .vrow.xp .bar i { background: linear-gradient(90deg, var(--violet), var(--gem)); }
 .vrow.energy .bar { height: 7px; }
-.vrow.energy .bar i { background: linear-gradient(90deg, #4fb3e8, #8fe8f6); }
+.vrow.energy .bar i { background: linear-gradient(90deg, #6bbf4a, #b6e36a); }
+.vrow.energy.air .bar i { background: linear-gradient(90deg, #4fb3e8, #8fe8f6); }
+.vrow.raftrow .bar { height: 7px; }
+.vrow.raftrow .bar i { background: linear-gradient(90deg, #c98f4a, #ecc27e); }
+.vrow.soggy .bar i { background: linear-gradient(90deg, #5b7fa8, #8fb0d0); }
+.vrow.soggy img { filter: saturate(0.4) brightness(0.85); }
+.weather .wind { display: inline-grid; place-items: center; width: 14px; height: 14px; margin-left: 2px; }
+#windArrow { display: block; width: 12px; height: 8px; background: var(--sea); clip-path: polygon(0 30%, 55% 30%, 55% 0, 100% 50%, 55% 100%, 55% 70%, 0 70%); transition: transform 0.4s, opacity 0.4s; }
 .vrow b { font-family: var(--display); font-weight: 400; font-size: 14px; min-width: 2.4ch; text-align: right; font-variant-numeric: tabular-nums; }
 .vrow.low { animation: throb 0.8s ease-in-out infinite; }
 @keyframes throb { 50% { transform: scale(1.04); } }
@@ -347,3 +354,6 @@ body.touch .slot kbd, body.touch #craftBtn kbd { display: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
+
+/* the planet (WebGL) and effects layers sit over the sky canvas; input goes to #game */
+canvas.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }

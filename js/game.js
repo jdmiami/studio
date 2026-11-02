@@ -23,7 +23,17 @@
   let W = 0, H = 0, DPR = 1, SDPR = 1, maxDPR = 1.5, Zb = 1, Z = 1;
   let VW = 0, VH = 0, VCX = 0, VCY = 0;
   let zoomMul = clamp(SW.store.get('zoom', 1), 0.55, 1.6);
-  const curve = { yA: 0, yTop: 0, R: 1, K: 0.75, a: 0, TH: 1.3, bands: [] };
+  const curve = { yA: 0, yTop: 0, R: 1, K: 0.75, a: 0, TH: 1.3, Rs: 1e9, Dk: 0.42, globe: false, bands: [] };
+  const globe = SW.makeGlobe ? SW.makeGlobe() : null;   // WebGL planet; null means draw strips instead
+  // Layers: #game holds the sky; the planet canvas (WebGL) sits on it, and a thin
+  // effects canvas (weather gloom, grain) on top. The browser composites them,
+  // so the planet never has to be copied back into a 2D canvas.
+  const fxCv = document.createElement('canvas');
+  const fxctx = fxCv.getContext('2d');
+  if (globe) {
+    globe.canvas.className = fxCv.className = 'layer';
+    canvas.after(globe.canvas); globe.canvas.after(fxCv);
+  }
   let grain = null;
 
   function resize() {
@@ -31,6 +41,7 @@
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = Math.round(W * SDPR); canvas.height = Math.round(H * SDPR);
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    fxCv.width = canvas.width; fxCv.height = canvas.height;
     maxDPR = Math.min(SDPR, matchMedia('(pointer: coarse)').matches ? 1.25 : 1.5);
     if (!resize.done) { DPR = maxDPR; resize.done = true; } else DPR = Math.min(DPR, maxDPR);
     Zb = clamp(Math.min(W, H * 1.7) / 740, 0.9, 2.1);
@@ -46,6 +57,7 @@
   function setZoom(z) {
     zoomMul = clamp(z, 0.55, 1.6);
     Z = Zb * zoomMul;
+    buildCurve(); sizeBuffers();
     SW.store.set('zoom', zoomMul);
     clearTimeout(setZoom.t);
     setZoom.t = setTimeout(rescale, 280);
@@ -58,11 +70,19 @@
   }
 
   // ---------------- the round world ----------------
-  // The flat world is wrapped onto a drum: rows above the player roll away
-  // toward a curved horizon (shrinking and squashing), rows below swell
-  // slightly toward the camera. Screen y = yA + R sin(d/R) above, yA + d + a d^2 below.
+  // The flat world is wrapped onto a small planet. Rows above the hero roll
+  // away toward a curved horizon (shrinking and squashing), rows below swell
+  // slightly toward the camera:  y = yA + R sin(d/R) above, yA + d + a d^2 below.
+  // Columns wrap round a second radius Rs, so the sides fall away and the
+  // horizon is an arc:  x = W/2 + Rs sin(t),  y += Dk Rs (1 - cos t),  t = u / Rs.
+  // Zooming in makes the planet rounder; zooming out flattens it, like a
+  // wider lens. globe.js does the same mapping per pixel on the GPU.
   function buildCurve() {
     const c = curve;
+    const t = clamp((zoomMul - 0.55) / 1.05, 0, 1);
+    c.globe = !!(globe && !globe.lost);
+    c.TH = 1.0 + 0.55 * t;
+    c.Rs = c.globe ? W * (1.5 - 0.95 * t) : 1e9;
     c.yA = H * 0.6; c.yTop = H * 0.11;
     c.R = (c.yA - c.yTop) / Math.sin(c.TH);
     c.a = 0.09 / c.R;
@@ -70,9 +90,12 @@
     const dBot = (-1 + Math.sqrt(1 + 4 * c.a * (H - c.yA))) / (2 * c.a);
     VCY = Math.ceil(dTop + 6);
     VH = Math.ceil(VCY + dBot + 10);
-    VW = Math.ceil(W / curveScale(-dTop)) + 12;
+    const half = c.globe ? c.Rs * Math.asin(Math.min(0.999, W / 2 / c.Rs)) : W / 2;
+    VW = Math.ceil((2 * half) / curveScale(-dTop)) + 12;
     VCX = VW / 2;
+    c.drop = c.globe ? c.Dk * c.Rs * (1 - Math.cos(Math.asin(Math.min(1, W / 2 / c.Rs)))) : 0;
     c.bands = [];
+    if (c.globe) return;
     const step = 2 / SDPR;
     for (let v = c.yTop; v < H; v += step) {
       const v1 = Math.min(H, v + step);
@@ -88,13 +111,24 @@
   function curveY(d) { const c = curve; return d < 0 ? c.yA + c.R * Math.sin(d / c.R) : c.yA + d + c.a * d * d; }
   function curveScale(d) { const c = curve; return d < 0 ? 1 / (1 + c.K * (1 - Math.cos(d / c.R))) : 1 + 2 * c.a * d; }
   function screenToFlat(mx, my) {
-    if (my < curve.yTop) return null;
-    const d = curveInv(Math.min(H, my)), s = curveScale(d);
-    return { x: VCX + (mx - W / 2) / s, y: VCY + d };
+    const c = curve, u = mx - W / 2;
+    let side = u, drop = 0;
+    if (c.globe) {
+      const q = u / c.Rs;
+      if (Math.abs(q) >= 1) return null;
+      const ang = Math.asin(q);
+      side = c.Rs * ang; drop = c.Dk * c.Rs * (1 - Math.cos(ang));
+    }
+    const v = my - drop;
+    if (v < c.yTop) return null;
+    const d = curveInv(Math.min(H, v)), s = curveScale(d);
+    return { x: VCX + side / s, y: VCY + d };
   }
   function flatToScreen(fx, fy) {
-    const d = fy - VCY, s = curveScale(d);
-    return { x: W / 2 + (fx - VCX) * s, y: curveY(d), s };
+    const c = curve, d = fy - VCY, s = curveScale(d);
+    let u = (fx - VCX) * s, y = curveY(d);
+    if (c.globe) { const ang = clamp(u / c.Rs, -1.5, 1.5); u = c.Rs * Math.sin(ang); y += c.Dk * c.Rs * (1 - Math.cos(ang)); }
+    return { x: W / 2 + u, y, s };
   }
 
   // ---------------- camera rotation ----------------
@@ -124,6 +158,7 @@
 
   function newGame(seed, mode, seedText, density) {
     const world = new SW.World(seed, density || 1);
+    WX.resetSoak(); popState.clear();
     const sp = world.findSpawn();
     G = {
       seed, seedText: seedText || String(seed), density: density || 1, world, mode,
@@ -131,7 +166,7 @@
       player: {
         x: sp.x, y: sp.y, vx: 0, vy: 0, fx: 1, fy: 0, face: 1, hp: 100, maxHp: 100, hunger: 100, level: 1, xp: 0,
         atkCd: 0, swingT: 0, swingTool: null, hurtT: 0, iframes: 0, walkT: 0, moving: false, running: false, lvlOff: LH, dustT: 0,
-        energy: 1, alt: 0, flying: false, boat: false, lastLand: { x: sp.x, y: sp.y },
+        energy: 1, alt: 0, vz: 0, flying: false, boat: false, leafWet: 0, raftWet: 0, lastLand: { x: sp.x, y: sp.y },
       },
       inv: { berry: 2 }, tools: {},
       mobs: [], parts: [], floaters: [],
@@ -184,6 +219,13 @@
       }
     }
     return { cx0: Math.floor((x0 - 40) / CHUNK), cx1: Math.floor((x1 + 40) / CHUNK), cy0: Math.floor((y0 - 40) / CHUNK), cy1: Math.floor((y1 + 40) / CHUNK) };
+  }
+  // Flat buffer point -> world point on the camera's ground level (cheap; used by weather).
+  const FW = [0, 0];
+  function flatToWorld(fx, fy) {
+    const vx = (fx - VCX) / Z, vy = ((fy - VCY) / Z - G.cam.lv) / TILT;
+    FW[0] = G.cam.x + vx * cosA - vy * sinA; FW[1] = G.cam.y + vx * sinA + vy * cosA;
+    return FW;
   }
   // Flat buffer point -> world point on whichever ground layer is drawn there.
   function screenToWorld(fx, fy) {
@@ -576,27 +618,38 @@
   }
 
   // ---------------- travel: raft & glider ----------------
+  // The leaf glider launches you up, then you sink steadily: it is a glide,
+  // not a flight. Gusts give lift, flying with the wind carries you farther,
+  // and the wind pushes you sideways whether you like it or not. Rain soaks
+  // the leaf: a wet leaf sinks faster and must dry on the ground before the
+  // next launch. The raft soaks up water while you sail and folds up when
+  // it is soggy; it dries out on land.
+  const ALT_MAX = 170, LEAF_SOGGY = 0.5, RAFT_SOGGY = 0.35;
+  const canSail = () => !!G.tools.raft && (G.player.boat || G.player.raftWet < RAFT_SOGGY);
   function toggleFly() {
     const p = G.player;
     if (G.mode !== 'play' || !G.tools.glider) return;
     if (p.flying) { p.flying = false; return; }
-    if (p.energy < 0.25) { toast('The glider needs to rest. Stay on the ground for a moment.'); SW.audio.play('deny'); return; }
-    p.flying = true; G.order = null; G.fishing = null;
+    if (p.leafWet > LEAF_SOGGY) { toast('The leaf is soggy. Let it dry out on the ground before you launch.'); SW.audio.play('deny'); return; }
+    // launch: a hop that goes higher from a cliff top
+    p.flying = true; p.boat = false; G.order = null; G.fishing = null;
+    p.vz = 150 + Math.min(70, p.lvlOff * 1.4);
     SW.audio.play('whoosh');
-    tipOnce('fly1', 'Gliding! Steer as usual. You land when the blue bar runs out.');
+    tipOnce('fly2', 'Gliding! You sink slowly. Gusts lift you, flying with the wind carries you farther, and rain soaks the leaf.');
   }
-  function landPlayer() {
+  // touching down: on water you need a raft that isn't soggy, or you swim ashore
+  function landPlayer(force) {
     const p = G.player;
-    if (!G.world.isWater(p.x, p.y) || G.tools.raft) return;
-    // splash! swim back to the last dry spot
+    if (!force && (!G.world.isWater(p.x, p.y) || (G.tools.raft && p.raftWet < 1))) return;
     const spot = G.world.isWater(p.lastLand.x, p.lastLand.y) ? G.world.landNear(p.x, p.y) : p.lastLand;
     spawnRing(p.x, p.y, 0); spawnRing(p.x, p.y, 0);
     SW.audio.play('poof');
     if (spot) { p.x = spot.x; p.y = spot.y; }
-    p.hp -= 10; p.vx = p.vy = 0;
-    toast('Splash! You swam back to shore. A raft lets you land on water.');
+    p.hp -= force ? 5 : 10; p.vx = p.vy = 0; p.boat = false;
+    toast(force ? 'Your raft got soggy and folded up! You swam back to shore. Let it dry out on land.' : 'Splash! You swam back to shore. A raft lets you land on water.');
     if (p.hp <= 0) die();
   }
+
 
   // ---------------- fishing ----------------
   function startFishing(x, y) {
@@ -681,7 +734,7 @@
       if (n > 0) { G.inv[k] -= n; lost[k] = n; if (!G.inv[k]) delete G.inv[k]; }
     }
     p.x = home.x; p.y = home.y; p.vx = p.vy = 0;
-    p.hp = p.maxHp; p.hunger = Math.max(p.hunger, 70); p.iframes = 3; p.energy = 1; p.flying = false; p.alt = 0;
+    p.hp = p.maxHp; p.hunger = Math.max(p.hunger, 70); p.iframes = 3; p.energy = 1; p.flying = false; p.alt = 0; p.vz = 0; p.boat = false;
     G.mobs = G.mobs.filter((m) => dist(m.x, m.y, p.x, p.y) > 600);
     G.cam.x = p.x; G.cam.y = p.y;
     G.mode = 'play';
@@ -751,7 +804,7 @@
         const a = o.detour * 1.25, c = Math.cos(a), s = Math.sin(a);
         [ux, uy] = [ux * c - uy * s, ux * s + uy * c];
       }
-      if (!G.tools.raft && G.world.isWater(p.x + ux * 26, p.y + uy * 26)) {
+      if (!canSail() && G.world.isWater(p.x + ux * 26, p.y + uy * 26)) {
         for (const a of [0.6, -0.6, 1.2, -1.2, 1.8, -1.8]) {
           const c = Math.cos(a), s = Math.sin(a);
           const vx = ux * c - uy * s, vy = ux * s + uy * c;
@@ -776,14 +829,14 @@
       if (d.k === 2 && d.m.dying) continue;
       const spr = SW.sprites[d.spr];
       if (!spr) continue;
-      const sc = Z * (d.sc || 1);
+      const sc = Z * (d.sc || 1), ky = d.ky || 1;
       const pad = want === 2 ? 0 : 6;
       let x0 = d.sx - (spr.ax - pad) * sc, x1 = d.sx + (spr.w - spr.ax - pad) * sc;
-      let y0 = d.sy - (spr.ay - pad) * sc, y1 = d.sy + 4 * sc;
+      let y0 = d.sy - (spr.ay - pad) * sc * ky, y1 = d.sy + 4 * sc;
       if (x1 - x0 < 30) { const c = (x0 + x1) / 2; x0 = c - 15; x1 = c + 15; }
       if (y1 - y0 < 30) y0 = y1 - 30;
       if (mx < x0 || mx > x1 || my < y0 || my > y1) continue;
-      if (want === 2 || solidAt(spr, (mx - d.sx) / sc + spr.ax, (my - d.sy) / sc + spr.ay)) return d;
+      if (want === 2 || solidAt(spr, (mx - d.sx) / sc + spr.ax, (my - d.sy) / (sc * ky) + spr.ay)) return d;
     }
     return null;
   }
@@ -810,7 +863,8 @@
     if (G.world.isWater(w.x, w.y)) {
       const p = G.player;
       // with a raft, far water means "sail there"; near water means "fish"
-      if (G.tools.raft && (dist(p.x, p.y, w.x, w.y) > 170 || !G.tools.rod)) return { kind: 'move', x: w.x, y: w.y };
+      if (canSail() && (dist(p.x, p.y, w.x, w.y) > 170 || !G.tools.rod)) return { kind: 'move', x: w.x, y: w.y };
+      if (G.tools.raft && !canSail() && !G.tools.rod) { tipOnce('raftDry', 'Your raft is still drying out. Give it a moment on land.'); }
       return { kind: 'fish', x: w.x, y: w.y };
     }
     return { kind: 'move', x: w.x, y: w.y };
@@ -849,6 +903,8 @@
     G.climateT -= dt;
     if (G.climateT <= 0) { G.climateT = 1; G.climate = climateAt(p.x, p.y); }
     WX.update(dt, G.climate, (name, note) => { if (G.mode === 'play') toast(name + '. ' + note, 5200); });
+    WX.updateSoak(p.x, p.y, dt);
+    WX.sense(p.x, p.y);
     world.frozen = G.climate === 'cold' ? WX.snow : Math.max(0, world.frozen - dt / 30);
     world.regrowMul = 1 - Math.min(0.4, WX.wet * 0.4);
 
@@ -900,17 +956,20 @@
       if (il > 1) { mx /= il; my /= il; il = 1; }
 
       // where are we standing: land, raft, or sky?
-      p.boat = !p.flying && !!G.tools.raft && world.isWater(p.x, p.y);
+      p.boat = !p.flying && !!G.tools.raft && world.isWater(p.x, p.y) && p.raftWet < 1;
+      const here = WX.here;
       const windX = Math.cos(WX.windAngle), windY = Math.sin(WX.windAngle);
-      const downwind = il > 0.15 ? Math.max(0, (mx * windX + my * windY) / il) : 0;
+      const downwind = il > 0.15 ? (mx * windX + my * windY) / il : 0;   // -1 into the wind .. 1 with it
       let spd = 160 * (p.running ? 1.5 : 1) * (p.hunger <= 0 ? 0.7 : 1) * WX.speedMul();
-      if (p.boat) spd = 135 * (1 + 0.55 * WX.wind * downwind);
-      if (p.flying) spd = 235 * (1 + 0.35 * WX.wind * downwind);
+      if (p.boat) spd = 125 * (1 + 0.5 * here.gust * Math.max(0, downwind));
+      if (p.flying) spd = 190 * (1 + 0.3 * here.gust * downwind);
       if (G.fishing) spd = 0;
-      // snow and ice make you slide
-      const grip = p.flying || p.boat ? 0.5 : WX.grip();
+      // the wind carries you: strongly in the air, a little on the water
+      const drift = p.flying ? 150 * here.gust : p.boat ? 40 * here.gust : 0;
+      // snow underfoot makes you slide
+      const grip = p.flying ? 0.35 : p.boat ? 0.5 : WX.grip();
       const k = 1 - Math.exp(-dt * 14 * grip);
-      p.vx = lerp(p.vx, mx * spd, k); p.vy = lerp(p.vy, my * spd, k);
+      p.vx = lerp(p.vx, mx * spd + windX * drift, k); p.vy = lerp(p.vy, my * spd + windY * drift, k);
       p.moving = il > 0.15 && spd > 0;
       if (p.moving) {
         p.fx = mx / il; p.fy = my / il;
@@ -922,17 +981,30 @@
           else G.parts.push({ k: 'dust', x: p.x - p.fx * 8, y: p.y + 2, lvl: p.lvlOff, t: 0, life: 0.45 });
         }
       } else p.running = false;
-      moveBody(p, PR, dt, { water: !!G.tools.raft || p.flying, ghost: p.flying });
+      moveBody(p, PR, dt, { water: p.flying || canSail(), ghost: p.flying });
       if (!world.isWater(p.x, p.y) && !p.flying) { p.lastLand.x = p.x; p.lastLand.y = p.y; }
 
-      // glider energy
+      // gliding: launch hop, then a steady sink; gusts give lift, more when you ride the wind
       if (p.flying) {
-        p.energy -= (dt / 14) * (1 - Math.min(0.5, WX.wind * 0.35));
-        p.alt = lerp(p.alt, 64, 1 - Math.exp(-dt * 4));
-        if (p.energy <= 0) { p.energy = 0; p.flying = false; }
+        const sink = 20 * (1 + p.leafWet * 2.4);
+        const lift = here.gust * 20 * (0.55 + 0.75 * Math.max(0, downwind));
+        p.vz = lerp(p.vz, lift - sink, 1 - Math.exp(-dt * 1.6));
+        p.alt += p.vz * dt;
+        if (p.alt > ALT_MAX) { p.alt = ALT_MAX; p.vz = Math.min(0, p.vz); }
+        p.leafWet = Math.min(1, p.leafWet + dt * here.rain / 9);
+        if (p.alt <= 0) { p.alt = 0; p.vz = 0; p.flying = false; SW.audio.play('place'); landPlayer(); }
       } else {
         if (p.alt > 0) { p.alt = lerp(p.alt, 0, 1 - Math.exp(-dt * 6)); if (p.alt < 2) { p.alt = 0; landPlayer(); } }
-        if (G.tools.glider) p.energy = Math.min(1, p.energy + dt / 25);
+        // the leaf dries on the ground, faster in a breeze, not under a shower
+        p.leafWet = Math.max(0, p.leafWet - dt * (1 + here.gust) * (1 - Math.min(1, here.rain)) / 22);
+      }
+      // the raft soaks up water while you sail (rain and choppy gusts make it worse) and dries on land
+      if (p.boat) {
+        p.raftWet = Math.min(1, p.raftWet + dt * (1 + here.rain * 2 + here.gust * 0.6) / 55);
+        if (p.raftWet >= 1) landPlayer(true);
+        else if (p.raftWet > 0.75) tipOnce('raftSoggy', 'Your raft is getting soggy. Head for land before it folds!');
+      } else if (!world.isWater(p.x, p.y)) {
+        p.raftWet = Math.max(0, p.raftWet - dt * (1 + here.gust * 0.5) * (1 - Math.min(1, here.rain) * 0.85) / 28);
       }
 
       p.atkCd -= dt; p.swingT -= dt; p.hurtT -= dt; p.iframes -= dt;
@@ -997,7 +1069,7 @@
 
     for (const s of world.structures) {
       if (s.type !== 'campfire' || s.fuel <= 0) continue;
-      s.fuel -= dt * WX.fireBurn();
+      s.fuel -= dt * WX.fireBurn(s.x, s.y);
       if (Math.random() < dt * 6) G.parts.push({ k: 'ember', x: s.x + (Math.random() - 0.5) * 14, y: s.y, lvl: s.lvl * LH + 24, t: 0, life: 1 + Math.random(), vx: (Math.random() - 0.5) * 20 });
       if (s.fuel <= 0) spawnPoof(s.x, s.y, s.lvl * LH + 10, '#5b4840');
     }
@@ -1071,7 +1143,7 @@
     const lanternR = G.tools.lantern ? 190 : 0;
     const playing = G.mode === 'play';
     const unreachable = p.flying || p.boat;
-    const wash = WX.inkWash(), aggroMul = WX.aggroMul();
+    const anyRain = WX.rain() > 0.05;
     for (let i = G.mobs.length - 1; i >= 0; i--) {
       const m = G.mobs[i];
       const def = ENEMIES[m.type];
@@ -1092,12 +1164,13 @@
       } else {
         if (def.night && !night) { m.dying = 0.001; spawnPoof(m.x, m.y, m.lvlOff, '#2b2340'); continue; }
         // rain washes the ink out of Scribbles
+        const wash = anyRain && def.night ? WX.inkWash(m.x, m.y) : 0;
         if (def.night && wash > 0.05) {
           m.hp -= dt * wash;
           if (Math.random() < dt * 4) spawnChips(m.x, m.y, m.lvlOff + 20, '#5b4f78', 1);
           if (m.hp <= 0) { killMob(m); continue; }
         }
-        const aggro = def.aggro * (m.lvl <= 1 && !def.night ? 0.55 : 1) * aggroMul;
+        const aggro = def.aggro * (m.lvl <= 1 && !def.night ? 0.55 : 1) * WX.aggroMul(m.x, m.y);
         if (m.state === 'idle') {
           m.wanderT -= dt;
           if (m.wanderT <= 0) { m.wanderT = 2 + Math.random() * 2.5; m.wander = Math.random() * TAU; m.idle = Math.random() < 0.4; }
@@ -1335,19 +1408,21 @@
     }
     ctx.globalAlpha = 1;
   }
+  // puddles fill where a shower has passed, and ripple while it is still raining there
   function drawPuddles(list) {
-    const wet = WX.wet;
-    if (wet < 0.2) return;
+    if (WX.wet < 0.02 && WX.rain() < 0.02) return;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     for (const ch of list) {
       for (const [x, y, r, s] of ch.puddles) {
+        const wet = WX.wetAt(x, y);
+        if (wet < 0.2) continue;
         const pt = proj(x, y, LH);
         if (pt.x < -40 || pt.x > VW + 40 || pt.y < -20 || pt.y > VH + 20) continue;
         const rr = r * Z * Math.min(1, (wet - 0.2) * 2);
         ctx.globalAlpha = 0.85;
         ctx.beginPath(); ctx.ellipse(pt.x, pt.y, rr + 2, rr * TILT + 2, 0, 0, TAU); ctx.fillStyle = '#ffffff'; ctx.fill();
         ctx.beginPath(); ctx.ellipse(pt.x, pt.y, rr, rr * TILT, 0, 0, TAU); ctx.fillStyle = '#6fb6e6'; ctx.fill();
-        if (WX.rain() > 0.2) {
+        if (WX.rainAt(x, y) > 0.2) {
           const k = (G.time * 1.5 + s * 5) % 1;
           ctx.globalAlpha = 0.6 * (1 - k); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.ellipse(pt.x + (s - 0.5) * rr, pt.y, rr * 0.5 * k, rr * 0.5 * k * TILT, 0, 0, TAU); ctx.stroke();
@@ -1355,6 +1430,71 @@
       }
     }
     ctx.globalAlpha = 1;
+  }
+
+  // ---------------- pop-up book ----------------
+  // Stickers near the hero stand up like a pop-up book; farther out they fold
+  // back flat onto the page. Each one hangs on a damped spring, so when it
+  // crosses the edge of the zone (because you walked, or turned the view) it
+  // flaps up or flips down with a little bounce.
+  const POP_FLAT = 1.3;                 // radians: how far a sticker folds back outside the zone
+  const popState = new Map();
+  const popZone = { x: 400, far: 300, near: 400 };
+  let popFrame = 0;
+  function updatePopZone() {
+    // the zone covers the middle of the view at any zoom
+    const c = curve;
+    popZone.x = (0.36 * W) / Z;
+    popZone.far = (0.5 * c.R * c.TH) / (Z * TILT);
+    popZone.near = (1.6 * (H - c.yA)) / (Z * TILT);
+    popFrame++;
+    if (popFrame % 240 === 0) for (const [id, st] of popState) if (popFrame - st.seen > 240) popState.delete(id);
+  }
+  function popTarget(x, y) {
+    const rx = x - G.player.x, ry = y - G.player.y;
+    const vx = rx * cosA + ry * sinA, vy = -rx * sinA + ry * cosA;
+    const e = Math.hypot(vx / popZone.x, vy / (vy < 0 ? popZone.far : popZone.near));
+    const k = clamp((e - 0.88) / 0.24, 0, 1);
+    return k * k * (3 - 2 * k) * POP_FLAT;
+  }
+  // current fold angle: 0 standing, POP_FLAT lying flat, a little negative on the rebound
+  function popOf(id, x, y, dt) {
+    const target = popTarget(x, y);
+    let st = popState.get(id);
+    if (!st) { st = { a: target, v: 0, seen: 0 }; popState.set(id, st); }
+    st.seen = popFrame;
+    const h = Math.min(dt, 1 / 30);
+    st.v += ((target - st.a) * 120 - st.v * 10.5) * h;
+    st.a = clamp(st.a + st.v * h, -0.4, 1.5);
+    return st.a;
+  }
+  // vertical scale for a fold angle: folding back shortens the sticker; the
+  // rebound past upright stretches it a touch, like a card springing up
+  const popScale = (a) => (a >= 0 ? Math.max(0.16, Math.cos(a)) : 1 + Math.min(0.12, -a * 0.3));
+
+  // Draw a sticker whose top part is bent forward along a fold line, like
+  // damp paper: frac is how much of its height bends, ang how far.
+  function drawFolded(name, sx, sy, rot, kx, ky, frac, ang, which = 'img') {
+    const spr = SW.sprites[name];
+    if (!spr) return;
+    if (ang < 0.03) { drawSprite(name, sx, sy, rot, kx, ky, which); return; }
+    const img = spr[which], S = spr.S;
+    const foldRow = Math.max(1, Math.min(img.height - 1, Math.round(spr.ay * S * frac)));
+    const fy = -spr.ay + foldRow / S;
+    // the part below the fold, as normal
+    setSpriteTransform(sx, sy, rot, kx, ky);
+    ctx.drawImage(img, 0, foldRow, img.width, img.height - foldRow, -spr.ax, fy, spr.w, (img.height - foldRow) / S);
+    // the bent top: foreshortened, and shaded as it turns away from the light
+    ctx.translate(0, fy);
+    ctx.scale(1, Math.cos(ang));
+    ctx.drawImage(img, 0, 0, img.width, foldRow, -spr.ax, -foldRow / S, spr.w, foldRow / S);
+    const shade = Math.min(0.4, ang * 0.35);
+    if (shade > 0.03) {
+      const t = tintOf(spr, 'shade', '#2e2252');
+      const a = ctx.globalAlpha; ctx.globalAlpha = a * shade;
+      ctx.drawImage(t, 0, 0, t.width, foldRow, -spr.ax, -foldRow / S, spr.w, foldRow / S);
+      ctx.globalAlpha = a;
+    }
   }
 
   const drawList = [];
@@ -1374,6 +1514,7 @@
     drawGroundMarkers();
 
     drawList.length = 0;
+    updatePopZone();
     const windX = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle));
     for (let cy = v.cy0; cy <= v.cy1; cy++) for (let cx = v.cx0; cx <= v.cx1; cx++) {
       for (const o of world.getChunk(cx, cy).objs) {
@@ -1381,10 +1522,10 @@
         if (pt.x < -100 * Z || pt.x > VW + 100 * Z || pt.y < -30 || pt.y > VH + 140 * Z) continue;
         const st = world.objState(o, t);
         if (st === 'gone') continue;
-        drawList.push({ d: pt.d, k: 0, o, spr: st === 'after' ? OBJ[o.type].after : o.type });
+        drawList.push({ d: pt.d, k: 0, o, spr: st === 'after' ? OBJ[o.type].after : o.type, pop: popOf(o.id, o.x, o.y, dt) });
       }
     }
-    for (const s of world.structures) drawList.push({ d: depthOf(s.x - G.cam.x, s.y - G.cam.y), k: 1, s, spr: s.type === 'campfire' ? 'campfire' : 'wall' });
+    for (const s of world.structures) drawList.push({ d: depthOf(s.x - G.cam.x, s.y - G.cam.y), k: 1, s, spr: s.type === 'campfire' ? 'campfire' : 'wall', pop: popOf('s' + s.id, s.x, s.y, dt) });
     for (const m of G.mobs) drawList.push({ d: depthOf(m.x - G.cam.x, m.y - G.cam.y), k: 2, m, spr: mobSprite(m), sc: m.scale });
     if (G.adv && G.mode !== 'title') {
       const page = G.adv.pages[G.adv.next];
@@ -1400,8 +1541,8 @@
     ctx.beginPath();
     for (const d of drawList) {
       let x, y, lv, rx;
-      if (d.k === 0) { const def = OBJ[d.o.type]; if (def.decor || (!def.r && SW.sprites[d.spr].w < 40)) continue; x = d.o.x; y = d.o.y; lv = d.o.lvl * LH; rx = (def.r || 6) + 6; }
-      else if (d.k === 1) { x = d.s.x; y = d.s.y; lv = d.s.lvl * LH; rx = d.s.r + 6; }
+      if (d.k === 0) { const def = OBJ[d.o.type]; if (def.decor || (!def.r && SW.sprites[d.spr].w < 40) || d.pop > 1.1) continue; x = d.o.x; y = d.o.y; lv = d.o.lvl * LH; rx = ((def.r || 6) + 6) * popScale(Math.max(0, d.pop)); }
+      else if (d.k === 1) { x = d.s.x; y = d.s.y; lv = d.s.lvl * LH; rx = (d.s.r + 6) * popScale(Math.max(0, d.pop)); }
       else if (d.k === 2) { if (d.m.dying) continue; x = d.m.x; y = d.m.y; lv = d.m.lvlOff; rx = d.m.r; }
       else if (d.k === 3) { x = p.x; y = p.y; lv = p.lvlOff; rx = 13 * (1 - Math.min(0.5, p.alt / 130)); }
       else continue;
@@ -1435,7 +1576,9 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     let shiftX = (camBX - lastCamBX) * Z, shiftY = (camBY - lastCamBY) * Z;
     if (Math.abs(shiftX) > 200 || Math.abs(shiftY) > 200) shiftX = shiftY = 0;
-    WX.draw(ctx, VW, VH, Z, Math.min(dt, 0.05), shiftX, shiftY, windX);
+    WX.drawShadows(ctx, VW, VH, flatToWorld);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    WX.draw(ctx, VW, VH, Z, Math.min(dt, 0.05), shiftX, shiftY, windX, flatToWorld);
     lastCamBX = camBX; lastCamBY = camBY;
     drawLighting();
 
@@ -1486,27 +1629,31 @@
     const pt = proj(o.x, o.y, o.lvl * LH);
     const sx = pt.x, sy = pt.y;
     d.sx = sx; d.sy = sy;
-    // wind sway: plants near you always move; in strong wind everything you can see bends
-    let rot = 0, kx = 1, ky = 1, ox = 0;
-    if (def.sway) {
-      const dx = Math.abs(o.x - G.player.x), dy = Math.abs(o.y - G.player.y);
-      const reach = WX.wind > 0.5 ? 1 : 0.55;
-      if (dx < 760 * reach && dy < 520 * reach) rot = WX.sway(G.time, o.seed, windX) * def.sway;
-    }
-    // rain makes soft plants droop
-    if (def.plant && WX.wet > 0.05) { ky = 1 - 0.14 * WX.wet; rot += (o.seed - 0.5) * 0.25 * WX.wet; }
+    // pop-up: lying-down stickers are foreshortened from their base
+    const pk = popScale(d.pop || 0);
+    let rot = 0, kx = 1, ky = pk, ox = 0;
+    const up = clamp(1 - (d.pop || 0) / POP_FLAT, 0, 1);    // 1 standing .. 0 flat
+    // wind: each plant feels the gust passing over its own spot
+    if (def.sway && up > 0.2) rot = WX.sway(G.time, o.seed, windX, WX.gustAt(o.x, o.y)) * def.sway * up;
+    // rain: where a shower has passed, soft stickers bend over at the top (never all the way)
+    const wet = def.tree || def.plant || def.glow ? WX.wetAt(o.x, o.y) : 0;
+    const fold = wet > 0.05 && up > 0.3 ? wet * (def.tree ? 0.75 : 0.95) * up : 0;
     const ht = G.hitT.get(o.id);
     if (ht !== undefined && G.time - ht < 0.25) {
       const k = 1 - (G.time - ht) / 0.25;
       kx = 1 + 0.1 * k; ky *= 1 - 0.1 * k; ox = Math.sin((G.time - ht) * 60) * 3 * k * Z;
     }
+    d.ky = ky;
     const see = covers(d, SW.sprites[d.spr], sx, sy, 1);
     if (see) ctx.globalAlpha = 0.35;
     if (d.glow) drawSprite(d.spr, sx + ox, sy + 3 * Z, rot, kx * 1.09, ky * 1.07, 'glow');
-    drawSprite(d.spr, sx + ox, sy, rot, kx, ky);
-    // wet rocks shine on top; snow settles on everything
-    if (def.rock && WX.wet > 0.05) drawCap(d.spr, sx + ox, sy, rot, kx, ky, 0.42, 'wetCap', '#bfe2ff', 0.45 * WX.wet * (see ? 0.35 : 1));
-    if (WX.snow > 0.05 && (def.tree || def.rock || def.plant) && o.type !== 'treePineSnow' && o.type !== 'snowRock') drawCap(d.spr, sx + ox, sy, rot, kx, ky, def.tree ? 0.3 : 0.4, 'snowCap', '#ffffff', Math.min(0.9, WX.snow) * (see ? 0.35 : 1));
+    drawFolded(d.spr, sx + ox, sy, rot, kx, ky, def.tree ? 0.42 : 0.55, fold);
+    // wet rocks shine on top; snow settles where it has fallen
+    if (def.rock) { const rw = WX.wetAt(o.x, o.y); if (rw > 0.05) drawCap(d.spr, sx + ox, sy, rot, kx, ky, 0.42, 'wetCap', '#bfe2ff', 0.45 * rw * (see ? 0.35 : 1)); }
+    if ((def.tree || def.rock || def.plant) && o.type !== 'treePineSnow' && o.type !== 'snowRock' && fold < 0.15) {
+      const sc = WX.coverAt(o.x, o.y);
+      if (sc > 0.05) drawCap(d.spr, sx + ox, sy, rot, kx, ky, def.tree ? 0.3 : 0.4, 'snowCap', '#ffffff', Math.min(0.9, sc) * (see ? 0.35 : 1));
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -1515,17 +1662,18 @@
     const pt = proj(s.x, s.y, s.lvl * LH);
     const sx = pt.x, sy = pt.y;
     d.sx = sx; d.sy = sy;
-    let kx = 1, ky = 1;
-    if (G.time - s.hitT < 0.2) { kx = 1.08; ky = 0.92; }
+    let kx = 1, ky = popScale(d.pop || 0);
+    if (G.time - s.hitT < 0.2) { kx = 1.08; ky *= 0.92; }
+    d.ky = ky;
     const name = s.type === 'campfire' ? (s.fuel > 0 ? 'campfire' : 'campfireOut') : 'wall';
     if (covers(d, SW.sprites[name], sx, sy, 1)) ctx.globalAlpha = 0.4;
-    if (d.glow) drawSprite(name, sx, sy + 3 * Z, 0, 1.09, 1.07, 'glow');
+    if (d.glow) drawSprite(name, sx, sy + 3 * Z, 0, 1.09, 1.07 * ky, 'glow');
     drawSprite(name, sx, sy, 0, kx, ky);
-    if (s.type === 'campfire' && s.fuel > 0) {
+    if (s.type === 'campfire' && s.fuel > 0 && ky > 0.5) {
       const f = Math.floor(G.time * 8 + s.id) % 3;
       const fk = s.fuel < 25 ? 0.55 + (s.fuel / 25) * 0.45 : 1;
-      const lean = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.wind * 0.35;
-      drawSprite('flame' + f, sx, sy - 10 * Z, Math.sin(G.time * 5) * 0.06 + lean, fk * (1 + Math.sin(G.time * 13) * 0.04), fk * (1 + Math.sin(G.time * 11) * 0.06));
+      const lean = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.gustAt(s.x, s.y) * 0.35;
+      drawSprite('flame' + f, sx, sy - 10 * Z * ky, Math.sin(G.time * 5) * 0.06 + lean, fk * (1 + Math.sin(G.time * 13) * 0.04), fk * (1 + Math.sin(G.time * 11) * 0.06));
     }
     ctx.globalAlpha = 1;
   }
@@ -1623,7 +1771,8 @@
     const ky = p.moving ? 1 + Math.sin(p.walkT * 18) * 0.04 : 1 + Math.sin(G.time * 3) * 0.025;
     const kx = 2 - ky;
     const rot = p.flying ? p.face * 0.18 + Math.sin(G.time * 2) * 0.05 : p.moving ? p.face * (p.running ? 0.12 : 0.06) : 0;
-    if (p.boat) drawSprite('raft', gx, gy + 6 * Z + bob, Math.sin(G.time * 2) * 0.03);
+    // a soggy raft sags and curls up at the edges
+    if (p.boat) drawFolded('raft', gx, gy + 6 * Z + bob, Math.sin(G.time * 2) * 0.03, 1 - p.raftWet * 0.12, 1 - p.raftWet * 0.2, 0.55, p.raftWet * 1.1);
     const fishing = !!G.fishing;
     const toolName = fishing ? 'rod' : p.swingT > 0 ? p.swingTool : bestWeapon() || (G.tools.axe ? 'axe' : G.tools.pick ? 'pick' : null);
     const toolSpr = toolName ? { axe: 'toolAxe', pick: 'toolPick', sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade', rod: 'toolRod' }[toolName] : 'toolHand';
@@ -1642,7 +1791,11 @@
     drawSprite(name, sx, sy - bob, rot, kx, ky);
     if (p.hurtT > 0 || flick) { ctx.globalAlpha = 0.75; drawSprite(name, sx, sy - bob, rot, kx, ky, 'flash'); ctx.globalAlpha = 1; }
     if (p.fy >= -0.5 || fishing) drawTool();
-    if (p.flying || p.alt > 4) drawSprite('glider', sx, sy - 40 * Z, rot * 0.6 + Math.sin(G.time * 3) * 0.04, 0.9, 0.9);
+    // the leaf banks with the wind and droops as it gets wet
+    if (p.flying || p.alt > 4) {
+      const bank = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.here.gust * 0.22;
+      drawFolded('glider', sx, sy - 40 * Z, rot * 0.6 + bank + Math.sin(G.time * 3) * 0.04, 0.9, 0.9 * (1 - p.leafWet * 0.15), 0.5, p.leafWet * 1.2);
+    }
     if (fishing && G.fishing.phase === 'bite') { const s = 1 + Math.sin(G.time * 20) * 0.12; drawSprite('uiBang', sx, sy - 62 * Z, 0, s, s); }
   }
 
@@ -1794,9 +1947,10 @@
     let skyTop = mixRGB(mixRGB(SKY.dayTop, SKY.duskTop, warm * 0.8), moon.ink ? SKY.inkTop : SKY.nightTop, d);
     let skyLow = mixRGB(mixRGB(SKY.dayLow, SKY.duskLow, warm), SKY.nightLow, d);
     skyTop = mixRGB(skyTop, SKY.grey, overcast * (1 - d * 0.7)); skyLow = mixRGB(skyLow, SKY.grey, overcast * 0.6 * (1 - d * 0.7));
-    const sky = sctx.createLinearGradient(0, 0, 0, c.yTop + H * 0.12);
+    const skyH = c.yTop + c.drop + H * 0.14;
+    const sky = sctx.createLinearGradient(0, 0, 0, skyH - H * 0.02);
     sky.addColorStop(0, rgba(skyTop)); sky.addColorStop(1, rgba(skyLow));
-    sctx.fillStyle = sky; sctx.fillRect(0, 0, W, c.yTop + H * 0.14);
+    sctx.fillStyle = sky; sctx.fillRect(0, 0, W, skyH);
     if (d > 0.05) {
       sctx.fillStyle = '#ffffff';
       for (const [x, y, r, ph] of stars) { sctx.globalAlpha = d * (1 - overcast) * (0.5 + 0.5 * Math.sin(G.time * 2 + ph)); sctx.fillRect(x * W, y * c.yTop * 1.1, r, r); }
@@ -1808,13 +1962,27 @@
       sctx.globalAlpha = 1;
     }
     drawClouds(c.yTop, d, overcast);
-    for (const [v0, v1, f0, f1, s] of c.bands) {
-      sctx.drawImage(buf, 0, f0 * DPR, buf.width, Math.max(0.5, (f1 - f0) * DPR), W / 2 - VCX * s, v0, VW * s, v1 - v0 + 0.6);
+    let planet = null;
+    if (c.globe) {
+      planet = globe.draw(buf, { w: W, h: H, sdpr: SDPR, dpr: DPR, yA: c.yA, yTop: c.yTop, R: c.R, K: c.K, a: c.a, Rs: c.Rs, Dk: c.Dk, hazeH: H * 0.26, vcx: VCX, vcy: VCY, sky: skyLow });
+      if (!planet) { globe.canvas.hidden = fxCv.hidden = true; buildCurve(); sizeBuffers(); }   // WebGL went away: strips from the next frame
     }
-    const haze = sctx.createLinearGradient(0, c.yTop, 0, c.yTop + H * 0.26);
-    haze.addColorStop(0, rgba(skyLow, 1)); haze.addColorStop(0.2, rgba(skyLow, 0.55)); haze.addColorStop(1, rgba(skyLow, 0));
-    sctx.fillStyle = haze; sctx.fillRect(0, c.yTop - 1, W, H * 0.26 + 1);
-    sctx.fillStyle = 'rgba(255,255,255,0.35)'; sctx.fillRect(0, c.yTop - 1, W, 2);
+    if (planet) {
+      fxctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+      fxctx.clearRect(0, 0, W, H);
+      WX.overlay(fxctx, W, H);
+      if (grain) { fxctx.fillStyle = grain; fxctx.fillRect(0, 0, W, H); }
+      return;
+    }
+    if (!c.globe) {
+      for (const [v0, v1, f0, f1, s] of c.bands) {
+        sctx.drawImage(buf, 0, f0 * DPR, buf.width, Math.max(0.5, (f1 - f0) * DPR), W / 2 - VCX * s, v0, VW * s, v1 - v0 + 0.6);
+      }
+      const haze = sctx.createLinearGradient(0, c.yTop, 0, c.yTop + H * 0.26);
+      haze.addColorStop(0, rgba(skyLow, 1)); haze.addColorStop(0.2, rgba(skyLow, 0.55)); haze.addColorStop(1, rgba(skyLow, 0));
+      sctx.fillStyle = haze; sctx.fillRect(0, c.yTop - 1, W, H * 0.26 + 1);
+      sctx.fillStyle = 'rgba(255,255,255,0.35)'; sctx.fillRect(0, c.yTop - 1, W, 2);
+    }
     WX.overlay(sctx, W, H);
     if (grain) { sctx.fillStyle = grain; sctx.fillRect(0, 0, W, H); }
   }
@@ -1843,7 +2011,7 @@
     if (!d) {
       const w = screenToWorld(fm.x, fm.y);
       const water = G.world.isWater(w.x, w.y);
-      G.hover = water ? { label: G.tools.raft && dist(G.player.x, G.player.y, w.x, w.y) > 170 ? 'Sail here' : G.tools.rod ? 'Fish here' : 'Water (needs a rod or raft)', lx: fm.x, ly: fm.y - 22 } : null;
+      G.hover = water ? { label: canSail() && dist(G.player.x, G.player.y, w.x, w.y) > 170 ? 'Sail here' : G.tools.rod ? 'Fish here' : 'Water (needs a rod or raft)', lx: fm.x, ly: fm.y - 22 } : null;
       canvas.style.cursor = water && (G.tools.rod || G.tools.raft) ? 'pointer' : 'crosshair';
       return;
     }
@@ -1859,7 +2027,7 @@
 
   // ---------------- HUD ----------------
   let hotbarDirty = true, craftDirty = true, questDirty = true;
-  const hud = { hp: -1, food: -1, day: -1, xp: -1, region: '', weather: '', moon: '', energy: -1 };
+  const hud = { hp: -1, food: -1, day: -1, xp: -1, region: '', weather: '', moon: '', energy: -1, raft: -1, windA: 999, windG: -1 };
   let craftCat = 'all';
 
   function bump(item) {
@@ -1883,6 +2051,7 @@
     $('toolbelt').innerHTML = owned.map((t) => `<span class="tool" title="${TOOLS[t].name}"><img src="${SW.spriteURL(TOOLS[t].icon)}" alt="${TOOLS[t].name}"></span>`).join('');
     $('tFly').hidden = !G.tools.glider;
     $('energyRow').hidden = !G.tools.glider;
+    $('raftRow').hidden = !G.tools.raft;
   }
   function renderCraft() {
     craftDirty = false;
@@ -2010,8 +2179,23 @@
     if (food !== hud.food) { hud.food = food; $('foodBar').style.width = food + '%'; $('foodNum').textContent = food; $('foodStat').classList.toggle('low', food < 25); }
     const xpk = p.level * 100000 + p.xp;
     if (xpk !== hud.xp) { hud.xp = xpk; $('lvlNum').textContent = p.level; $('xpBar').style.width = Math.min(100, (p.xp / SW.xpToNext(p.level)) * 100) + '%'; $('xpNum').textContent = `${Math.floor(p.xp)}/${SW.xpToNext(p.level)}`; }
-    const en = Math.round(p.energy * 100);
-    if (en !== hud.energy) { hud.energy = en; $('energyBar').style.width = en + '%'; }
+    const en = Math.round((p.flying ? p.alt / ALT_MAX : 1 - p.leafWet) * 100) + (p.flying ? 1000 : 0);
+    if (en !== hud.energy) {
+      hud.energy = en; $('energyBar').style.width = (en % 1000) + '%';
+      $('energyRow').classList.toggle('air', p.flying); $('energyRow').classList.toggle('soggy', !p.flying && p.leafWet > LEAF_SOGGY);
+    }
+    const rw = Math.round((1 - p.raftWet) * 100);
+    if (rw !== hud.raft) { hud.raft = rw; $('raftBar').style.width = rw + '%'; $('raftRow').classList.toggle('soggy', p.raftWet > 0.75 || (!p.boat && p.raftWet >= RAFT_SOGGY)); }
+    // wind arrow: which way the air is going on screen, and how hard here
+    const wsx = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)), wsy = (-Math.cos(WX.windAngle) * sinA + Math.sin(WX.windAngle) * cosA) * TILT;
+    const wa = Math.round(Math.atan2(wsy, wsx) * 180 / Math.PI), wg = Math.round(WX.here.gust * 10);
+    if (wa !== hud.windA || wg !== hud.windG) {
+      hud.windA = wa; hud.windG = wg;
+      const el = $('windArrow');
+      el.style.transform = `rotate(${wa}deg) scale(${0.75 + Math.min(1, WX.here.gust) * 0.45})`;
+      el.style.opacity = String(0.45 + Math.min(1, WX.here.gust) * 0.55);
+      el.parentElement.title = `Wind ${WX.here.gust > 0.9 ? 'gusting hard' : WX.here.gust > 0.45 ? 'gusty' : WX.here.gust > 0.15 ? 'light' : 'calm'}`;
+    }
     const day = dayOf(G.time);
     if (day !== hud.day) { hud.day = day; $('dayNum').textContent = day; }
     const night = isNight(phaseOf(G.time)), moon = moonNow();
@@ -2189,7 +2373,7 @@
     }
     return {
       v: 3, game: 'stickerwild', seed: G.seed, seedText: G.seedText, density: G.density, time: Math.round(now * 10) / 10, savedAt: Date.now(),
-      player: { x: Math.round(p.x), y: Math.round(p.y), hp: Math.round(p.hp), maxHp: p.maxHp, hunger: Math.round(p.hunger), level: p.level, xp: p.xp, energy: p.energy },
+      player: { x: Math.round(p.x), y: Math.round(p.y), hp: Math.round(p.hp), maxHp: p.maxHp, hunger: Math.round(p.hunger), level: p.level, xp: p.xp, energy: p.energy, leafWet: +p.leafWet.toFixed(3), raftWet: +p.raftWet.toFixed(3) },
       inv: G.inv, tools: G.tools, stats: G.stats, tips: G.tips,
       quests: G.quests.filter((q) => !q.done), questSeq: G.questSeq, regionsSeen: [...G.regionsSeen],
       adv: G.adv, removed, damage: [...G.world.damage],
@@ -2203,7 +2387,7 @@
     newGame(s.seed, 'play', s.seedText, s.density || 1);
     G.time = s.time || 0;
     Object.assign(G.player, s.player);
-    G.player.maxHp = s.player.maxHp || 100; G.player.level = s.player.level || 1; G.player.xp = s.player.xp || 0; G.player.energy = s.player.energy ?? 1;
+    G.player.maxHp = s.player.maxHp || 100; G.player.level = s.player.level || 1; G.player.xp = s.player.xp || 0; G.player.energy = s.player.energy ?? 1; G.player.leafWet = s.player.leafWet || 0; G.player.raftWet = s.player.raftWet || 0;
     G.inv = s.inv || {}; G.tools = s.tools || {}; G.stats = Object.assign(G.stats, s.stats || {}); G.tips = s.tips || {};
     G.world.removed = new Map(s.removed || []); G.world.damage = new Map(s.damage || []);
     G.world.structures = s.structures || []; G.world.nextId = s.nextId || 1;
@@ -2214,7 +2398,7 @@
     G.cam.x = G.player.x; G.cam.y = G.player.y;
     G.lastPhaseNight = isNight(phaseOf(G.time));
     hotbarDirty = craftDirty = questDirty = true;
-    hud.hp = hud.food = hud.day = hud.xp = hud.energy = -1; hud.region = '';
+    hud.hp = hud.food = hud.day = hud.xp = hud.energy = hud.raft = hud.windG = -1; hud.region = '';
     setAngle(SW.store.get('camA', 0));
     renderToolbelt();
     prebuild();
@@ -2236,7 +2420,7 @@
     setAngle(SW.store.get('camA', 0));
     renderToolbelt();
     showScreen(null);
-    hud.hp = hud.food = hud.day = hud.xp = hud.energy = -1; hud.region = '';
+    hud.hp = hud.food = hud.day = hud.xp = hud.energy = hud.raft = hud.windG = -1; hud.region = '';
     const touch = document.body.classList.contains('touch');
     toast(touch ? 'Tap to walk or act. Two fingers: twist to turn the view, pinch to zoom.' : 'Click to walk or act. Q/E or right-drag turns the view.', 5600);
     setTimeout(() => G && G.mode === 'play' && banner('Day 1', 'Find the six Lost Pages.'), 300);
@@ -2549,6 +2733,7 @@
     setPhase(ph) { G.time = (dayOf(G.time) - 1) * DAY_LEN + ph * DAY_LEN; },
     setAngle(a) { setAngle(a); }, get angle() { return camA; },
     toScreen: (x, y, lv = 0) => { const pt = proj(x, y, lv); return flatToScreen(pt.x, pt.y); },
+    toWorld: (sx, sy) => { const f = screenToFlat(sx, sy); return f && screenToWorld(f.x, f.y); },
     get dpr() { return DPR; },
   };
   try { window.claude?.hot?.snapshot?.(() => ({ save: G && (G.mode === 'play' || G.mode === 'paused') ? serialize() : null })); } catch (e) { /* not in a viewer */ }
