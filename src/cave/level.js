@@ -115,6 +115,64 @@ const VARIANTS = 3;
 const BLOCK_RES = 14;
 const partCache = new Map();
 
+/**
+ * Per block, a light multiplier from the sky it sees: rays over the hemisphere of each open face
+ * march through the solid set until they leave the top of the cave (sky) or hit a block or the
+ * grid's edge. Returns a Map "x,y,z" -> multiplier, normalised so the average visible block is 1.
+ */
+function bakeSkyLight(placed, solid, key) {
+  const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  const N = 40;
+  // Fixed cosine-weighted directions about +y, rotated onto each face normal.
+  const samples = [];
+  for (let i = 0; i < N; i++) {
+    const u = (i + 0.5) / N, v = (i * 0.618034) % 1;
+    const r = Math.sqrt(u), phi = 2 * Math.PI * v;
+    samples.push([r * Math.cos(phi), Math.sqrt(1 - u), r * Math.sin(phi)]);
+  }
+  const onto = ([x, y, z], n) => {
+    if (n[1] === 1) return [x, y, z];
+    if (n[1] === -1) return [x, -y, z];
+    if (n[0] !== 0) return [n[0] * y, x, z];
+    return [x, z, n[2] * y];
+  };
+  const blocked = (x, y, z) => {
+    if (y >= 10) return false;
+    if (x < X_MIN || x > X_MAX || z < Z_BACK || z > Z_FRONT) return true;
+    return solid.has(key(x, y, z));
+  };
+  const out = new Map();
+  let sum = 0;
+  for (const cells of placed.values()) {
+    for (const cell of cells) {
+      const bx = cell.x, by = cell.by, bz = cell.z;
+      let seen = 0, total = 0;
+      for (const n of DIRS) {
+        if (solid.has(key(bx + n[0], by + n[1], bz + n[2]))) continue;
+        for (const s of samples) {
+          const d = onto(s, n);
+          let px = bx + n[0] * 0.55, py = by + 0.5 + n[1] * 0.55, pz = bz + n[2] * 0.55;
+          let hit = false;
+          for (let t = 0; t < 24; t += 0.5) {
+            px += d[0] * 0.5; py += d[1] * 0.5; pz += d[2] * 0.5;
+            if (py >= 10) break;
+            if (blocked(Math.round(px), Math.floor(py), Math.round(pz))) { hit = true; break; }
+          }
+          total++;
+          if (!hit) seen++;
+        }
+      }
+      const vis = total ? seen / total : 0;
+      out.set(`${bx},${by},${bz}`, vis);
+      sum += vis;
+    }
+  }
+  const mean = sum / Math.max(1, out.size);
+  // Light = a floor of bounce plus the sky seen, relative to the average block.
+  for (const [k, vis] of out) out.set(k, Math.min(1.5, 0.55 + 0.45 * (vis / Math.max(1e-3, mean))));
+  return out;
+}
+
 /** A kit block design as instanceable parts: one merged geometry per material. */
 export function blockParts(design, variant, res = BLOCK_RES) {
   const id = `${design}:${variant}:${res}`;
@@ -252,13 +310,21 @@ export function buildCaveLevel({ hide = null, blockRes = BLOCK_RES, meshes = tru
     const warm = h(2) * 0.08;
     return color.setRGB(value * (1 + warm) * g[0], value * g[1], value * (1 - warm) * g[2]);
   };
+  // Baked sky light: how much open sky each block sees through the ceiling's openings (cosine
+  // weighted rays from its open faces through the block grid; above y 10 is sky, outside the grid
+  // is rock). The target shot is lit only through its two openings, so the deep corners fall dark
+  // and the blocks under the openings glow. ?bake=0 renders without it.
+  const bakeOn = new URLSearchParams(location.search).get('bake') !== '0' && !!layout.spawn;
+  const skyLight = bakeOn ? bakeSkyLight(placed, solid, key) : null;
   for (const [id, cells] of placed) {
     const [design, variant] = id.split(':');
     for (const part of blockParts(design, Number(variant), blockRes)) {
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, cells.length);
       cells.forEach((cell, i) => {
         mesh.setMatrixAt(i, m.makeTranslation(cell.x, cell.y, cell.z));
-        mesh.setColorAt(i, cellTone(cell, c));
+        cellTone(cell, c);
+        if (skyLight) c.multiplyScalar(skyLight.get(`${cell.x},${cell.by},${cell.z}`) ?? 1);
+        mesh.setColorAt(i, c);
       });
       mesh.frustumCulled = false;
       group.add(mesh);
