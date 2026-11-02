@@ -55,9 +55,9 @@ cls[(rows >= CEIL_Y) & green] = 1                                    # grass cap
 cls[(rows >= HORIZON) & ~green & bright & (gy > 0.05)] = 4           # light, up-facing ground: floor
 cls[(rows >= HORIZON - 120) & (rows < HORIZON) & ~green & (L > 66) & (gy > 0.2)] = 4  # the far plaza
 cls[(L > 86) & (C < 10)] = 8                                         # the openings
-# Shaded ground near the camera: lilac floor slabs and the ledges' rose side faces look alike in
-# colour, so leave them out of the fit (the grass tops and the explorer's spot pin that area).
-cls[(rows >= 1250) & ~green & ~bright & (cls == 2)] = 10
+# Shaded ground near the camera: mostly the lilac floor slabs the explorer stands among (the
+# ledges' rose side faces are thin bands under their grass), so floor.
+cls[(rows >= 1250) & ~green & (cls == 2)] = 4
 masks = cv2.imread(str(REF / 'masks.png'), 0)
 legend = {int(k): v['name'] for k, v in json.loads((REF / 'masks.json').read_text()).items()}
 for i, name in legend.items():
