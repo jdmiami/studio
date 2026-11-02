@@ -560,6 +560,29 @@
     }
     for (const a in ALIAS) SW.sprites[a] = SW.sprites[ALIAS[a]];
   };
+  // Big stickers for the story intro. gray=true flattens them into four
+  // ink tones, like a printed manga page.
+  const bigCache = {};
+  SW.bigSprite = function (name, S, gray) {
+    const key = name + '|' + S + '|' + (gray ? 1 : 0);
+    if (bigCache[key]) return bigCache[key];
+    const art = ART[ALIAS[name] || name];
+    if (!art) return null;
+    const st = makeSticker(art[0], art[1], art[2], { border: border(name), S });
+    if (gray) {
+      const c = st.img, g = c.getContext('2d');
+      const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+      for (let i = 0; i < d.length; i += 4) {
+        if (!d[i + 3]) continue;
+        const l = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+        const v = l < 70 ? 22 : l < 150 ? 118 : l < 215 ? 196 : 252;
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+      g.putImageData(im, 0, 0);
+    }
+    bigCache[key] = st;
+    return st;
+  };
   // HUD icons get their own crisp 2x stickers, made once.
   const urls = {};
   SW.spriteURL = function (name) {

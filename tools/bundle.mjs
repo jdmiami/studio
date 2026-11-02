@@ -16,7 +16,7 @@ const html = read('index.html');
 const body = html.split('<!--GAME-BODY-START-->')[1].split('<!--GAME-BODY-END-->')[0];
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => read(m[1]));
 const css = read('css/style.css');
-const fonts = html.match(/<link rel="stylesheet" href="https:\/\/fonts[^>]+>/)[0];
+const fonts = [...html.matchAll(/<link rel="stylesheet" href="https:\/\/fonts[^>]+>/g)].map((m) => m[0]).join('\n');
 const desc = html.match(/<meta name="description"[^>]+>/)[0];
 
 const head = `<title>Stickerwild</title>

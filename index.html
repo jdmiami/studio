@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Sniglet:wght@400;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&text=%21%E3%82%AD%E3%82%B4%E3%82%B6%E3%83%83%E3%83%89%E3%83%9A%E3%83%9C%E3%83%AA%E3%83%B3&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -130,7 +131,7 @@
       <button id="continueBtn" class="big-btn alt" hidden><span>Continue</span></button>
       <button id="cloudResumeBtn" class="big-btn gem" hidden><span>Cloud save</span></button>
     </div>
-    <p class="small-actions"><button id="saveBtnTitle" class="link-btn" type="button">Load a save file or code</button></p>
+    <p class="small-actions"><button id="storyBtn" class="link-btn" type="button">Watch the story</button> · <button id="saveBtnTitle" class="link-btn" type="button">Load a save file or code</button></p>
 
     <ul class="keys" aria-label="Controls">
       <li><b>Click</b> walk, chop, mine, fish, fight</li>
@@ -202,6 +203,11 @@
     <p class="save-note">The file holds your island seed and all your progress. Load it here on any device to pick up where you left off. The game also autosaves in this browser.</p>
   </div>
 </section>
+<section id="intro" hidden aria-label="Story intro">
+  <canvas id="introCv"></canvas>
+  <button id="introSkip" type="button">Skip</button>
+  <p class="intro-hint">Tap to turn the page</p>
+</section>
 <!--GAME-BODY-END-->
 
 <script src="js/util.js"></script>
@@ -210,6 +216,7 @@
 <script src="js/rpg.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/save.js"></script>
+<script src="js/intro.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

@@ -1,6 +1,8 @@
 # Stickerwild
 
-A procedural survival RPG on one huge island where everything is a sticker. Every tree, rock, creature and campfire is flat vector art with a die-cut white border and a drop shadow. The ground is built from stacked cardboard layers (sea, land, highlands) seen from a tilted camera, which gives the 2.5D look.
+A procedural survival RPG on one huge island where everything is a sticker. Every tree, rock, creature and campfire is flat vector art with a die-cut white border and a drop shadow. The ground is built from stacked cardboard layers (sea, land, highlands), and the whole world is bent onto a rolling drum. Ground in the distance curves away to a hazy horizon under the sky, and ground near the camera swells toward you, so the 2.5D depth is there on every screen.
+
+The first time you open the game, an animated action-manga intro tells the story: ink panels, speed lines, halftone screentone, impact frames and katakana sound effects. The world starts in colour. When the Ink spills the pages turn to ink and tone, and only Pip keeps their colour. Watch it again from **Watch the story** on the title screen. Tap to turn pages, or press Skip.
 
 ## Play
 
@@ -62,6 +64,7 @@ The seed alone (shown in the save panel, with a copy button) recreates the same 
 - Ground is generated in 256-unit chunks. Each chunk is drawn once to an offscreen canvas.
 - Objects are placed on a jittered grid with a seeded hash, so they're identical every visit. Trees leave stumps and regrow, and bushes refill.
 - Stickers are pre-rendered at the exact on-screen scale and copied pixel-for-pixel each frame. They re-render when you zoom.
+- **The round world.** The flat scene is drawn into an offscreen buffer, then bent onto the screen in thin horizontal strips. Above the player, rows follow `y = yA + R·sin(d/R)` and shrink horizontally, rolling away to the horizon. Below the player they swell slightly (`y = yA + d + a·d²`). Taps and clicks go through the inverse mapping, so they land on what's under your finger.
 
 ## Code layout
 
@@ -73,6 +76,7 @@ The seed alone (shown in the save panel, with a copy button) recreates the same 
 | `js/rpg.js` | Items, gear, recipes, creatures, fish, XP curve, quest generator, region names, chest loot |
 | `js/audio.js` | Synthesised sound effects (no audio files) |
 | `js/save.js` | Save files, save codes, cloud save |
+| `js/intro.js` | The animated manga story intro (panels, speed lines, screentone, SFX) |
 | `js/game.js` | Game loop, click-to-act orders, fishing, combat, AI, day/night lighting, HUD, map |
 | `css/style.css` | Sticker-styled HUD and menus |
 

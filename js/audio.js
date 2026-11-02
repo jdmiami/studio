@@ -58,6 +58,9 @@
     night: () => { tone(110, 1.6, 'sine', 0.18, 0.7); tone(165, 1.6, 'sine', 0.1, 0.7, 0.1); },
     dawn: () => { tone(523, 0.3, 'sine', 0.15); tone(784, 0.5, 'sine', 0.12, 0, 0.18); },
     deny: () => tone(160, 0.12, 'square', 0.08),
+    boom: () => { tone(90, 0.7, 'sine', 0.45, 0.35); noise(0.5, 300, 0.7, 0.5, 'lowpass'); },
+    whoosh: () => noise(0.35, 1200, 0.5, 0.25),
+    sting: () => { tone(220, 0.9, 'sawtooth', 0.06, 1.0); tone(233, 0.9, 'sawtooth', 0.06, 1.0); tone(110, 1.2, 'sine', 0.2, 0.8); },
     death: () => { tone(330, 0.5, 'triangle', 0.2, 0.5); tone(220, 0.8, 'triangle', 0.2, 0.5, 0.3); },
   };
   A.play = function (name) { try { FX[name] && FX[name](); } catch (e) { /* ignore */ } };

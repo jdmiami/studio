@@ -10,23 +10,121 @@
 
   // ---------------- canvas & sizing ----------------
   const canvas = $('game');
-  const ctx = canvas.getContext('2d');
+  const sctx = canvas.getContext('2d');          // the screen
+  const buf = document.createElement('canvas');  // the flat world, before bending
+  const ctx = buf.getContext('2d');
   const lightCv = document.createElement('canvas');
   const lctx = lightCv.getContext('2d');
-  let W = 0, H = 0, DPR = 1, Zb = 1, Z = 1, RS = 1;
+  // W,H: screen (CSS px). VW,VH: flat world buffer (CSS px). VCX,VCY: camera point in the buffer.
+  // DPR: buffer pixel ratio. SDPR: screen pixel ratio.
+  let W = 0, H = 0, DPR = 1, SDPR = 1, Zb = 1, Z = 1, RS = 1;
+  let VW = 0, VH = 0, VCX = 0, VCY = 0;
+  const curve = { yA: 0, yTop: 0, R: 1, K: 0.75, a: 0, TH: 1.3, bands: [] };
   let zoomMul = clamp(SW.store.get('zoom', 1), 0.55, 1.6);
   let grain = null;
-  const canFilter = 'filter' in ctx;
 
   function resize() {
-    DPR = Math.min(2, window.devicePixelRatio || 1);
+    SDPR = Math.min(2, window.devicePixelRatio || 1);
     W = window.innerWidth; H = window.innerHeight;
-    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    canvas.width = Math.round(W * SDPR); canvas.height = Math.round(H * SDPR);
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-    Zb = clamp(Math.min(W, H * 1.7) / 960, 0.75, 1.6);
+    DPR = Math.min(SDPR, matchMedia('(pointer: coarse)').matches ? 1.25 : 1.5);
+    // a closer camera than before: the character fills more of the screen
+    Zb = clamp(Math.min(W, H * 1.7) / 740, 0.9, 2.1);
     Z = Zb * zoomMul;
+    buildCurve();
+    buf.width = Math.ceil(VW * DPR); buf.height = Math.ceil(VH * DPR);
     RS = clamp(Z * DPR, 0.6, 3);
-    lightCv.width = Math.ceil(W / 2); lightCv.height = Math.ceil(H / 2);
+    lightCv.width = Math.ceil(VW / 2); lightCv.height = Math.ceil(VH / 2);
+  }
+
+  // ---------------- the round world ----------------
+  // The flat world is wrapped onto a drum: rows above the player roll away
+  // toward a curved horizon (shrinking and squashing), rows below swell
+  // slightly toward the camera. Screen y = yA + R sin(d/R) above, yA + d + a d^2 below.
+  function buildCurve() {
+    const c = curve;
+    c.yA = H * 0.6; c.yTop = H * 0.11;
+    c.R = (c.yA - c.yTop) / Math.sin(c.TH);
+    c.a = 0.09 / c.R;
+    const dTop = c.R * c.TH;
+    const dBot = (-1 + Math.sqrt(1 + 4 * c.a * (H - c.yA))) / (2 * c.a);
+    VCY = Math.ceil(dTop + 6);
+    VH = Math.ceil(VCY + dBot + 10);
+    VW = Math.ceil(W / curveScale(-dTop)) + 12;
+    VCX = VW / 2;
+    c.bands = [];
+    const step = 2 / SDPR;
+    for (let v = c.yTop; v < H; v += step) {
+      const v1 = Math.min(H, v + step);
+      const d0 = curveInv(v), d1 = curveInv(v1);
+      c.bands.push([v, v1, VCY + d0, VCY + d1, curveScale((d0 + d1) / 2)]);
+    }
+  }
+  function curveInv(v) {
+    const c = curve, dv = v - c.yA;
+    if (dv < 0) return c.R * Math.asin(Math.max(-1, dv / c.R));
+    return (-1 + Math.sqrt(1 + 4 * c.a * dv)) / (2 * c.a);
+  }
+  function curveY(d) { const c = curve; return d < 0 ? c.yA + c.R * Math.sin(d / c.R) : c.yA + d + c.a * d * d; }
+  function curveScale(d) { const c = curve; return d < 0 ? 1 / (1 + c.K * (1 - Math.cos(d / c.R))) : 1 + 2 * c.a * d; }
+  // screen point -> flat buffer point (null above the horizon)
+  function screenToFlat(mx, my) {
+    if (my < curve.yTop) return null;
+    const d = curveInv(Math.min(H, my)), s = curveScale(d);
+    return { x: VCX + (mx - W / 2) / s, y: VCY + d };
+  }
+  function flatToScreen(fx, fy) {
+    const d = fy - VCY, s = curveScale(d);
+    return { x: W / 2 + (fx - VCX) * s, y: curveY(d), s };
+  }
+
+  const stars = [];
+  for (let i = 0; i < 60; i++) stars.push([Math.random(), Math.random(), 0.5 + Math.random() * 1.2, Math.random() * 6]);
+  const hexRGB = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const mixRGB = (a, b, k) => a.map((v, i) => v * (1 - k) + b[i] * k);
+  const rgba = (c, al = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${al})`;
+  const SKY = { dayTop: hexRGB('#6fc0f2'), dayLow: hexRGB('#d6f1ff'), duskTop: hexRGB('#ff9a6a'), duskLow: hexRGB('#ffd2a0'), nightTop: hexRGB('#0d0f33'), nightLow: hexRGB('#2b2d70') };
+  // Paint the sky, then bend the flat world onto the screen in thin strips.
+  function presentCurved() {
+    const c = curve, d = darkness(phaseOf(G.time)), warm = Math.sin(clamp(d, 0, 1) * Math.PI);
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    const skyTop = mixRGB(mixRGB(SKY.dayTop, SKY.duskTop, warm * 0.8), SKY.nightTop, d);
+    const skyLow = mixRGB(mixRGB(SKY.dayLow, SKY.duskLow, warm), SKY.nightLow, d);
+    const sky = sctx.createLinearGradient(0, 0, 0, c.yTop + H * 0.12);
+    sky.addColorStop(0, rgba(skyTop)); sky.addColorStop(1, rgba(skyLow));
+    sctx.fillStyle = sky; sctx.fillRect(0, 0, W, c.yTop + H * 0.14);
+    if (d > 0.05) {
+      sctx.fillStyle = '#ffffff';
+      for (const [x, y, r, ph] of stars) { sctx.globalAlpha = d * (0.5 + 0.5 * Math.sin(G.time * 2 + ph)); sctx.fillRect(x * W, y * c.yTop * 1.1, r, r); }
+      sctx.globalAlpha = 1;
+    }
+    drawClouds(c.yTop, d);
+    for (const [v0, v1, f0, f1, s] of c.bands) {
+      sctx.drawImage(buf, 0, f0 * DPR, buf.width, Math.max(0.5, (f1 - f0) * DPR), W / 2 - VCX * s, v0, VW * s, v1 - v0 + 0.6);
+    }
+    // atmospheric haze toward the horizon sells the distance
+    const haze = sctx.createLinearGradient(0, c.yTop, 0, c.yTop + H * 0.26);
+    haze.addColorStop(0, rgba(skyLow, 1)); haze.addColorStop(0.2, rgba(skyLow, 0.55));
+    haze.addColorStop(1, rgba(skyLow, 0));
+    sctx.fillStyle = haze; sctx.fillRect(0, c.yTop - 1, W, H * 0.26 + 1);
+    // a soft rim of light along the curved horizon
+    sctx.fillStyle = 'rgba(255,255,255,0.35)'; sctx.fillRect(0, c.yTop - 1, W, 2);
+    if (grain) { sctx.fillStyle = grain; sctx.fillRect(0, 0, W, H); }
+  }
+  const clouds = [];
+  for (let i = 0; i < 7; i++) clouds.push({ x: Math.random(), y: 0.15 + Math.random() * 0.6, s: 0.6 + Math.random() * 0.8, v: 0.004 + Math.random() * 0.006 });
+  function drawClouds(yTop, d) {
+    sctx.save();
+    for (const cl of clouds) {
+      const x = (((cl.x + G.time * cl.v) % 1.2) - 0.1) * W, y = cl.y * yTop, s = cl.s * Math.max(0.6, H / 900);
+      sctx.globalAlpha = 1 - d * 0.75;
+      sctx.beginPath();
+      for (const [ox, oy, r] of [[-22, 4, 13], [0, -4, 18], [22, 3, 14], [8, 8, 12]]) { sctx.moveTo(x + (ox + r) * s, y + oy * s); sctx.arc(x + ox * s, y + oy * s, r * s, 0, TAU); }
+      sctx.lineWidth = 6 * s; sctx.strokeStyle = 'rgba(59,47,79,0.18)'; sctx.stroke();
+      sctx.fillStyle = '#ffffff'; sctx.fill();
+    }
+    sctx.restore();
   }
   function setZoom(z) {
     zoomMul = clamp(z, 0.55, 1.6);
@@ -37,6 +135,7 @@
   }
   // Re-render stickers and ground at the new on-screen scale.
   function rescale() {
+    buf.width = Math.ceil(VW * DPR); buf.height = Math.ceil(VH * DPR);
     RS = clamp(Z * DPR, 0.6, 3);
     const S = clamp(Z * DPR, 0.6, 3);
     if (!SW.SPR || Math.abs(SW.SPR - S) > 0.01) SW.buildSprites(S);
@@ -113,23 +212,23 @@
   const isNight = (p) => p >= 0.64 && p < 0.955;
 
   // ---------------- projection ----------------
-  const sxOf = (x) => (x - G.cam.x) * Z + W / 2;
-  const syOf = (y, lv) => ((y - G.cam.y) * TILT - lv) * Z + H / 2;
+  const sxOf = (x) => (x - G.cam.x) * Z + VCX;
+  const syOf = (y, lv) => ((y - G.cam.y) * TILT - lv) * Z + VCY;
   function viewChunks() {
-    const hw = W / 2 / Z, hh = H / 2 / Z / TILT;
+    const hw = VCX / Z;
     return {
       cx0: Math.floor((G.cam.x - hw) / CHUNK), cx1: Math.floor((G.cam.x + hw) / CHUNK),
-      cy0: Math.floor((G.cam.y - hh) / CHUNK), cy1: Math.floor((G.cam.y + hh) / CHUNK),
+      cy0: Math.floor((G.cam.y - VCY / Z / TILT) / CHUNK), cy1: Math.floor((G.cam.y + (VH - VCY + 2 * LH) / Z / TILT) / CHUNK),
     };
   }
-  // Screen point -> world point on whichever ground layer is drawn there.
+  // Flat buffer point -> world point on whichever ground layer is drawn there.
   function screenToWorld(mx, my) {
-    const wx = (mx - W / 2) / Z + G.cam.x;
+    const wx = (mx - VCX) / Z + G.cam.x;
     for (let L = 2; L >= 0; L--) {
-      const wy = (my - H / 2) / Z / TILT + G.cam.y + (L * LH) / TILT;
+      const wy = (my - VCY) / Z / TILT + G.cam.y + (L * LH) / TILT;
       if (G.world.levelAt(wx, wy) === L) return { x: wx, y: wy };
     }
-    return { x: wx, y: (my - H / 2) / Z / TILT + G.cam.y };
+    return { x: wx, y: (my - VCY) / Z / TILT + G.cam.y };
   }
 
   // ---------------- helpers ----------------
@@ -678,8 +777,11 @@
     if (G.world.isWater(w.x, w.y)) return { kind: 'fish', x: w.x, y: w.y };
     return { kind: 'move', x: w.x, y: w.y };
   }
-  function pointerOrder(mx, my) {
+  function pointerOrder(sx, sy) {
     if (G.mode !== 'play') return null;
+    const f = screenToFlat(sx, sy);
+    if (!f) return null;
+    const mx = f.x, my = f.y;
     if (G.fishing) {
       const w = screenToWorld(mx, my);
       if (G.fishing.phase === 'bite' || G.world.isWater(w.x, w.y)) { reel(); return null; }
@@ -719,8 +821,9 @@
       let il = Math.hypot(ix, iy);
       p.running = keys.has('ShiftLeft') || keys.has('ShiftRight') || (il > 0.97 && !!(input.x || input.y));
       if (il > 0.15) { G.order = null; G.fishing = null; G.marker = null; }
-      else if (input.holdMove && input.mouseX >= 0) {
-        const w = screenToWorld(input.mouseX, input.mouseY);
+      else if (input.holdMove && input.mouseX >= 0 && screenToFlat(input.mouseX, input.mouseY)) {
+        const f = screenToFlat(input.mouseX, input.mouseY);
+        const w = screenToWorld(f.x, f.y);
         if (!G.order || G.order.kind !== 'move') setOrder({ kind: 'move', x: w.x, y: w.y });
         else { G.order.x = w.x; G.order.y = w.y; }
         G.marker = null;
@@ -979,6 +1082,12 @@
   function drawSprite(name, sx, sy, rot = 0, kx = 1, ky = 1, which = 'img') {
     const spr = SW.sprites[name];
     if (!spr) return;
+    if (which === 'glow' && !spr.glow) {
+      // a yellow silhouette, made once, drawn a touch larger behind a highlighted sticker
+      const c = document.createElement('canvas'); c.width = spr.flash.width; c.height = spr.flash.height;
+      const x = c.getContext('2d'); x.drawImage(spr.flash, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#ffd23f'; x.fillRect(0, 0, c.width, c.height);
+      spr.glow = c;
+    }
     if (rot === 0 && kx === 1 && ky === 1 && Math.abs(spr.S - DPR * Z) < 0.01) {
       // fast path: pixel-aligned copy, no resampling
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -988,7 +1097,6 @@
     setSpriteTransform(sx, sy, rot, kx, ky);
     ctx.drawImage(spr[which], -spr.ax, -spr.ay, spr.w, spr.h);
   }
-  function glowOn(on) { if (canFilter) ctx.filter = on ? 'drop-shadow(0 0 3px #ffd23f) drop-shadow(0 0 3px #ffd23f)' : 'none'; }
 
   const drawList = [];
   function render() {
@@ -999,10 +1107,10 @@
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.fillStyle = '#3b86c9';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, VW, VH);
 
     const v = viewChunks();
-    let budget = 3;
+    let budget = 4;
     for (let cy = v.cy0; cy <= v.cy1; cy++) {
       for (let cx = v.cx0; cx <= v.cx1; cx++) {
         const ch = world.getChunk(cx, cy);
@@ -1035,7 +1143,7 @@
     for (let cy = v.cy0; cy <= v.cy1 + 1; cy++) for (let cx = v.cx0; cx <= v.cx1; cx++) {
       for (const o of world.getChunk(cx, cy).objs) {
         const sx = sxOf(o.x);
-        if (sx < -marginX || sx > W + marginX) continue;
+        if (sx < -marginX || sx > VW + marginX) continue;
         const st = world.objState(o, t);
         if (st === 'gone') continue;
         drawList.push({ y: o.y, k: 0, o, spr: st === 'after' ? OBJ[o.type].after : o.type });
@@ -1064,12 +1172,11 @@
     for (const d of drawList) {
       const lit = hov && ((d.k === 0 && hov.o === d.o) || (d.k === 1 && hov.s === d.s) || (d.k === 2 && hov.m === d.m));
       const tgt = G.order && ((d.k === 0 && G.order.o === d.o) || (d.k === 2 && G.order.m === d.m) || (d.k === 1 && G.order.s === d.s));
-      if (lit || tgt) glowOn(true);
+      d.glow = !!(lit || tgt);
       if (d.k === 0) drawObject(d);
       else if (d.k === 1) drawStructure(d);
       else if (d.k === 2) drawMob(d);
       else drawPlayer();
-      if (lit || tgt) glowOn(false);
     }
 
     drawFishing();
@@ -1078,9 +1185,8 @@
     drawTags();
     drawLighting();
 
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    if (grain) { ctx.fillStyle = grain; ctx.fillRect(0, 0, W, H); }
     G.cam.x = camX; G.cam.y = camY;
+    presentCurved();
   }
 
   function drawGroundMarkers() {
@@ -1120,6 +1226,7 @@
       const k = 1 - (G.time - ht) / 0.25;
       kx = 1 + 0.1 * k; ky = 1 - 0.1 * k; ox = Math.sin((G.time - ht) * 60) * 3 * k * Z;
     }
+    if (d.glow) drawSprite(d.spr, sx + ox, sy + 3 * Z, rot, kx * 1.09, ky * 1.07, 'glow');
     drawSprite(d.spr, sx + ox, sy, rot, kx, ky);
   }
 
@@ -1129,6 +1236,7 @@
     d.sx = sx; d.sy = sy;
     let kx = 1, ky = 1;
     if (G.time - s.hitT < 0.2) { kx = 1.08; ky = 0.92; }
+    if (d.glow) drawSprite(s.type === 'campfire' ? (s.fuel > 0 ? 'campfire' : 'campfireOut') : 'wall', sx, sy + 3 * Z, 0, 1.09, 1.07, 'glow');
     if (s.type === 'campfire') {
       const lit = s.fuel > 0;
       drawSprite(lit ? 'campfire' : 'campfireOut', sx, sy, 0, kx, ky);
@@ -1162,6 +1270,7 @@
     const lift = (m.type === 'puff' ? Math.sin(m.hop * Math.PI) * 10 : m.type === 'gloop' ? Math.sin(m.hop * Math.PI) * 6 : 0) * Z;
     if (m.dying) { const k = clamp(m.dying / 0.6, 0, 1); ky *= 1 - k * 0.8; kx *= 1 + k * 0.6; alpha = 1 - k; }
     ctx.globalAlpha = alpha;
+    if (d.glow) drawSprite(d.spr, sx + ox, sy - lift + 3 * Z, rot, kx * 1.1, ky * 1.08, 'glow');
     drawSprite(d.spr, sx + ox, sy - lift, rot, kx, ky);
     if (m.hurtT > 0) { ctx.globalAlpha = 0.8 * alpha; drawSprite(d.spr, sx + ox, sy - lift, rot, kx, ky, 'flash'); }
     ctx.globalAlpha = 1;
@@ -1333,9 +1442,9 @@
     const fires = burningFires();
     for (const s of fires) hole(sxOf(s.x) / 2, (syOf(s.y, s.lvl * LH) - 14 * Z) / 2, fireRadius(s) * Z / 2 * Math.min(1, s.fuel / 20 + 0.3), 1);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    ctx.drawImage(lightCv, 0, 0, W, H);
+    ctx.drawImage(lightCv, 0, 0, VW, VH);
     const warm = Math.sin(clamp(d, 0, 1) * Math.PI) * 0.16;
-    if (warm > 0.01) { ctx.fillStyle = `rgba(255, 120, 70, ${warm})`; ctx.fillRect(0, 0, W, H); }
+    if (warm > 0.01) { ctx.fillStyle = `rgba(255, 120, 70, ${warm})`; ctx.fillRect(0, 0, VW, VH); }
     ctx.globalCompositeOperation = 'lighter';
     for (const s of fires) {
       const x = sxOf(s.x), y = syOf(s.y, s.lvl * LH) - 14 * Z, r = fireRadius(s) * Z * 0.8;
@@ -1349,12 +1458,13 @@
 
   // ---------------- hover ----------------
   function updateHover() {
-    if (G.mode !== 'play' || input.mouseX < 0 || document.body.classList.contains('touch')) { G.hover = null; canvas.style.cursor = ''; return; }
-    const d = pick(input.mouseX, input.mouseY);
+    const fm = input.mouseX >= 0 ? screenToFlat(input.mouseX, input.mouseY) : null;
+    if (G.mode !== 'play' || !fm || document.body.classList.contains('touch')) { G.hover = null; canvas.style.cursor = ''; return; }
+    const d = pick(fm.x, fm.y);
     if (!d) {
-      const w = screenToWorld(input.mouseX, input.mouseY);
+      const w = screenToWorld(fm.x, fm.y);
       const water = G.world.isWater(w.x, w.y);
-      G.hover = water ? { label: G.tools.rod ? 'Fish here' : 'Water (needs a rod to fish)', lx: input.mouseX, ly: input.mouseY - 22 } : null;
+      G.hover = water ? { label: G.tools.rod ? 'Fish here' : 'Water (needs a rod to fish)', lx: fm.x, ly: fm.y - 22 } : null;
       canvas.style.cursor = water && G.tools.rod ? 'pointer' : 'crosshair';
       return;
     }
@@ -1786,6 +1896,7 @@
     $('questsToggle').addEventListener('click', () => $('quests').classList.toggle('collapsed'));
     $('startBtn').addEventListener('click', () => { const txt = $('seedInput').value.trim() || randomSeedWord(); startGame(SW.seedFromString(txt), txt); });
     $('diceBtn').addEventListener('click', () => { $('seedInput').value = randomSeedWord(); });
+    $('storyBtn').addEventListener('click', () => { SW.audio.unlock(); SW.intro.play(() => SW.store.set('introSeen', true)); });
     $('continueBtn').addEventListener('click', () => { const s = SW.store.get('save', null); if (s) { SW.audio.unlock(); if (restore(s)) toast('Welcome back.'); } });
     $('retryBtn').addEventListener('click', () => respawn());
     $('newBtn').addEventListener('click', () => goTitle());
@@ -1866,7 +1977,7 @@
     frame.dropT = (frame.dropT || 0) - dt;
     if (frame.dropT <= 0) {
       frame.dropT = 2;
-      const keep = Math.ceil(Math.max(W, H) / Z / CHUNK / TILT) + 2;
+      const keep = Math.ceil(Math.max(VW, VH) / Z / CHUNK / TILT) + 2;
       G.world.dropFarCanvases(Math.floor(G.cam.x / CHUNK), Math.floor(G.cam.y / CHUNK), keep);
     }
     requestAnimationFrame(frame);
@@ -1881,7 +1992,11 @@
     setMute(SW.audio.muted);
     window.addEventListener('resize', () => { resize(); clearTimeout(setZoom.t); setZoom.t = setTimeout(() => { rescale(); prebuild(); }, 200); });
     if (data && validSave(data.save)) restore(data.save);
-    else goTitle();
+    else {
+      goTitle();
+      // first visit: tell the story before the title screen
+      if (!SW.store.get('introSeen', false) && SW.intro) SW.intro.play(() => SW.store.set('introSeen', true));
+    }
     last = performance.now();
     requestAnimationFrame(frame);
     document.body.classList.add('ready');
@@ -1893,7 +2008,7 @@
     get G() { return G; }, newGame, startGame, act, useItem, craft, restore, serialize, toast, saveName, validSave,
     pause, goTitle, showScreen, closeSavePanel, dayOf, gainXP, pointerOrder, setOrder, startFishing, reel,
     setPhase(ph) { G.time = (dayOf(G.time) - 1) * DAY_LEN + ph * DAY_LEN; },
-    sxOf: (x) => sxOf(x), syOf: (y, l) => syOf(y, l),
+    toScreen: (x, y, lv = 0) => flatToScreen(sxOf(x), syOf(y, lv)),
   };
   try { window.claude?.hot?.snapshot?.(() => ({ save: G && (G.mode === 'play' || G.mode === 'paused') ? serialize() : null })); } catch (e) { /* not in a viewer */ }
   const startFn = (data) => boot(data || {});

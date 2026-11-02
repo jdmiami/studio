@@ -306,7 +306,7 @@ body.touch .slot kbd, body.touch #craftBtn kbd { display: none; }
 @media (max-width: 640px) {
   .slot { width: 48px; height: 48px; border-radius: 14px; }
   .slot img { width: 32px; height: 32px; }
-  #toast { max-width: calc(100vw - 32px); top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 250px); font-size: 13px; }
+  #toast { max-width: calc(100vw - 32px); top: calc(env(safe-area-inset-top, 0px) + 322px); font-size: 13px; }
   .hud-left { gap: 7px; }
   .clock canvas { width: 36px; height: 36px; }
   .clock-text b { font-size: 21px; }
@@ -422,3 +422,18 @@ body.touch .slot kbd, body.touch #craftBtn kbd { display: none; }
   .btn-col .round-btn { width: 34px; height: 34px; }
   .btn-col .round-btn svg { width: 18px; height: 18px; }
 }
+
+/* ---------- story intro ---------- */
+#intro { position: fixed; inset: 0; z-index: 60; background: #f6f1e6; transition: opacity 0.45s; }
+#intro.out { opacity: 0; }
+#introCv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+#introSkip {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); right: max(14px, env(safe-area-inset-right, 0px));
+  font-family: var(--body); font-weight: 800; font-size: 15px; padding: 6px 16px; border-radius: 999px;
+  background: #141018; color: #fff; border: 3px solid #fff; box-shadow: 2px 3px 0 rgba(20, 16, 24, 0.3);
+}
+.intro-hint {
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); transition: opacity 0.3s; margin: 0; text-align: center;
+  font-weight: 800; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(20, 16, 24, 0.55); pointer-events: none;
+}
+#intro.tapped .intro-hint { opacity: 0; }
