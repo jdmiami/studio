@@ -53,6 +53,7 @@
     cactus: { hp: 3, r: 10, drops: { fiber: 2, berry: 1 }, regrow: 240, sway: 0.15, sound: 'rustle', tree: true },
     rock: { hp: 5, r: 16, tool: 'pick', drops: { stone: 3 }, sound: 'mine', rock: true },
     rock2: { hp: 4, r: 14, tool: 'pick', drops: { stone: 2 }, sound: 'mine', rock: true },
+    rockBuddy: { hp: 4, r: 14, tool: 'pick', drops: { stone: 2 }, sound: 'mine', rock: true },
     snowRock: { hp: 4, r: 14, tool: 'pick', drops: { stone: 2 }, sound: 'mine', rock: true },
     bush: { hp: 1, r: 11, drops: { berry: 2 }, after: 'bushEmpty', afterR: 11, regrow: 70, sound: 'rustle', sway: 0.5, plant: true },
     deadBush: { hp: 1, r: 0, drops: { fiber: 1, wood: 1 }, regrow: 160, sound: 'rustle', sway: 1.1, plant: true },
@@ -71,7 +72,7 @@
   SW.OBJ_NAME = {
     treeRound: 'Oak', treeBlossom: 'Blossom Tree', treePine: 'Pine', treePineSnow: 'Snowy Pine', treeAutumn: 'Maple', treeAutumnRed: 'Red Maple',
     swampTree: 'Willow', giantMushroom: 'Giant Mushroom', cactus: 'Cactus', rock: 'Boulder', rock2: 'Rock', snowRock: 'Frosty Rock',
-    bush: 'Berry Bush', deadBush: 'Dry Bush', crystal: 'Crystal', sunflower: 'Sunflower', daisy: 'Daisy', flowerPink: 'Flower', flowerGold: 'Flower', flowerLilac: 'Flower',
+    bush: 'Berry Bush', deadBush: 'Dry Bush', crystal: 'Crystal', rockBuddy: 'Worried Rock', sunflower: 'Sunflower', daisy: 'Daisy', flowerPink: 'Flower', flowerGold: 'Flower', flowerLilac: 'Flower',
     driftwood: 'Driftwood', tuft: 'Grass', reeds: 'Reeds', mushroom: 'Mushroom', chest: 'Treasure Chest',
   };
   SW.objVerb = (type) => { const d = SW.OBJ[type]; return d.chest ? 'Open' : d.tool === 'axe' ? 'Chop' : d.tool === 'pick' ? 'Mine' : d.tree ? 'Cut' : 'Pick'; };
@@ -206,14 +207,14 @@
             case B.GRASS:
               if (p < 0.045 * k) type = 'treeRound';
               else if (p < 0.085 * k) type = 'bush';
-              else if (p < 0.105 * k) type = 'rock2';
+              else if (p < 0.105 * k) type = r2 < 0.2 ? 'rockBuddy' : 'rock2';
               else if (p < 0.16 * k) type = flower;
               else if (p < 0.3 * k) type = 'tuft';
               break;
             case B.MEADOW:
               if (p < 0.025 * k) type = 'treeBlossom';
               else if (p < 0.055 * k) type = 'bush';
-              else if (p < 0.065 * k) type = 'rock2';
+              else if (p < 0.065 * k) type = r2 < 0.3 ? 'rockBuddy' : 'rock2';
               else if (p < 0.085 * k) type = 'sunflower';
               else if (p < 0.12 * k) type = 'daisy';
               else if (p < 0.21 * k) type = flower;

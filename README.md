@@ -8,7 +8,9 @@ The first time you open the game, an animated action-manga intro tells the story
 
 ## Ene and Star
 
-The characters come from the original hand-drawn character sheets. The drawings themselves are used for close-ups: the pop-up portraits, the intro and the moon. Ene and Star in the world are vector stickers redrawn from those sheets, so they stay crisp at any zoom and can animate. The cut-out drawings are in `art/`, inlined into `js/assets.js`.
+The characters come from the original hand-drawn character sheets. The drawings themselves are used for close-ups: the pop-up portraits, the intro and the moon. Ene and Star in the world are vector stickers redrawn from those sheets, so they stay crisp at any zoom and can animate. Ene follows the sheet: a tall egg-shaped face, long wavy black hair with a rainbow streak on one side and a blue-violet one on the other, a long neck, a crumpled yellow tube dress, one hand to her chest, and big bare feet. The cut-out drawings are in `art/`, inlined into `js/assets.js`.
+
+The rest of the world is drawn in the same cartoon style: near-black, slightly uneven pen ink, puffy cloud-shaped trees with pen curls and bark lines, lumpy boulders, toadstools, sunflowers, daisies and a worried little rock. Every creature has a cartoon face with big eyes, brows and a mouth that shows its mood: Thornbacks and Pebblors scowl, Gloops grin, Puffs smile, grubs worry and Scribbles glare.
 
 - **Ene's faces.** "AY!!" pops up, with a close-up of her shocked face, when she gets hurt or surprised. Her joy face shows on level-ups, finished quests, Lost Pages and cave treasure.
 - **Rainbow cry** (R, the rainbow bar under XP, or the Rainbow button on phones). The bar fills as you fight, a little as you get hurt, and slowly over time. When it's full, two rainbows pour from Ene's eyes for about two seconds. They knock back and hurt everything around her and wash Scribbles away completely. It works in caves too.

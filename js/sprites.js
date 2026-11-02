@@ -4,8 +4,8 @@
 'use strict';
 (function () {
   const TAU = Math.PI * 2;
-  const INK = '#3b2f4f';
-  const LW = 2.4;
+  const INK = '#17121c';   // near-black pen ink, like the hand-drawn sheets
+  const LW = 2.5;
 
   function mkCanvas(w, h) {
     const c = document.createElement('canvas');
@@ -29,6 +29,9 @@
     c.beginPath(); build(c);
     c.lineJoin = 'round'; c.lineCap = 'round';
     c.lineWidth = lw * 2; c.strokeStyle = INK; c.stroke();
+    // a second pass, nudged down and right, makes the line a little heavier on
+    // one side, like a pen stroke rather than a vector outline
+    c.save(); c.translate(lw * 0.22, lw * 0.3); c.lineWidth = lw * 1.5; c.stroke(); c.restore();
     c.fillStyle = fill; c.fill();
   }
   function flat(c, build, fill) { c.beginPath(); build(c); c.fillStyle = fill; c.fill(); }
@@ -99,64 +102,130 @@
     return { img: fin, back, flash: out, w: cw / S, h: ch / S, ax: pad + w / 2, ay: pad + ay, S };
   }
 
+  // ---------- cartoon kit ----------
+  // A shared face for creatures and props, drawn like the hand-drawn sheets:
+  // big white eyes with small pupils and a glint, thin brows, a mouth that
+  // says how they feel. (x, y) is between the eyes; s scales it.
+  function face(c, x, y, s, mood = 'happy', o = {}) {
+    const gap = (o.gap || 5) * s, ew = (o.ew || 3) * s, eh = (o.eh || 3.8) * s;
+    const look = (o.look || 0.5) * s;
+    for (const side of o.one ? [1] : [-1, 1]) {
+      const ex = x + side * gap;
+      shape(c, (c) => ell(c, ex, y, ew, eh), '#ffffff', 1.1 * s);
+      flat(c, blobs([[ex + look, y + 0.6 * s, (mood === 'surprised' ? 1.1 : 1.5) * s]]), INK);
+      flat(c, blobs([[ex + look + 0.6 * s, y - 0.2 * s, 0.55 * s]]), '#ffffff');
+      // brows
+      const by = y - eh - 1.4 * s;
+      if (mood === 'angry') line(c, [[ex - side * 3.2 * s, by + 1.6 * s], [ex + side * 2.4 * s, by - 1.2 * s]], INK, 1.6 * s);
+      else if (mood === 'worried' || mood === 'sad') line(c, [[ex - side * 3 * s, by - 1.2 * s], [ex + side * 2.4 * s, by + 0.8 * s]], INK, 1.3 * s);
+      else line(c, [[ex - 2.6 * s, by + 0.4 * s], [ex, by - 0.8 * s], [ex + 2.6 * s, by + 0.4 * s]], INK, 1.2 * s);
+    }
+    const my = y + eh + 2.6 * s;
+    if (mood === 'angry') {
+      shape(c, (c) => rrect(c, x - 3.6 * s, my - 1.4 * s, 7.2 * s, 3.2 * s, 1.2 * s), '#ffffff', 1.1 * s);
+      line(c, [[x - 3.4 * s, my + 0.2 * s], [x + 3.4 * s, my + 0.2 * s]], INK, 0.7 * s);
+    } else if (mood === 'surprised' || mood === 'worried') {
+      shape(c, (c) => ell(c, x, my + 0.6 * s, 2.2 * s, (mood === 'surprised' ? 2.8 : 2) * s), '#3b1a2a', 1.1 * s);
+      flat(c, (c) => ell(c, x, my + 1.6 * s, 1.2 * s, 0.9 * s), '#ff5a6a');
+    } else if (mood === 'sad') line(c, [[x - 2.6 * s, my + 1 * s], [x, my - 0.4 * s], [x + 2.6 * s, my + 1 * s]], INK, 1.2 * s);
+    else if (mood === 'grin') {
+      shape(c, (c) => { c.moveTo(x - 4 * s, my - 1 * s); c.quadraticCurveTo(x, my + 5 * s, x + 4 * s, my - 1 * s); c.closePath(); }, '#3b1a2a', 1.1 * s);
+      flat(c, (c) => ell(c, x, my + 1.8 * s, 1.8 * s, 1 * s), '#ff5a6a');
+    } else line(c, [[x - 2.4 * s, my - 0.4 * s], [x, my + 1.4 * s], [x + 2.4 * s, my - 0.4 * s]], INK, 1.2 * s);
+  }
+  // little curls and ticks, like pen strokes on foliage
+  const curl = (c, x, y, r, col, w = 1.5) => { c.beginPath(); c.arc(x, y, r, Math.PI * 0.15, Math.PI * 1.05); c.lineWidth = w; c.lineCap = 'round'; c.strokeStyle = col; c.stroke(); };
+  // a puffy cartoon cloud of leaves: a ring of bumps around a body
+  function cloudPath(cx, cy, rx, ry, bumps, seed) {
+    return (c) => {
+      const r = SW.rng(seed);
+      for (let i = 0; i < bumps; i++) {
+        const a = (i / bumps) * TAU - Math.PI / 2, br = Math.min(rx, ry) * (0.42 + r() * 0.12);
+        circ(c, cx + Math.cos(a) * (rx - br * 0.75), cy + Math.sin(a) * (ry - br * 0.75), br);
+      }
+      ell(c, cx, cy, rx * 0.8, ry * 0.8);
+    };
+  }
+
   // ---------- the art ----------
   const ART = {};
 
-  function treeRound(canopy, light, dark) {
+  // the leafy tree from the drawings: a puffy cloud of leaves with pen curls,
+  // on a forked trunk with bark lines and flared roots
+  function treeRound(canopy, light, dark, seed = 3) {
     return (c) => {
-      shape(c, (c) => { rrect(c, 29, 50, 12, 40, 3); polyPath(c, [[26, 90], [44, 90], [41, 82], [29, 82]]); }, '#9a6a3f');
-      line(c, [[34, 60], [34, 72]], '#7a4f2c', 1.6);
-      shape(c, blobs([[35, 32, 25], [16, 46, 16], [54, 46, 16], [35, 54, 18]]), canopy);
-      flat(c, blobs([[28, 23, 11], [13, 42, 6], [47, 36, 7]]), light);
-      [[42, 48], [22, 54], [36, 40], [52, 54], [18, 38]].forEach(([x, y]) => line(c, [[x - 3, y], [x, y + 3], [x + 3, y]], dark, 1.8));
+      shape(c, (c) => {
+        c.moveTo(27, 91); c.quadraticCurveTo(31, 84, 30.5, 74); c.lineTo(30, 52); c.lineTo(40, 52); c.lineTo(39.5, 74); c.quadraticCurveTo(39, 84, 44, 91); c.closePath();
+        c.moveTo(34, 64); c.quadraticCurveTo(26, 58, 22, 50); c.lineTo(26, 48); c.quadraticCurveTo(29, 55, 35, 58); c.closePath();
+      }, '#9a6a3f');
+      line(c, [[33, 62], [33.5, 72]], '#6e4626', 1.4); line(c, [[37, 70], [36.5, 80]], '#6e4626', 1.4);
+      flat(c, (c) => ell(c, 36.5, 66, 1.4, 2.2), '#6e4626');
+      shape(c, cloudPath(35, 34, 31, 26, 9, seed), canopy);
+      flat(c, cloudPath(29, 26, 15, 11, 6, seed + 1), light);
+      [[46, 44, 4], [22, 46, 3.6], [38, 30, 3.4], [52, 30, 3], [16, 32, 3]].forEach(([x, y, r]) => curl(c, x, y, r, dark, 1.6));
     };
   }
-  ART.treeRound = [70, 92, treeRound('#5bb04f', '#83cf5f', '#3f8f3d')];
+  ART.treeRound = [70, 92, treeRound('#5bb04f', '#86d062', '#357e36')];
   ART.treeBlossom = [70, 92, (c) => {
-    treeRound('#f7a6c4', '#ffd0e0', '#d9789d')(c);
-    [[20, 30], [50, 28], [30, 58], [56, 50], [12, 50], [40, 18]].forEach(([x, y]) => flat(c, blobs([[x, y, 2.4]]), '#ffffff'));
+    treeRound('#f7a6c4', '#ffd3e3', '#cf6f97', 7)(c);
+    [[20, 30], [50, 28], [30, 50], [56, 44], [12, 42], [40, 16], [44, 50]].forEach(([x, y]) => { flat(c, blobs([[x, y, 2.2]]), '#ffffff'); flat(c, blobs([[x, y, 0.9]]), '#ffd23f'); });
   }];
-  ART.treePine = [58, 102, (c) => {
-    shape(c, (c) => rrect(c, 24, 80, 10, 20, 2), '#8a5a33');
-    shape(c, (c) => {
-      polyPath(c, [[29, 3], [50, 38], [8, 38]]);
-      polyPath(c, [[29, 20], [54, 60], [4, 60]]);
-      polyPath(c, [[29, 40], [57, 84], [1, 84]]);
-    }, '#2f8f5b');
-    flat(c, P([[29, 7], [20, 34], [12, 36]]), '#4fb377');
-    flat(c, P([[29, 25], [16, 56], [8, 58]]), '#4fb377');
-    flat(c, P([[29, 45], [13, 80], [5, 82]]), '#4fb377');
-  }];
+  // the pine: three scalloped tiers with pen ticks
+  function pineArt(c) {
+    shape(c, (c) => { c.moveTo(25, 101); c.quadraticCurveTo(27, 92, 26.5, 80); c.lineTo(31.5, 80); c.quadraticCurveTo(31, 92, 33, 101); c.closePath(); }, '#8a5a33');
+    line(c, [[29, 84], [29, 94]], '#5e3a1e', 1.2);
+    const tier = (top, bot, half) => (c) => {
+      c.moveTo(29, top);
+      c.quadraticCurveTo(29 + half * 0.5, top + (bot - top) * 0.5, 29 + half, bot);
+      for (let i = 0; i < 4; i++) { const x0 = 29 + half - (i * half) / 2, x1 = x0 - half / 2; c.quadraticCurveTo((x0 + x1) / 2, bot + 4, x1, bot); }
+      c.quadraticCurveTo(29 - half * 0.5, top + (bot - top) * 0.5, 29, top);
+    };
+    shape(c, (c) => { tier(40, 82, 27)(c); tier(20, 60, 23)(c); tier(3, 38, 18)(c); }, '#2f8f5b');
+    flat(c, (c) => { c.moveTo(29, 8); c.quadraticCurveTo(22, 22, 15, 35); c.lineTo(22, 34); c.closePath(); c.moveTo(29, 25); c.quadraticCurveTo(20, 42, 10, 57); c.lineTo(18, 56); c.closePath(); c.moveTo(29, 45); c.quadraticCurveTo(18, 62, 6, 79); c.lineTo(15, 78); c.closePath(); }, '#4fb377');
+    [[38, 30], [42, 52], [46, 74], [34, 64], [24, 46]].forEach(([x, y]) => line(c, [[x - 2.5, y - 2], [x, y], [x + 2.5, y - 2]], '#1f6b42', 1.4));
+  }
+  ART.treePine = [58, 102, pineArt];
   ART.treePineSnow = [58, 102, (c) => {
-    ART.treePine[2](c);
-    shape(c, P([[29, 3], [38, 18], [33, 16], [29, 20], [24, 15], [20, 18]]), '#ffffff', 1.8);
+    pineArt(c);
+    shape(c, (c) => { c.moveTo(29, 3); c.quadraticCurveTo(35, 10, 39, 17); c.quadraticCurveTo(35, 19, 32, 16); c.quadraticCurveTo(29, 20, 26, 16); c.quadraticCurveTo(22, 19, 19, 17); c.quadraticCurveTo(23, 10, 29, 3); c.closePath(); }, '#ffffff', 1.6);
+    shape(c, (c) => { c.moveTo(14, 38); c.quadraticCurveTo(20, 34, 24, 37); c.quadraticCurveTo(29, 33, 34, 37); c.quadraticCurveTo(39, 34, 45, 38); c.quadraticCurveTo(29, 42, 14, 38); c.closePath(); }, '#ffffff', 1.4);
   }];
 
-  ART.rock = [50, 38, (c) => {
-    shape(c, P([[6, 36], [2, 22], [12, 8], [28, 2], [42, 8], [48, 24], [44, 36]]), '#a3a1b5');
-    flat(c, P([[12, 10], [28, 4], [30, 16], [16, 21]]), '#c9c7da');
-    flat(c, P([[30, 16], [44, 22], [44, 34], [28, 34]]), '#8d8ba1');
-    line(c, [[22, 26], [26, 30], [24, 34]], '#6f6d85', 1.6);
-  }];
-  ART.rock2 = [44, 30, (c) => {
-    shape(c, P([[4, 28], [3, 16], [14, 4], [30, 3], [41, 14], [41, 28]]), '#b3aea1');
-    flat(c, P([[14, 6], [30, 5], [24, 14], [10, 16]]), '#d3cfc3');
-    flat(c, P([[26, 15], [40, 16], [39, 27], [24, 27]]), '#9b968a');
-  }];
+  // boulders: soft and round, a light top, a dark belly, a crack and some speckles
+  function rockArt(w, h, fill, light, dark, cracks = true) {
+    return (c) => {
+      // lumpy: a high left shoulder, a little dip, a lower right shoulder
+      shape(c, (c) => {
+        c.moveTo(4, h - 2); c.bezierCurveTo(0, h * 0.55, w * 0.06, h * 0.12, w * 0.36, h * 0.06);
+        c.quadraticCurveTo(w * 0.5, h * 0.12, w * 0.6, h * 0.1); c.bezierCurveTo(w * 0.9, h * 0.06, w, h * 0.45, w - 3, h - 2);
+        c.quadraticCurveTo(w * 0.5, h + 1, 4, h - 2); c.closePath();
+      }, fill);
+      flat(c, (c) => { c.moveTo(w * 0.18, h * 0.42); c.bezierCurveTo(w * 0.2, h * 0.14, w * 0.5, h * 0.08, w * 0.64, h * 0.18); c.quadraticCurveTo(w * 0.4, h * 0.22, w * 0.18, h * 0.42); c.closePath(); }, light);
+      flat(c, (c) => { c.moveTo(w * 0.14, h - 4); c.quadraticCurveTo(w * 0.5, h * 0.78, w * 0.88, h - 5); c.quadraticCurveTo(w * 0.5, h - 1, w * 0.14, h - 4); c.closePath(); }, dark);
+      if (cracks) line(c, [[w * 0.6, h * 0.36], [w * 0.66, h * 0.5], [w * 0.62, h * 0.62]], dark, 1.5);
+      [[0.32, 0.6], [0.78, 0.46], [0.46, 0.72]].forEach(([fx, fy]) => flat(c, blobs([[w * fx, h * fy, 0.9]]), dark));
+    };
+  }
+  ART.rock = [50, 38, rockArt(50, 38, '#a7a4b8', '#d2d0e0', '#7f7c94')];
+  ART.rock2 = [44, 30, rockArt(44, 30, '#b5b0a3', '#dcd8cc', '#8e897d')];
+  // the little worried rock from the meadow drawing
+  ART.rockBuddy = [44, 30, (c) => { rockArt(44, 30, '#a9a7b4', '#d4d2de', '#82808e', false)(c); face(c, 22, 15, 0.95, 'worried', { gap: 4.6 }); }];
 
+  // berry bushes: a scalloped cloud with pen curls
   function bushArt(fill, light, berries) {
     return (c) => {
-      shape(c, blobs([[14, 24, 12], [26, 17, 14], [38, 24, 12], [26, 28, 11]]), fill);
-      flat(c, blobs([[21, 12, 6], [9, 21, 4]]), light);
+      shape(c, cloudPath(26, 23, 24, 15, 8, 11), fill);
+      flat(c, cloudPath(20, 17, 10, 6, 5, 12), light);
+      [[38, 26, 3], [14, 28, 2.6]].forEach(([x, y, r]) => curl(c, x, y, r, '#2f7a33', 1.4));
       if (berries) {
-        [[14, 26], [26, 22], [36, 28], [22, 32], [31, 14], [40, 20]].forEach(([x, y]) => {
+        [[14, 24], [26, 20], [36, 27], [22, 30], [31, 13], [41, 19]].forEach(([x, y]) => {
           shape(c, blobs([[x, y, 3.6]]), '#e8354a', 1.4);
           flat(c, blobs([[x - 1.2, y - 1.3, 1.1]]), '#ffd9de');
         });
       }
     };
   }
-  ART.bush = [52, 40, bushArt('#4fa64a', '#78c65d', true)];
+  ART.bush = [52, 40, bushArt('#4fa64a', '#7ac85e', true)];
   ART.bushEmpty = [52, 40, bushArt('#6a9f4c', '#8dbb67', false)];
 
   ART.crystal = [42, 50, (c) => {
@@ -268,98 +337,120 @@
   }];
 
   // ---- characters ----
-  // Ene in Pink: tall egg-shaped pink face, long black hair with a rainbow
-  // streak on one side and a violet one on the other, a yellow tube dress,
-  // thin pink limbs and bare feet. Redrawn from the original character sheet.
-  const ENE = { skin: '#f58cf2', shade: '#d450d6', hair: '#17131d', dress: '#f8d81e', dressShade: '#e3ac0c' };
+  // Ene in Pink, drawn to the character sheet: a tall egg-shaped pink face
+  // (about a third of her height) with big wide-set eyes and high brows; long
+  // black wavy hair with a centre parting, falling behind her to the waist,
+  // with a rainbow streak on her right and a blue-violet one on her left; a
+  // long thin neck; a crumpled yellow tube dress to the knee, one hand pressed
+  // to her chest; thin legs and big bare feet. Canvas 40 x 108, feet at the bottom.
+  const ENE = { skin: '#f27ef0', shade: '#c53fc8', hair: '#141016', dress: '#f8d81e', dressShade: '#ddaa0c' };
   const RAINBOW = ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a'];
-  const VIOLET = ['#3a3ad0', '#7a35c8', '#b03ec2'];
-  function limb(c, pts, w = 2.4) { line(c, pts, INK, w + 2.2); line(c, pts, ENE.skin, w); }
-  function eneBody(c, frame, back) {
-    const st = frame === 1 ? 3.5 : 0;
-    // legs and bare feet
-    limb(c, [[19 - st * 0.4, 58], [18 - st, 72]]);
-    limb(c, [[26 + st * 0.4, 58], [27 + st, 72]]);
-    shape(c, (c) => { ell(c, 16.5 - st, 73, 4.6, 2.4); ell(c, 28.5 + st, 73, 4.6, 2.4); }, ENE.skin, 1.6);
-    // arms: one hand to the chest, one hanging (like the "AY!!" pose); both down from behind
-    if (back) { limb(c, [[15, 39], [11, 52]], 2.2); limb(c, [[30, 39], [34, 52]], 2.2); }
-    else { limb(c, [[16, 39], [12, 47], [19, 43]], 2.2); limb(c, [[29, 40], [34, 51]], 2.2); }
-    // yellow tube dress, a little crumpled at the top
-    shape(c, (c) => { c.moveTo(15, 38); c.quadraticCurveTo(22.5, 35.5, 30, 38); c.lineTo(31, 60); c.quadraticCurveTo(22.5, 62, 14, 60); c.closePath(); }, ENE.dress, 2);
-    flat(c, (c) => { c.moveTo(27.5, 39); c.lineTo(30, 39); c.lineTo(31, 59.5); c.lineTo(28.5, 60); c.closePath(); }, ENE.dressShade);
-    if (!back) [[17, 40.5], [20.5, 41.5], [24, 40.5]].forEach(([x, y]) => line(c, [[x, y], [x + 3, y]], ENE.dressShade, 1.1));
+  const VIOLET = ['#2f3ed0', '#6a34c8', '#a73ec6'];
+  function limb(c, pts, w = 2.2) { line(c, pts, INK, w + 2); line(c, pts, ENE.skin, w); }
+  function eneLegs(c, frame) {
+    const st = frame === 1 ? 2.6 : 0;
+    limb(c, [[17.4, 84], [16.6 - st, 94], [16.2 - st, 101]], 2);
+    limb(c, [[22.6, 84], [23.4 + st, 94], [23.8 + st, 101]], 2);
+    // big bare feet with toes
+    shape(c, (c) => { ell(c, 13.8 - st, 103.4, 5.4, 2.6, -0.06); ell(c, 26.2 + st, 103.4, 5.4, 2.6, 0.06); }, ENE.skin, 1.4);
+    [[10.2, 102.6], [12, 101.9], [13.8, 101.7]].forEach(([x, y]) => line(c, [[x - st, y], [x - st + 0.2, y + 1.4]], ENE.shade, 0.7));
+    [[29.8, 102.6], [28, 101.9], [26.2, 101.7]].forEach(([x, y]) => line(c, [[x + st, y], [x + st - 0.2, y + 1.4]], ENE.shade, 0.7));
   }
-  function eneHairBack(c) {
+  function eneDress(c, back) {
+    // the tube dress, gathered and crumpled at the top
     shape(c, (c) => {
-      c.moveTo(6, 22); c.bezierCurveTo(3, 0, 42, -2, 39, 21);
-      // right lock, falling past the shoulder in waves
-      c.bezierCurveTo(42, 30, 37, 38, 39, 46); c.quadraticCurveTo(39.5, 52, 36, 56); c.quadraticCurveTo(34, 52, 31.5, 55); c.quadraticCurveTo(32, 46, 30.5, 40);
-      c.lineTo(14.5, 40);
-      // left lock
-      c.quadraticCurveTo(13.5, 48, 13.8, 56); c.quadraticCurveTo(11, 52, 8.5, 55); c.quadraticCurveTo(5, 50, 6.5, 44); c.bezierCurveTo(8, 38, 3, 30, 6, 22); c.closePath();
-    }, ENE.hair, 1.8);
-    RAINBOW.forEach((col, i) => line(c, [[10 + i * 1.2, 40], [10.6 + i * 1.2, 53]], col, 1.3));
-    VIOLET.forEach((col, i) => line(c, [[32.6 + i * 1.2, 40], [33 + i * 1.2, 53]], col, 1.3));
+      c.moveTo(13.4, 50); c.quadraticCurveTo(15, 48.4, 16.6, 49.6); c.quadraticCurveTo(18.4, 48, 20, 49.4); c.quadraticCurveTo(21.8, 48, 23.4, 49.6); c.quadraticCurveTo(25, 48.4, 26.6, 50);
+      c.lineTo(27.6, 82); c.quadraticCurveTo(20, 85.4, 12.4, 82); c.closePath();
+    }, ENE.dress, 1.9);
+    flat(c, (c) => { c.moveTo(24.6, 51); c.lineTo(26.6, 51); c.lineTo(27.6, 81.6); c.lineTo(25.4, 82.4); c.closePath(); }, ENE.dressShade);
+    if (!back) [[15.4, 52], [18.6, 53], [21.8, 52]].forEach(([x, y]) => line(c, [[x, y], [x + 2.6, y + 0.4]], ENE.dressShade, 0.9));
+    line(c, [[17, 66], [16.4, 80]], ENE.dressShade, 0.8);
+  }
+  function eneHairBack(c, back) {
+    // the long mass of hair behind her, wavy at the edges, to her waist
+    shape(c, (c) => {
+      c.moveTo(20, 1.4);
+      c.bezierCurveTo(31, 1, 37, 9, 36, 22);
+      c.bezierCurveTo(38.6, 30, 34.6, 36, 37.4, 44); c.bezierCurveTo(39.6, 52, 35, 58, 36.6, 66); c.quadraticCurveTo(33, 63.4, 31, 67); c.quadraticCurveTo(29.6, 60, 29, 54);
+      c.lineTo(11, 54);
+      c.quadraticCurveTo(10.4, 60, 9, 67); c.quadraticCurveTo(7, 63.4, 3.4, 66); c.bezierCurveTo(5, 58, 0.4, 52, 2.6, 44); c.bezierCurveTo(5.4, 36, 1.4, 30, 4, 22);
+      c.bezierCurveTo(3, 9, 9, 1, 20, 1.4); c.closePath();
+    }, ENE.hair, 1.6);
+    // streaks running down the hair: rainbow on her right (the viewer's left), blue-violet on her left
+    const L = back ? 1 : 0;
+    RAINBOW.forEach((col, i) => line(c, [[9.4 + i * 1.3, 34], [8.4 + i * 1.3, 46], [9.6 + i * 1.3, 58]], col, 1.4));
+    VIOLET.forEach((col, i) => line(c, [[27.4 + i * 1.4, 34], [29 + i * 1.4, 46], [27.8 + i * 1.4, 58]], col, 1.45));
+    if (!L) { line(c, [[8, 14], [6.4, 30]], '#ffffff', 0.9); line(c, [[32, 14], [33.6, 30]], '#ffffff', 0.9); }
   }
   function eneFace(c, mood) {
-    // the egg-shaped face, turned a little to the right
-    shape(c, (c) => { c.moveTo(22, 4); c.bezierCurveTo(33, 4, 35, 17, 32, 26); c.bezierCurveTo(29.5, 33, 26, 36, 23, 36); c.bezierCurveTo(19, 36, 13.5, 31, 12.5, 24); c.bezierCurveTo(11, 13, 14, 4, 22, 4); c.closePath(); }, ENE.skin, 2);
-    flat(c, (c) => { c.moveTo(14, 12); c.bezierCurveTo(12, 20, 13.5, 29, 19, 34); c.bezierCurveTo(15, 31, 13.6, 24, 14.6, 16); c.closePath(); }, ENE.shade);
-    // hair fringe framing the face
-    shape(c, (c) => { c.moveTo(10, 16); c.bezierCurveTo(10, 3, 30, -1, 35, 10); c.bezierCurveTo(30, 6, 24, 6, 21, 8); c.bezierCurveTo(17, 7, 13, 10, 12, 18); c.closePath(); }, ENE.hair, 1.6);
-    // ear with piercings
-    shape(c, (c) => ell(c, 11.5, 20, 2.2, 3.2), ENE.skin, 1.4);
-    flat(c, blobs([[10.6, 18.4, 0.7], [10.4, 21.6, 0.7]]), '#c9c9d6');
+    // the tall egg of a face with a magenta shade down one side
+    shape(c, (c) => { c.moveTo(20, 4.6); c.bezierCurveTo(29.6, 4.6, 32.4, 15, 31, 24); c.bezierCurveTo(29.6, 32.4, 25, 39, 21, 40); c.bezierCurveTo(16.4, 40, 10.6, 33, 9.2, 24.6); c.bezierCurveTo(7.8, 15, 10.6, 4.6, 20, 4.6); c.closePath(); }, ENE.skin, 1.8);
+    flat(c, (c) => { c.moveTo(11, 12); c.bezierCurveTo(9, 20, 10.6, 30, 16.6, 37.4); c.bezierCurveTo(12.4, 33, 11, 25, 12.2, 16); c.closePath(); }, ENE.shade);
+    // the hair frames it: a centre parting and two wavy sides over the cheeks
+    shape(c, (c) => {
+      c.moveTo(20, 2.4); c.bezierCurveTo(13, 2, 7.6, 7, 8, 16); c.quadraticCurveTo(8.6, 24, 7.6, 31); c.quadraticCurveTo(10.4, 24, 10.8, 16); c.bezierCurveTo(11.6, 9, 15.6, 6.4, 20, 5.4); c.closePath();
+      c.moveTo(20, 2.4); c.bezierCurveTo(27, 2, 32.4, 7, 32, 16); c.quadraticCurveTo(31.4, 24, 32.4, 31); c.quadraticCurveTo(29.6, 24, 29.2, 16); c.bezierCurveTo(28.4, 9, 24.4, 6.4, 20, 5.4); c.closePath();
+    }, ENE.hair, 1.3);
+    // ears: plain on one side, pierced on the other
+    shape(c, (c) => { ell(c, 8.6, 23, 1.9, 2.9); ell(c, 31.4, 22.6, 1.9, 2.9); }, ENE.skin, 1.2);
+    flat(c, blobs([[32.2, 21.2, 0.6], [32.4, 23, 0.6], [31.8, 24.8, 0.6]]), '#d8d8e4');
     if (mood === 'cry') {
-      // squeezed shut, with smudged lids
-      flat(c, (c) => { ell(c, 20, 16, 3.6, 2); ell(c, 28, 16, 3.4, 2); }, '#7a5a8a');
-      line(c, [[17, 15], [23, 17]], INK, 1.6); line(c, [[25, 17], [31, 15]], INK, 1.6);
-      line(c, [[18, 29], [21, 28], [24, 29.5], [27, 28.3], [29, 29]], INK, 1.6);
+      flat(c, (c) => { ell(c, 15.6, 19, 3.4, 1.7); ell(c, 24.4, 19, 3.4, 1.7); }, '#6d4a7a');
+      line(c, [[12.6, 18.2], [18.4, 20]], INK, 1.4); line(c, [[21.6, 20], [27.4, 18.2]], INK, 1.4);
+      line(c, [[15, 31.6], [17.6, 30.6], [20.4, 32], [23, 30.8], [25.4, 31.6]], INK, 1.3);
+      flat(c, (c) => rrect(c, 19, 31.4, 2.2, 1.6, 0.4), '#ffffff');
       return;
     }
-    const big = mood === 'ay' ? 1.35 : 1.12;
-    shape(c, (c) => { ell(c, 20, 16, 3.3 * big, 4.3 * big); ell(c, 28.3, 16, 3.1 * big, 4.2 * big); }, '#ffffff', 1.5);
-    if (mood === 'joy') { line(c, [[17.5, 15.5], [20, 13.5], [22.5, 15.5]], INK, 1.6); line(c, [[26, 15.5], [28.3, 13.5], [30.6, 15.5]], INK, 1.6); }
-    else { flat(c, blobs([[20.6, 16.8, 1.6 * big], [29, 16.8, 1.6 * big]]), INK); flat(c, blobs([[21.1, 16, 0.6], [29.5, 16, 0.6]]), '#ffffff'); }
-    line(c, mood === 'ay' ? [[16.5, 9], [21, 8]] : [[17, 10.5], [21.5, 10]], INK, 1.3);
-    line(c, mood === 'ay' ? [[26.5, 8], [31, 9]] : [[26.5, 10], [30.5, 10.5]], INK, 1.3);
-    line(c, [[25, 20], [26.2, 23], [24.6, 23.4]], INK, 1.1);
-    if (mood === 'ay') { shape(c, (c) => ell(c, 24.5, 30, 2.4, 4.4), '#3b1a2a', 1.4); flat(c, (c) => ell(c, 24.5, 32.4, 1.4, 1.4), '#ff5a6a'); }
-    else if (mood === 'joy') { shape(c, (c) => { c.moveTo(19.5, 27); c.quadraticCurveTo(24.5, 34, 30, 26.5); c.closePath(); }, '#3b1a2a', 1.4); flat(c, (c) => ell(c, 25, 30.6, 2.2, 1.3), '#ff5a6a'); }
-    else shape(c, (c) => ell(c, 24.5, 28.5, 1.7, 2.3), '#3b1a2a', 1.2);
+    // big, wide-set eyes with lashes, small pupils
+    const big = mood === 'ay' ? 1.16 : 1;
+    shape(c, (c) => { ell(c, 15.4, 18.6, 3.1 * big, 4.1 * big); ell(c, 24.6, 18.6, 3.1 * big, 4.1 * big); }, '#ffffff', 1.2);
+    if (mood === 'joy') { flat(c, blobs([[15.6, 19.4, 1.8], [24.8, 19.4, 1.8]]), '#7a4ab8'); flat(c, blobs([[15.6, 19.4, 0.9], [24.8, 19.4, 0.9]]), INK); flat(c, blobs([[16.2, 18.4, 0.6], [25.4, 18.4, 0.6]]), '#ffffff'); }
+    else { flat(c, blobs([[15.6, 19.2, 1.2 * big], [24.8, 19.2, 1.2 * big]]), INK); flat(c, blobs([[16, 18.6, 0.45], [25.2, 18.6, 0.45]]), '#ffffff'); }
+    [[13, 14.8, 12.4, 13.6], [15.4, 14.4, 15.4, 13], [17.8, 14.8, 18.4, 13.6], [22.2, 14.8, 21.6, 13.6], [24.6, 14.4, 24.6, 13], [27, 14.8, 27.6, 13.6]].forEach(([a, b2, x, y]) => line(c, [[a, b2 + (big - 1) * -4], [x, y + (big - 1) * -4]], INK, 0.8));
+    // high, thin brows; worried tilt for joy (like the sheet)
+    if (mood === 'joy') { line(c, [[12, 11.4], [17.6, 10.2]], INK, 1.1); line(c, [[22.4, 10.2], [28, 11.4]], INK, 1.1); }
+    else { line(c, [[12.4, 11], [15.6, 9.8], [18, 10.6]], INK, 1); line(c, [[22, 10.6], [24.4, 9.8], [27.6, 11]], INK, 1); }
+    line(c, [[20.6, 22], [21.4, 25.6], [20, 26]], INK, 0.9);
+    if (mood === 'ay') { shape(c, (c) => ell(c, 20.4, 32, 2.2, 5), '#2b0f1e', 1.3); flat(c, (c) => ell(c, 20.6, 35, 1.3, 1.4), '#ff5a6a'); }
+    else if (mood === 'joy') { shape(c, (c) => { c.moveTo(14.8, 28.6); c.quadraticCurveTo(20.6, 38, 26.4, 28.6); c.closePath(); }, '#2b0f1e', 1.3); flat(c, (c) => rrect(c, 16.4, 28.8, 8.2, 1.8, 0.6), '#ffffff'); flat(c, (c) => ell(c, 20.8, 32.6, 2.4, 1.4), '#ff5a6a'); }
+    else shape(c, (c) => ell(c, 20.4, 30.6, 1.6, 2.6), '#2b0f1e', 1.1);
   }
-  // Proportions follow the character sheet: about a third head, a third dress,
-  // a quarter legs, and very slim.
-  const eneHairT = (c) => { c.translate(20, 0); c.scale(0.92, 1.14); c.translate(-22.5, 0); };
-  const eneBodyT = (c) => { c.translate(20, 44); c.scale(0.82, 1.55); c.translate(-22.5, -37); };
-  const eneFaceT = (c) => { c.translate(20, 2); c.scale(1.04, 1.24); c.translate(-22.5, -3); };
+  function eneArms(c, back) {
+    if (back) { limb(c, [[13.6, 51], [11.4, 62], [12, 70]], 1.9); limb(c, [[26.4, 51], [28.6, 62], [28, 70]], 1.9); return; }
+    // her right hand pressed to her chest, her left hanging with curled fingers
+    limb(c, [[13.6, 51], [10.6, 59], [16.4, 54.6]], 1.9);
+    shape(c, (c) => ell(c, 17.4, 54, 2.2, 1.8, 0.4), ENE.skin, 1.1);
+    limb(c, [[26.4, 51], [28.8, 61], [29.6, 69]], 1.9);
+    [[28.4, 71.2], [29.8, 71.8], [31.2, 71]].forEach(([x, y]) => line(c, [[29.6, 69.4], [x, y]], INK, 1.4));
+  }
+  const slim = (c, kx, ky = 1, oy = 0) => { c.translate(20, oy); c.scale(kx, ky); c.translate(-20, -oy); };
   function eneArt(frame, mood) {
     return (c) => {
-      c.save(); eneHairT(c); eneHairBack(c); c.restore();
-      c.save(); eneBodyT(c); eneBody(c, frame, false); c.restore();
-      limb(c, [[20, 40], [20, 47]], 2.1);
-      c.save(); eneFaceT(c); eneFace(c, mood || 'calm'); c.restore();
+      c.save(); slim(c, 0.84, 0.86, 2); eneHairBack(c, false); c.restore();
+      eneLegs(c, frame);
+      c.save(); slim(c, 0.86, 1, 50); eneDress(c, false); c.restore();
+      limb(c, [[20, 38], [20, 49]], 2);           // the long neck
+      c.save(); slim(c, 0.88, 1, 50); eneArms(c, false); c.restore();
+      c.save(); slim(c, 0.86, 1.02, 4); eneFace(c, mood || 'calm'); c.restore();
     };
   }
   function eneBackArt(frame) {
     return (c) => {
-      c.save(); eneBodyT(c); eneBody(c, frame, true); c.restore();
-      c.save(); eneHairT(c);
-      // all hair from behind, with the streaks showing at the ends
-      shape(c, (c) => { c.moveTo(7, 20); c.bezierCurveTo(5, 0, 39, 0, 38, 20); c.bezierCurveTo(40, 32, 38, 44, 35, 52); c.quadraticCurveTo(22.5, 55, 10, 52); c.bezierCurveTo(6, 44, 5, 32, 7, 20); c.closePath(); }, ENE.hair, 1.8);
-      line(c, [[14, 8], [12, 30]], '#ffffff', 1.2); line(c, [[30, 8], [32, 28]], '#ffffff', 1.2);
-      RAINBOW.forEach((col, i) => line(c, [[11 + i * 1.5, 38], [12 + i * 1.5, 52]], col, 1.6));
-      VIOLET.forEach((col, i) => line(c, [[29 + i * 1.5, 38], [28.5 + i * 1.5, 52]], col, 1.6));
-      c.restore();
+      eneLegs(c, frame);
+      c.save(); slim(c, 0.86, 1, 50); eneDress(c, true); c.restore();
+      c.save(); slim(c, 0.88, 1, 50); eneArms(c, true); c.restore();
+      c.save(); slim(c, 0.84, 0.86, 2); eneHairBack(c, true); c.restore();
+      line(c, [[14, 6], [10.4, 30]], '#ffffff', 1); line(c, [[26, 6], [29.6, 30]], '#ffffff', 1);
+      line(c, [[20, 2], [20, 14]], '#2a2430', 1);
     };
   }
-  ART.player0 = [40, 106, eneArt(0)];
-  ART.player1 = [40, 106, eneArt(1)];
-  ART.playerAy = [40, 106, eneArt(0, 'ay')];
-  ART.playerJoy = [40, 106, eneArt(0, 'joy')];
-  ART.playerCry = [40, 106, eneArt(0, 'cry')];
-  ART.playerBack0 = [40, 106, eneBackArt(0)];
-  ART.playerBack1 = [40, 106, eneBackArt(1)];
+  ART.player0 = [40, 108, eneArt(0)];
+  ART.player1 = [40, 108, eneArt(1)];
+  ART.playerAy = [40, 108, eneArt(0, 'ay')];
+  ART.playerJoy = [40, 108, eneArt(0, 'joy')];
+  ART.playerCry = [40, 108, eneArt(0, 'cry')];
+  ART.playerBack0 = [40, 108, eneBackArt(0)];
+  ART.playerBack1 = [40, 108, eneBackArt(1)];
 
   // Star, Ene's companion: a yellow star with stubby legs and a lot of feelings
   function starArt(mood, frame) {
@@ -402,19 +493,24 @@
     return (c) => {
       const r = SW.rng(seed);
       const pts = [];
-      const n = 15;
+      const n = 17;
       for (let i = 0; i < n; i++) {
         const a = (i / n) * TAU;
-        const rad = (i % 2 ? 14 : 19) + r() * 4;
+        const rad = (i % 2 ? 13 : 19) + r() * 4;
         pts.push([23 + Math.cos(a) * rad, 25 + Math.sin(a) * rad * 0.92]);
       }
       shape(c, P(pts), '#2b2340');
+      // drips
+      shape(c, (c) => { ell(c, 12, 43, 2, 3); ell(c, 33, 44, 1.6, 2.6); }, '#2b2340', 1.2);
       const z = [];
-      for (let i = 0; i < 7; i++) z.push([10 + i * 4.2, 34 + (i % 2 ? -5 : 2) + r() * 2]);
+      for (let i = 0; i < 7; i++) z.push([10 + i * 4.2, 36 + (i % 2 ? -4 : 2) + r() * 2]);
       line(c, z, '#5b4f78', 1.8);
-      shape(c, (c) => { ell(c, 17, 21, 4.6, 5.4); ell(c, 29, 21, 4.6, 5.4); }, '#ffffff', 1.2);
-      flat(c, blobs([[18.5, 22.5, 2.3], [30.5, 22.5, 2.3]]), '#ff3b5c');
-      line(c, [[12, 14], [20, 17]], '#ffffff', 2); line(c, [[34, 14], [26, 17]], '#ffffff', 2);
+      // glaring red eyes under heavy brows
+      shape(c, (c) => { ell(c, 17, 20, 4.6, 5.2); ell(c, 29, 20, 4.6, 5.2); }, '#ffffff', 1.2);
+      flat(c, blobs([[18.4, 21.4, 2.4], [30.4, 21.4, 2.4]]), '#ff3b5c');
+      flat(c, blobs([[18.9, 20.6, 0.8], [30.9, 20.6, 0.8]]), '#ffffff');
+      line(c, [[11, 13], [20.5, 16.5]], '#ffffff', 2.2); line(c, [[35, 13], [25.5, 16.5]], '#ffffff', 2.2);
+      shape(c, (c) => { c.moveTo(15, 29); for (let i = 0; i <= 6; i++) c.lineTo(15 + i * 2.7, 29 + (i % 2 ? 3 : 0)); c.lineTo(31, 29); c.quadraticCurveTo(23, 34, 15, 29); c.closePath(); }, '#ffffff', 1);
     };
   }
   ART.scribble0 = [46, 48, scribbleArt(11)];
@@ -423,13 +519,13 @@
   function puffArt(frame) {
     return (c) => {
       const sq = frame ? 2 : 0;
-      shape(c, (c) => { ell(c, 13, 10 + sq, 3.6, 9, -0.25); ell(c, 23, 9 + sq, 3.6, 9, 0.2); }, '#f4ecff', 2);
-      flat(c, (c) => { ell(c, 13, 11 + sq, 1.5, 6, -0.25); ell(c, 23, 10 + sq, 1.5, 6, 0.2); }, '#ffb3c8');
+      shape(c, (c) => { ell(c, 13, 10 + sq, 3.8, 9.5, -0.25); ell(c, 22, 9 + sq, 3.8, 9.5, 0.2); }, '#f4ecff', 2);
+      flat(c, (c) => { ell(c, 13, 11 + sq, 1.6, 6.4, -0.25); ell(c, 22, 10 + sq, 1.6, 6.4, 0.2); }, '#ffb3c8');
       shape(c, (c) => ell(c, 18, 25 + sq * 0.5, 13 + sq, 10 - sq * 0.5), '#f4ecff');
-      flat(c, blobs([[5.5, 27, 3.2]]), '#ffffff');
-      flat(c, blobs([[24, 23, 1.9]]), INK);
-      flat(c, blobs([[29.5, 26, 1.6]]), '#ff8fae');
-      flat(c, (c) => ell(c, 22, 29, 2.4, 1.4), '#ffc9d6');
+      shape(c, blobs([[5, 27, 3.4]]), '#ffffff', 1.4);
+      face(c, 24.5, 21.5 + sq * 0.5, 0.75, 'happy', { one: true, gap: 0, ew: 3.4, eh: 4.2, look: 1 });
+      flat(c, blobs([[30.5, 26.5, 1.6]]), '#ff8fae');
+      line(c, [[27.5, 28], [29.5, 29.2], [31.2, 28]], INK, 1.2);
     };
   }
   ART.puff0 = [34, 36, puffArt(0)];
@@ -522,76 +618,80 @@
   }];
 
 
-  // ---- RPG creatures ----
+  // ---- RPG creatures, in the cartoon style: big eyes, brows, a mouth that means it ----
+  // creatures face right; FLIP makes the left-facing copies
   function thornArt(k) {
     return (c) => {
       const st = k ? 3 : 0;
-      shape(c, (c) => { ell(c, 15 - st, 35, 4.5, 3); ell(c, 33 + st, 35, 4.5, 3); }, '#5a3f2e', 1.6);
+      shape(c, (c) => { ell(c, 15 - st, 36, 4.5, 3); ell(c, 32 + st, 36, 4.5, 3); }, '#5a3f2e', 1.6);
+      // a fan of cream spikes over the back
       shape(c, (c) => {
-        for (let i = 0; i < 7; i++) {
-          const a = Math.PI + ((i + 0.5) / 7) * Math.PI;
-          const bx = 23 + Math.cos(a) * 15, by = 27 + Math.sin(a) * 12;
-          const tx = 23 + Math.cos(a) * 25, ty = 27 + Math.sin(a) * 21;
-          const px = -Math.sin(a) * 4.5, py = Math.cos(a) * 4.5;
+        for (let i = 0; i < 8; i++) {
+          const a = Math.PI * 1.02 + ((i + 0.5) / 8) * Math.PI * 0.92;
+          const bx = 22 + Math.cos(a) * 14, by = 27 + Math.sin(a) * 11;
+          const tx = 22 + Math.cos(a) * (24 + (i % 2) * 3), ty = 27 + Math.sin(a) * (20 + (i % 2) * 3);
+          const px = -Math.sin(a) * 4.2, py = Math.cos(a) * 4.2;
           polyPath(c, [[bx + px, by + py], [tx, ty], [bx - px, by - py]]);
         }
       }, '#efd08a', 1.8);
-      shape(c, (c) => ell(c, 23, 27, 18, 12), '#8a5a33');
-      flat(c, (c) => ell(c, 18, 21, 8, 4), '#a8743f');
-      shape(c, (c) => ell(c, 41, 29, 7, 5.5), '#f0c9a0', 1.8);
-      flat(c, blobs([[47, 28, 2.4]]), INK);
-      shape(c, blobs([[37, 24, 3]]), '#ffffff', 1.2);
-      flat(c, blobs([[38, 24.5, 1.6]]), '#d6304f');
-      line(c, [[33, 19.5], [40, 21]], INK, 1.8);
+      shape(c, (c) => ell(c, 22, 27, 17, 11.5), '#8a5a33');
+      flat(c, (c) => ell(c, 17, 21, 7, 3.4), '#a8743f');
+      [[12, 28], [20, 31], [16, 24]].forEach(([x, y]) => curl(c, x, y, 2.2, '#6a4224', 1.2));
+      // the snout and the cross little face
+      shape(c, (c) => ell(c, 40, 29, 8, 6.4), '#f0c9a0', 1.8);
+      shape(c, blobs([[47.5, 28.5, 2.4]]), '#2b1f24', 1);
+      face(c, 37, 23.5, 0.8, k ? 'angry' : 'angry', { gap: 3.4, look: 1 });
     };
   }
-  ART.thornback0 = [52, 40, thornArt(0)];
-  ART.thornback1 = [52, 40, thornArt(1)];
+  ART.thornback0 = [54, 42, thornArt(0)];
+  ART.thornback1 = [54, 42, thornArt(1)];
 
   function crabArt(k) {
     return (c) => {
       const up = k ? -3 : 0;
-      [[14, 30, 6, 36], [20, 32, 15, 38], [30, 32, 35, 38], [36, 30, 44, 36]].forEach(([a, b, x, y]) => { line(c, [[a, b], [x, y]], INK, 4); line(c, [[a, b], [x, y]], '#e2553a', 2); });
+      [[14, 30, 6, 37], [20, 32, 15, 39], [30, 32, 35, 39], [36, 30, 44, 37]].forEach(([a, b, x, y]) => { line(c, [[a, b], [(a + x) / 2, b + 2], [x, y]], INK, 4); line(c, [[a, b], [(a + x) / 2, b + 2], [x, y]], '#e2553a', 2); });
+      // claws, snapping
       shape(c, (c) => { circ(c, 7, 17 + up, 7); circ(c, 43, 17 - up, 7); }, '#ff6b4a');
       c.save(); c.globalCompositeOperation = 'destination-out';
       c.beginPath(); polyPath(c, [[2, 9 + up], [8, 16 + up], [0, 15 + up]]); polyPath(c, [[48, 9 - up], [42, 16 - up], [50, 15 - up]]); c.fill(); c.restore();
-      shape(c, (c) => ell(c, 25, 25, 15, 9.5), '#ff7a52');
-      flat(c, (c) => ell(c, 21, 21, 7, 3), '#ffab8f');
-      line(c, [[20, 18], [19, 9]], INK, 3.6); line(c, [[30, 18], [31, 9]], INK, 3.6);
-      shape(c, blobs([[19, 8, 3.4], [31, 8, 3.4]]), '#ffffff', 1.3);
-      flat(c, blobs([[19.6, 8.4, 1.7], [31.6, 8.4, 1.7]]), INK);
-      line(c, [[21, 29], [25, 30.5], [29, 29]], INK, 1.5);
+      shape(c, (c) => ell(c, 25, 26, 15, 9.5), '#ff7a52');
+      flat(c, (c) => ell(c, 20, 22, 7, 3), '#ffab8f');
+      // eyes on stalks, with angry brows, and a toothy grin
+      line(c, [[21, 19], [20, 10]], INK, 3.6); line(c, [[29, 19], [30, 10]], INK, 3.6);
+      line(c, [[21, 19], [20, 10]], '#e2553a', 1.6); line(c, [[29, 19], [30, 10]], '#e2553a', 1.6);
+      face(c, 25, 8.5, 0.82, 'angry', { gap: 5.6, ew: 3.2, eh: 3.4 });
+      shape(c, (c) => { c.moveTo(19.5, 27); c.quadraticCurveTo(25, 33, 30.5, 27); c.closePath(); }, '#ffffff', 1.2);
+      line(c, [[22.5, 27.5], [22.8, 29.8]], INK, 0.8); line(c, [[25, 27.8], [25, 30.6]], INK, 0.8); line(c, [[27.5, 27.5], [27.2, 29.8]], INK, 0.8);
     };
   }
-  ART.snapjaw0 = [50, 40, crabArt(0)];
-  ART.snapjaw1 = [50, 40, crabArt(1)];
+  ART.snapjaw0 = [50, 42, crabArt(0)];
+  ART.snapjaw1 = [50, 42, crabArt(1)];
 
   function gloopArt(k) {
     return (c) => {
       const sq = k ? 3 : 0;
-      shape(c, (c) => { c.moveTo(3 - sq, 32); c.bezierCurveTo(1 - sq, 13 + sq, 11, 4 + sq * 1.4, 20, 4 + sq * 1.4); c.bezierCurveTo(29, 4 + sq * 1.4, 39 + sq, 13 + sq, 37 + sq, 32); c.closePath(); }, '#5fd3a0');
-      flat(c, (c) => ell(c, 13, 13 + sq, 5, 3, -0.5), '#c4f7dd');
-      flat(c, (c) => ell(c, 30, 30, 6, 2), '#43b386');
-      shape(c, (c) => { ell(c, 15, 20 + sq, 3.4, 4.3); ell(c, 25, 20 + sq, 3.4, 4.3); }, '#ffffff', 1.3);
-      flat(c, blobs([[15.8, 21 + sq, 1.8], [25.8, 21 + sq, 1.8]]), INK);
-      c.beginPath(); c.arc(20, 25 + sq, 3.5, 0.2, Math.PI - 0.2); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke();
+      shape(c, (c) => { c.moveTo(3 - sq, 33); c.bezierCurveTo(1 - sq, 13 + sq, 11, 4 + sq * 1.4, 20, 4 + sq * 1.4); c.bezierCurveTo(29, 4 + sq * 1.4, 39 + sq, 13 + sq, 37 + sq, 33); c.quadraticCurveTo(33, 35, 30, 32); c.quadraticCurveTo(26, 35, 22, 32); c.quadraticCurveTo(17, 35, 13, 32); c.quadraticCurveTo(8, 35, 3 - sq, 33); c.closePath(); }, '#5fd3a0');
+      flat(c, (c) => ell(c, 12, 13 + sq, 5, 3, -0.5), '#c4f7dd');
+      flat(c, blobs([[32, 14 + sq, 1.6], [8, 26, 1.2]]), '#c4f7dd');
+      face(c, 20, 18 + sq, 1, k ? 'surprised' : 'grin', { gap: 5.2, ew: 3.4, eh: 4.2 });
     };
   }
-  ART.gloop0 = [40, 34, gloopArt(0)];
-  ART.gloop1 = [40, 34, gloopArt(1)];
+  ART.gloop0 = [40, 36, gloopArt(0)];
+  ART.gloop1 = [40, 36, gloopArt(1)];
 
   function golemArt(k) {
     return (c) => {
       const a = k ? -4 : 0;
       shape(c, (c) => { rrect(c, 14, 50, 11, 8, 3); rrect(c, 33, 50, 11, 8, 3); }, '#7d786d');
-      shape(c, P([[3, 26 + a], [11, 22 + a], [14, 38 + a], [6, 42 + a]]), '#8d887c');
-      shape(c, P([[55, 26 - a], [47, 22 - a], [44, 38 - a], [52, 42 - a]]), '#8d887c');
-      shape(c, P([[12, 52], [9, 30], [16, 18], [42, 18], [49, 30], [46, 52]]), '#9b968a');
-      flat(c, P([[16, 20], [30, 20], [26, 32], [13, 32]]), '#b9b4a7');
-      line(c, [[30, 36], [34, 42], [31, 48]], '#6f6a60', 1.6);
-      shape(c, P([[18, 18], [17, 7], [27, 2], [38, 5], [41, 18]]), '#b3aea1');
-      shape(c, blobs([[22, 4, 4], [28, 2, 3.5], [33, 4, 3.5]]), '#6bbf4a', 1.4);
-      flat(c, (c) => { rrect(c, 22, 10, 4.5, 3.5, 1); rrect(c, 32, 10, 4.5, 3.5, 1); }, '#7fe8f6');
+      // boulder arms
+      shape(c, (c) => { ell(c, 7, 33 + a, 6, 9, -0.3); ell(c, 51, 33 - a, 6, 9, 0.3); }, '#8d887c');
+      // body: a lumpy boulder with moss on top
+      shape(c, (c) => { c.moveTo(12, 53); c.bezierCurveTo(6, 40, 8, 22, 18, 18); c.quadraticCurveTo(29, 13, 40, 18); c.bezierCurveTo(50, 22, 52, 40, 46, 53); c.quadraticCurveTo(29, 56, 12, 53); c.closePath(); }, '#9b968a');
+      flat(c, (c) => { c.moveTo(14, 30); c.bezierCurveTo(14, 21, 24, 18, 32, 19); c.quadraticCurveTo(22, 24, 14, 30); c.closePath(); }, '#bdb8ab');
+      line(c, [[36, 40], [39, 45], [36, 50]], '#6f6a60', 1.6);
+      [[20, 46], [42, 30]].forEach(([x, y]) => flat(c, blobs([[x, y, 1]]), '#6f6a60'));
+      shape(c, cloudPath(29, 17, 12, 4.5, 6, 31), '#6bbf4a', 1.4);
+      face(c, 29, 29, 1.15, k ? 'angry' : 'angry', { gap: 5.6 });
     };
   }
   ART.pebblor0 = [58, 60, golemArt(0)];
@@ -610,16 +710,19 @@
     shape(c, (c) => { rrect(c, 3, 9, 4.5, 11, 2.2); rrect(c, 12, 3, 4.5, 11, 2.2); rrect(c, 20, 8, 4.5, 11, 2.2); }, '#8a5a33', 1.6);
     shape(c, (c) => ell(c, 23, 30, 5, 2, -0.6), '#7fb04f', 1.4);
   }];
-  ART.mushroom = [26, 26, (c) => {
-    shape(c, (c) => rrect(c, 9, 12, 8, 12, 3.5), '#fff3df');
-    shape(c, (c) => { c.moveTo(1, 14); c.quadraticCurveTo(2, 1, 13, 1); c.quadraticCurveTo(24, 1, 25, 14); c.closePath(); }, '#e8354a');
-    flat(c, blobs([[8, 8, 2.2], [15, 5, 1.8], [19, 10, 2]]), '#ffffff');
+  ART.mushroom = [26, 28, (c) => {
+    shape(c, (c) => { c.moveTo(9, 26); c.quadraticCurveTo(10, 18, 9.5, 13); c.lineTo(16.5, 13); c.quadraticCurveTo(16, 18, 17, 26); c.closePath(); }, '#f6ead2');
+    line(c, [[11, 15], [11.5, 23]], '#d9c6a2', 1.1);
+    shape(c, (c) => { c.moveTo(1, 15); c.quadraticCurveTo(1, 1, 13, 1); c.quadraticCurveTo(25, 1, 25, 15); c.quadraticCurveTo(13, 18, 1, 15); c.closePath(); }, '#b8533a');
+    flat(c, (c) => ell(c, 8, 7, 4, 2, -0.5), '#d9785a');
+    flat(c, blobs([[7, 10, 2.4], [14, 5, 2], [19.5, 10, 2.2], [13, 12, 1.4]]), '#fff3df');
   }];
   ART.swampTree = [70, 94, (c) => {
-    shape(c, (c) => { rrect(c, 29, 48, 12, 44, 3); polyPath(c, [[24, 92], [46, 92], [41, 84], [29, 84]]); }, '#6b5a4a');
-    shape(c, blobs([[35, 30, 24], [15, 42, 15], [55, 42, 15], [35, 46, 16]]), '#4f8a6f');
-    flat(c, blobs([[28, 21, 10], [13, 38, 5]]), '#6aa587');
-    [[10, 46, 64], [20, 50, 70], [50, 50, 68], [60, 46, 62], [30, 54, 66]].forEach(([x, y, b]) => { line(c, [[x, y], [x + 1, b]], INK, 3.6); line(c, [[x, y], [x + 1, b]], '#3f7a5f', 1.8); });
+    shape(c, (c) => { c.moveTo(26, 93); c.quadraticCurveTo(31, 86, 30.5, 74); c.lineTo(30, 50); c.lineTo(40, 50); c.lineTo(39.5, 74); c.quadraticCurveTo(39, 86, 45, 93); c.closePath(); }, '#6b5a4a');
+    line(c, [[33, 60], [33.5, 72]], '#4a3c30', 1.4);
+    shape(c, cloudPath(35, 32, 31, 24, 9, 21), '#4f8a6f');
+    flat(c, cloudPath(28, 24, 13, 9, 6, 22), '#6aa587');
+    [[10, 44, 66], [18, 50, 72], [52, 50, 70], [61, 44, 64], [30, 54, 68], [42, 54, 70]].forEach(([x, y, b]) => { line(c, [[x, y], [x + 1.5, (y + b) / 2], [x, b]], INK, 3.4); line(c, [[x, y], [x + 1.5, (y + b) / 2], [x, b]], '#3f7a5f', 1.7); });
   }];
 
   // ---- new items & gear ----
@@ -686,8 +789,8 @@
 
 
   // ---- biome plants & props ----
-  ART.treeAutumn = [70, 92, treeRound('#f0903a', '#ffb866', '#c86a20')];
-  ART.treeAutumnRed = [70, 92, treeRound('#e2553a', '#ff8a6a', '#a8361f')];
+  ART.treeAutumn = [70, 92, treeRound('#f0903a', '#ffb866', '#b85e18', 13)];
+  ART.treeAutumnRed = [70, 92, treeRound('#e2553a', '#ff8a6a', '#9a2e18', 17)];
   ART.cactus = [40, 62, (c) => {
     shape(c, (c) => { rrect(c, 14, 6, 13, 54, 6.5); rrect(c, 2, 22, 9, 20, 4.5); rrect(c, 2, 34, 14, 8, 4); rrect(c, 29, 14, 9, 20, 4.5); rrect(c, 24, 26, 14, 8, 4); }, '#5bb04f');
     flat(c, (c) => { rrect(c, 17, 9, 3, 46, 1.5); rrect(c, 4, 25, 2.5, 13, 1.2); }, '#83cf5f');
@@ -705,8 +808,8 @@
     flat(c, blobs([[16, 26, 4], [32, 12, 3.5], [46, 24, 4.5], [30, 30, 3], [52, 34, 2.5]]), '#d6f6ff');
   }];
   ART.snowRock = [44, 32, (c) => {
-    ART.rock2[2](c);
-    shape(c, (c) => { c.moveTo(6, 10); c.lineTo(14, 4); c.lineTo(30, 3); c.lineTo(39, 12); c.quadraticCurveTo(30, 15, 24, 12); c.quadraticCurveTo(16, 16, 6, 10); c.closePath(); }, '#ffffff', 1.6);
+    rockArt(44, 30, '#b5b0a3', '#dcd8cc', '#8e897d')(c);
+    shape(c, (c) => { c.moveTo(6, 12); c.bezierCurveTo(8, 2, 34, 0, 39, 12); c.quadraticCurveTo(33, 15, 28, 12); c.quadraticCurveTo(22, 16, 16, 12); c.quadraticCurveTo(11, 15, 6, 12); c.closePath(); }, '#ffffff', 1.6);
   }];
   // ---- transport & adventure ----
   ART.raft = [64, 30, (c) => {
@@ -858,20 +961,22 @@
   function batArt(f) {
     return (c) => {
       const up = f ? -8 : 6;
-      shape(c, (c) => { polyPath(c, [[20, 16], [2, 10 + up], [8, 20], [14, 18]]); polyPath(c, [[24, 16], [42, 10 + up], [36, 20], [30, 18]]); }, '#5b4f78', 1.8);
-      shape(c, blobs([[22, 18, 8]]), '#3e3352');
-      shape(c, P([[16, 12], [18, 4], [21, 11]]), '#3e3352', 1.4); shape(c, P([[23, 11], [26, 4], [28, 12]]), '#3e3352', 1.4);
-      flat(c, blobs([[19, 17, 2], [25, 17, 2]]), '#ffd23f');
+      shape(c, (c) => { c.moveTo(18, 16); c.lineTo(2, 10 + up); c.quadraticCurveTo(5, 16, 3, 20 + up * 0.3); c.quadraticCurveTo(8, 17, 9, 22); c.quadraticCurveTo(12, 18, 16, 21); c.closePath(); c.moveTo(26, 16); c.lineTo(42, 10 + up); c.quadraticCurveTo(39, 16, 41, 20 + up * 0.3); c.quadraticCurveTo(36, 17, 35, 22); c.quadraticCurveTo(32, 18, 28, 21); c.closePath(); }, '#5b4f78', 1.8);
+      shape(c, P([[16, 12], [18, 3], [21, 11]]), '#3e3352', 1.4); shape(c, P([[23, 11], [26, 3], [28, 12]]), '#3e3352', 1.4);
+      shape(c, blobs([[22, 19, 8.5]]), '#3e3352');
+      face(c, 22, 17.5, 0.7, 'grin', { gap: 3.6 });
+      flat(c, (c) => { polyPath(c, [[19.5, 24.4], [20.5, 26.6], [21.4, 24.4]]); polyPath(c, [[22.6, 24.4], [23.5, 26.6], [24.5, 24.4]]); }, '#ffffff');
     };
   }
   ART.bat0 = [44, 30, batArt(0)]; ART.bat1 = [44, 30, batArt(1)];
   function grubArt(f) {
     return (c) => {
       const sq = f ? 2 : 0;
-      shape(c, blobs([[10, 18 + sq * 0.3, 8], [20, 16 - sq * 0.3, 9], [31, 17, 9.5 - sq * 0.3]]), '#c98fd9');
-      [[10, 18], [20, 16]].forEach(([x, y]) => line(c, [[x + 4, y - 7], [x + 4, y + 7]], '#a06fb5', 1.4));
-      flat(c, blobs([[34, 14, 2.2]]), INK); flat(c, blobs([[35, 13.4, 0.8]]), '#ffffff');
-      line(c, [[34, 8], [38, 2]], INK, 1.6); line(c, [[30, 8], [30, 1]], INK, 1.6);
+      shape(c, blobs([[9, 19 + sq * 0.3, 7.5], [19, 17 - sq * 0.3, 8.6], [31, 17, 9.6 - sq * 0.3]]), '#c98fd9');
+      [[9, 19], [19, 17]].forEach(([x, y]) => line(c, [[x + 4, y - 6.5], [x + 4, y + 6.5]], '#a06fb5', 1.4));
+      line(c, [[34, 8], [38, 1]], INK, 1.6); line(c, [[29, 8], [28, 1]], INK, 1.6);
+      flat(c, blobs([[38, 1, 1.4], [28, 1, 1.4]]), INK);
+      face(c, 32, 15.5, 0.62, 'worried', { gap: 3.6 });
     };
   }
   ART.grub0 = [44, 28, grubArt(0)]; ART.grub1 = [44, 28, grubArt(1)];
