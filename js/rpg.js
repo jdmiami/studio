@@ -29,6 +29,8 @@
     pick: { name: 'Pickaxe', icon: 'toolPick', kind: 'tool' },
     rod: { name: 'Fishing Rod', icon: 'toolRod', kind: 'tool' },
     lantern: { name: 'Lantern', icon: 'itemLantern', kind: 'tool' },
+    raft: { name: 'Raft', icon: 'raft', kind: 'travel' },
+    glider: { name: 'Leaf Glider', icon: 'glider', kind: 'travel' },
     sword: { name: 'Stone Sword', icon: 'toolSword', kind: 'weapon', dmg: 3 },
     gemSword: { name: 'Crystal Blade', icon: 'toolGemSword', kind: 'weapon', dmg: 6 },
     inkBlade: { name: 'Ink Edge', icon: 'toolInkBlade', kind: 'weapon', dmg: 10 },
@@ -44,6 +46,8 @@
     { id: 'pick', cat: 'tools', tool: 'pick', cost: { wood: 3, stone: 3 }, desc: 'Breaks rock faster and mines crystals.' },
     { id: 'rod', cat: 'tools', tool: 'rod', cost: { wood: 3, fiber: 3 }, desc: 'Click water to fish. Reel in when the "!" pops up.' },
     { id: 'lantern', cat: 'tools', tool: 'lantern', cost: { wood: 2, stone: 1, gem: 1 }, desc: 'Wider light at night. Scribbles slow down inside it.' },
+    { id: 'raft', cat: 'travel', tool: 'raft', cost: { wood: 10, fiber: 6 }, desc: 'Walk into water to sail. Faster with the wind behind you. You can fish anywhere from it.' },
+    { id: 'glider', cat: 'travel', tool: 'glider', cost: { wood: 6, fiber: 10, petal: 6 }, desc: 'Press G (or Fly) to take off and glide over water and creatures. Wind gives lift.' },
     { id: 'sword', cat: 'gear', tool: 'sword', cost: { wood: 2, stone: 4 }, desc: 'Weapon. Hits for 3.' },
     { id: 'gemSword', cat: 'gear', tool: 'gemSword', requires: 'sword', cost: { wood: 2, gem: 3 }, desc: 'Weapon. Hits for 6.' },
     { id: 'inkBlade', cat: 'gear', tool: 'inkBlade', requires: 'gemSword', cost: { wood: 2, gem: 2, ink: 6 }, desc: 'Weapon. Hits for 10. Made from Scribble ink.' },
@@ -54,7 +58,7 @@
     { id: 'grilledFish', cat: 'food', gives: 'grilledFish', fire: true, cost: { fish: 1 }, desc: '+32 food, +12 health. Craft next to a lit campfire.' },
     { id: 'salve', cat: 'food', gives: 'salve', cost: { petal: 3, berry: 1 }, desc: 'Restores 40 health.' },
   ];
-  SW.RECIPE_CATS = [['all', 'All'], ['tools', 'Tools'], ['gear', 'Gear'], ['camp', 'Camp'], ['food', 'Food']];
+  SW.RECIPE_CATS = [['all', 'All'], ['tools', 'Tools'], ['travel', 'Travel'], ['gear', 'Gear'], ['camp', 'Camp'], ['food', 'Food']];
 
   // ---- creatures ----
   // hp/dmg grow with level; level comes from the region's danger.
@@ -76,6 +80,10 @@
       case B.SWAMP: return ['gloop', 'gloop', 'snapjaw'];
       case B.HIGH: return ['pebblor', 'thornback'];
       case B.PEAK: return ['pebblor'];
+      case B.DESERT: return ['snapjaw', 'snapjaw', 'pebblor'];
+      case B.TUNDRA: return ['pebblor', 'thornback'];
+      case B.AUTUMN: return ['thornback', 'puff', 'gloop'];
+      case B.MUSHROOM: return ['gloop', 'gloop', 'puff'];
       default: return [];
     }
   };
@@ -118,6 +126,8 @@
     [B.SAND]: ['Shore', 'Strand', 'Dunes', 'Cove'], [B.MEADOW]: ['Meadow', 'Fields', 'Lea'], [B.GRASS]: ['Downs', 'Glade', 'Plains', 'Green'],
     [B.FOREST]: ['Woods', 'Thicket', 'Grove', 'Wilds'], [B.HIGH]: ['Crags', 'Heights', 'Ridge', 'Tors'], [B.PEAK]: ['Peaks', 'Spires', 'Summit'],
     [B.SWAMP]: ['Marsh', 'Bog', 'Mire', 'Fen'], water: ['Lake', 'Bay', 'Sound', 'Deep'],
+    [B.DESERT]: ['Dunes', 'Wastes', 'Flats', 'Mesa'], [B.TUNDRA]: ['Tundra', 'Snowfield', 'Drifts', 'Frostlands'],
+    [B.AUTUMN]: ['Hollow', 'Copse', 'Maples', 'Leafwood'], [B.MUSHROOM]: ['Spores', 'Toadstools', 'Glowcap Grove', 'Caps'],
   };
   SW.REGION = 2200;
   SW.regionName = (world, rx, ry) => {
@@ -190,5 +200,43 @@
     if (danger >= 3 && rand() < 0.35) add('ink', 1 + Math.floor(rand() * 3));
     if (rand() < 0.25) add('salve', 1);
     return loot;
+  };
+})();
+
+// ---- adventure: The Lost Pages ----
+(function () {
+  SW.LOST_PAGE_LORE = [
+    'Page 1: Before the Ink, the whole island was drawn in one sunny afternoon.',
+    'Page 2: The Scribbles were once doodles that nobody finished.',
+    'Page 3: Unfinished things get hungry. They ate the colours first.',
+    'Page 4: The Great Book was torn apart so the Ink could not spread.',
+    'Page 5: Every page you bring back makes the nights a little safer.',
+    'Page 6: Pip, you were the last sticker on the last page. Welcome home.',
+  ];
+  // Six pages, each further out than the last, placed from the seed.
+  SW.makeAdventure = (world) => {
+    const r = SW.rng((world.seed * 31 + 7) >>> 0);
+    const dists = [2400, 4300, 6400, 9000, 12000, 15500];
+    const pages = [];
+    for (const d of dists) {
+      let spot = null;
+      for (let tries = 0; tries < 30 && !spot; tries++) {
+        const a = r() * Math.PI * 2;
+        const x = world.spawn.x + Math.cos(a) * d, y = world.spawn.y + Math.sin(a) * d;
+        if (Math.hypot(x, y) > SW.ISLAND_R * 0.95) continue;
+        spot = world.landNear(x, y, 900);
+      }
+      if (!spot) spot = world.landNear(world.spawn.x + d * 0.5, world.spawn.y, 4000) || { x: world.spawn.x + 300, y: world.spawn.y };
+      pages.push({ x: Math.round(spot.x), y: Math.round(spot.y), found: false });
+    }
+    return { pages, next: 0, treasures: [] };
+  };
+  SW.makeTreasure = (world, x, y, rand) => {
+    for (let tries = 0; tries < 20; tries++) {
+      const a = rand() * Math.PI * 2, d = 1400 + rand() * 2600;
+      const spot = world.landNear(x + Math.cos(a) * d, y + Math.sin(a) * d, 600);
+      if (spot) return { x: Math.round(spot.x), y: Math.round(spot.y), dug: false };
+    }
+    return null;
   };
 })();

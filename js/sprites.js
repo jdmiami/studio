@@ -545,6 +545,59 @@
     flat(c, blobs([[11, 11, 4]]), '#ffffff');
   }];
 
+
+  // ---- biome plants & props ----
+  ART.treeAutumn = [70, 92, treeRound('#f0903a', '#ffb866', '#c86a20')];
+  ART.treeAutumnRed = [70, 92, treeRound('#e2553a', '#ff8a6a', '#a8361f')];
+  ART.cactus = [40, 62, (c) => {
+    shape(c, (c) => { rrect(c, 14, 6, 13, 54, 6.5); rrect(c, 2, 22, 9, 20, 4.5); rrect(c, 2, 34, 14, 8, 4); rrect(c, 29, 14, 9, 20, 4.5); rrect(c, 24, 26, 14, 8, 4); }, '#5bb04f');
+    flat(c, (c) => { rrect(c, 17, 9, 3, 46, 1.5); rrect(c, 4, 25, 2.5, 13, 1.2); }, '#83cf5f');
+    [[20, 14], [20, 30], [20, 46], [6, 30], [33, 20]].forEach(([x, y]) => line(c, [[x - 2, y], [x + 2, y - 2]], '#ffffff', 1.4));
+    shape(c, blobs([[20.5, 6, 3.4]]), '#ff7aa8', 1.4);
+  }];
+  ART.deadBush = [36, 26, (c) => {
+    [[18, 25, 6, 6], [18, 25, 30, 4], [18, 25, 12, 2], [18, 25, 26, 10], [18, 25, 18, 1], [12, 14, 4, 12], [24, 12, 32, 14]].forEach(([a, b, x, y]) => { line(c, [[a, b], [x, y]], INK, 4); line(c, [[a, b], [x, y]], '#b08a5a', 2); });
+  }];
+  ART.giantMushroom = [64, 76, (c) => {
+    shape(c, (c) => { rrect(c, 24, 34, 16, 40, 7); }, '#f4ecdc');
+    flat(c, (c) => rrect(c, 27, 38, 4, 32, 2), '#ffffff');
+    shape(c, (c) => { c.moveTo(2, 38); c.quadraticCurveTo(4, 2, 32, 2); c.quadraticCurveTo(60, 2, 62, 38); c.quadraticCurveTo(32, 46, 2, 38); c.closePath(); }, '#6f7fd8');
+    flat(c, (c) => ell(c, 22, 14, 10, 5, -0.3), '#9eabf0');
+    flat(c, blobs([[16, 26, 4], [32, 12, 3.5], [46, 24, 4.5], [30, 30, 3], [52, 34, 2.5]]), '#d6f6ff');
+  }];
+  ART.snowRock = [44, 32, (c) => {
+    ART.rock2[2](c);
+    shape(c, (c) => { c.moveTo(6, 10); c.lineTo(14, 4); c.lineTo(30, 3); c.lineTo(39, 12); c.quadraticCurveTo(30, 15, 24, 12); c.quadraticCurveTo(16, 16, 6, 10); c.closePath(); }, '#ffffff', 1.6);
+  }];
+  // ---- transport & adventure ----
+  ART.raft = [64, 30, (c) => {
+    shape(c, (c) => { for (let i = 0; i < 5; i++) rrect(c, 4 + i * 11.5, 6, 11, 20, 5); }, '#b07a46');
+    flat(c, (c) => { for (let i = 0; i < 5; i++) rrect(c, 7 + i * 11.5, 8, 3, 15, 1.5); }, '#cf9a62');
+    shape(c, (c) => { rrect(c, 2, 9, 60, 4, 2); rrect(c, 2, 19, 60, 4, 2); }, '#e6c98d', 1.4);
+  }];
+  ART.glider = [92, 40, (c) => {
+    shape(c, (c) => { c.moveTo(46, 30); c.quadraticCurveTo(14, 30, 2, 12); c.quadraticCurveTo(26, 4, 46, 14); c.quadraticCurveTo(66, 4, 90, 12); c.quadraticCurveTo(78, 30, 46, 30); c.closePath(); }, '#6bbf4a');
+    line(c, [[46, 30], [46, 14]], '#3f8f3d', 2);
+    [[20, 20, 10, 14], [30, 22, 22, 12], [62, 22, 70, 12], [72, 20, 82, 14]].forEach(([a, b, x, y]) => line(c, [[a, b], [x, y]], '#3f8f3d', 1.6));
+    line(c, [[30, 28], [46, 38], [62, 28]], INK, 1.4);
+  }];
+  ART.lostPage = [34, 40, (c) => {
+    shape(c, (c) => { c.moveTo(4, 4); c.lineTo(24, 4); c.lineTo(30, 10); c.lineTo(30, 36); c.lineTo(4, 36); c.closePath(); }, '#fff8e6');
+    shape(c, P([[24, 4], [24, 10], [30, 10]]), '#e8dcc0', 1.6);
+    [12, 18, 24].forEach((y) => line(c, [[9, y], [25, y]], '#c9bba0', 1.6));
+    shape(c, (c) => { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 3 : 7; c.lineTo(17 + Math.cos(a) * r, 29 + Math.sin(a) * r); } c.closePath(); }, '#ffd23f', 1.4);
+  }];
+  ART.digX = [40, 24, (c) => {
+    shape(c, (c) => { polyPath(c, [[4, 4], [10, 2], [36, 18], [30, 22]]); polyPath(c, [[30, 2], [36, 4], [10, 22], [4, 18]]); }, '#ff4d6d', 1.8);
+  }];
+  ART.itemRaft = ART.raft;
+  ART.itemGlider = ART.glider;
+  ART.itemMap = [28, 26, (c) => {
+    shape(c, (c) => { c.moveTo(2, 5); c.lineTo(10, 2); c.lineTo(18, 5); c.lineTo(26, 2); c.lineTo(26, 21); c.lineTo(18, 24); c.lineTo(10, 21); c.lineTo(2, 24); c.closePath(); }, '#f6e4b8');
+    line(c, [[6, 16], [11, 12], [16, 15], [20, 9]], '#a8743f', 1.4);
+    shape(c, (c) => { polyPath(c, [[18, 7], [20, 7], [23, 11], [21, 11]]); polyPath(c, [[21, 7], [23, 7], [20, 11], [18, 11]]); }, '#ff4d6d', 1);
+  }];
+
   SW.sprites = {};
   const FLIP = ['player0', 'player1', 'scribble0', 'scribble1', 'puff0', 'puff1', 'thornback0', 'thornback1', 'snapjaw0', 'snapjaw1', 'gloop0', 'gloop1', 'pebblor0', 'pebblor1'];
   const ALIAS = { itemCampfire: 'campfire', itemWall: 'wall', itemAxe: 'toolAxe', itemPick: 'toolPick', itemSword: 'toolSword', itemGemSword: 'toolGemSword', itemMushroom: 'mushroom' };

@@ -16,69 +16,83 @@
 <canvas id="game" aria-label="Stickerwild game world"></canvas>
 
 <div id="hud" hidden>
-  <div class="hud-left">
-    <div class="stat" id="hpStat" title="Health">
-      <img data-icon="uiHeart" alt="Health">
-      <div class="bar"><i id="hpBar"></i></div>
-      <b id="hpNum">100</b>
+  <!-- top-left: vitals, gear, quests -->
+  <div class="hud-tl" id="hudTL">
+    <div class="vitals">
+      <div class="vrow" id="hpStat" title="Health">
+        <img data-icon="uiHeart" alt="Health"><div class="bar"><i id="hpBar"></i></div><b id="hpNum">100</b>
+      </div>
+      <div class="vrow food" id="foodStat" title="Food">
+        <img data-icon="itemCooked" alt="Food"><div class="bar"><i id="foodBar"></i></div><b id="foodNum">100</b>
+      </div>
+      <div class="vrow xp" title="Level and experience">
+        <span class="lvl"><small>Lv</small><b id="lvlNum">1</b></span><div class="bar"><i id="xpBar"></i></div><span id="xpNum" class="xpnum">0/20</span>
+      </div>
+      <div class="vrow energy" id="energyRow" title="Glider energy" hidden>
+        <img data-icon="glider" alt="Glider"><div class="bar"><i id="energyBar"></i></div>
+      </div>
+      <div id="toolbelt" aria-label="Tools and gear"></div>
     </div>
-    <div class="stat food" id="foodStat" title="Food">
-      <img data-icon="itemCooked" alt="Food">
-      <div class="bar"><i id="foodBar"></i></div>
-      <b id="foodNum">100</b>
-    </div>
-    <div class="stat xp" id="xpStat" title="Level and experience">
-      <span class="lvl"><small>Lv</small><b id="lvlNum">1</b></span>
-      <div class="bar"><i id="xpBar"></i></div>
-      <span id="xpNum" class="xpnum">0/20</span>
-    </div>
-    <div id="toolbelt" aria-label="Tools and gear"></div>
-    <section class="questbox" aria-label="Quests">
-      <button id="questsToggle" class="qhead" type="button">Quests <kbd>Q</kbd></button>
+    <section class="questbox" id="questBox" aria-label="Quests">
+      <button id="questsToggle" class="qhead" type="button" aria-controls="quests"><span>Quests</span><b id="questCount">0</b></button>
       <ol id="quests"></ol>
     </section>
   </div>
 
-  <div class="hud-right">
-    <div class="clock">
+  <!-- top-right: time, weather, map, camera -->
+  <div class="hud-tr" id="hudTR">
+    <div class="status">
       <canvas id="dial" width="88" height="88"></canvas>
-      <div class="clock-text"><span id="dayLabel">Day</span><b id="dayNum">1</b></div>
+      <div class="status-text">
+        <span id="dayLabel">Day</span><b>Day <span id="dayNum">1</span></b>
+        <span class="weather"><i id="weatherIcon" data-kind="clear" aria-hidden="true"></i><span id="weatherName">Clear</span></span>
+      </div>
     </div>
-    <div class="map-wrap">
+    <div class="mini">
       <canvas id="minimap" width="64" height="64" aria-label="Nearby map"></canvas>
+      <div id="region"><b id="regionName">Somewhere</b><em id="regionDanger">Danger 1</em></div>
     </div>
-    <div id="region"><b id="regionName">Somewhere</b><em id="regionDanger">Danger 1</em></div>
-    <div class="btn-col">
-      <button id="mapBtn" class="round-btn" title="World map (M)" aria-label="World map">
+    <div class="rail">
+      <button id="mapBtn" class="round-btn" title="Island map (M)" aria-label="Island map">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" /><path d="M9 4v14M15 6v14" /></svg>
+      </button>
+      <button id="rotL" class="round-btn" title="Turn view left (Q)" aria-label="Turn view left">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7a7 7 0 1 1-2 6" /><path d="M8 2v5H3" /></svg>
+      </button>
+      <button id="compassBtn" class="round-btn compass" title="Face north (N)" aria-label="Face north">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><g id="compassNeedle"><path class="n" d="M12 3l3 9h-6z" /><path d="M12 21l-3-9h6z" /></g></svg>
+      </button>
+      <button id="rotR" class="round-btn" title="Turn view right (E)" aria-label="Turn view right">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 7a7 7 0 1 0 2 6" /><path d="M16 2v5h5" /></svg>
+      </button>
+      <button id="zoomIn" class="round-btn desk" title="Zoom in (+)" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
+      </button>
+      <button id="zoomOut" class="round-btn desk" title="Zoom out (-)" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
       </button>
       <button id="menuBtn" class="round-btn" title="Menu and saves (Esc)" aria-label="Menu">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" /></svg>
       </button>
-      <button id="zoomIn" class="round-btn" title="Zoom in (+)" aria-label="Zoom in">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
-      </button>
-      <button id="zoomOut" class="round-btn" title="Zoom out (-)" aria-label="Zoom out">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
-      </button>
-      <button id="muteBtn" class="round-btn" title="Sound on" aria-pressed="false" aria-label="Sound">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" /></svg>
-      </button>
     </div>
   </div>
 
-  <div id="toast" role="status"></div>
+  <!-- tips and banners: placed by the game so they never cover the character -->
+  <div id="toast" role="status"><span></span></div>
   <div id="banner"><span class="big"></span><span class="small"></span></div>
 
-  <div class="hud-bottom">
+  <div class="hud-bottom" id="hotbarWrap">
     <div id="hotbar" aria-label="Inventory"></div>
     <button id="craftBtn"><img data-icon="uiHammer" alt=""><span>Craft</span><kbd>C</kbd></button>
   </div>
 
   <div id="touchUI">
     <div id="stick"><div id="knob"></div></div>
-    <button id="tEat" class="tbtn"><img data-icon="itemBerry" alt=""><span>Eat</span></button>
-    <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span id="tActLbl">Use</span></button>
+    <div class="tpad">
+      <button id="tFly" class="tbtn" hidden><img data-icon="glider" alt=""><span>Fly</span></button>
+      <button id="tEat" class="tbtn"><img data-icon="itemBerry" alt=""><span>Eat</span></button>
+      <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span id="tActLbl">Use</span></button>
+    </div>
   </div>
 </div>
 
@@ -126,6 +140,14 @@
       </span>
     </label>
 
+    <label class="density" for="densitySel"><span>World density</span>
+      <select id="densitySel">
+        <option value="sparse">Sparse: open land, fewer plants</option>
+        <option value="normal" selected>Normal</option>
+        <option value="lush">Lush: thick forests, more of everything</option>
+      </select>
+    </label>
+
     <div class="actions">
       <button id="startBtn" class="big-btn">Peel in</button>
       <button id="continueBtn" class="big-btn alt" hidden><span>Continue</span></button>
@@ -136,10 +158,11 @@
     <ul class="keys" aria-label="Controls">
       <li><b>Click</b> walk, chop, mine, fish, fight</li>
       <li><kbd>WASD</kbd> move <kbd>Shift</kbd> run</li>
-      <li><kbd>E</kbd> eat</li>
+      <li><kbd>Q</kbd><kbd>E</kbd> turn view</li>
+      <li><kbd>F</kbd> eat</li>
       <li><kbd>C</kbd> craft</li>
       <li><kbd>M</kbd> map</li>
-      <li><kbd>1–9</kbd> use items</li>
+      <li><kbd>G</kbd> glide</li>
     </ul>
   </div>
 </section>
@@ -165,6 +188,10 @@
       <button id="resumeBtn" class="big-btn">Resume</button>
       <button id="saveBtnPause" class="big-btn gem">Save &amp; load</button>
       <button id="pauseMapBtn" class="big-btn alt">Island map</button>
+      <div class="toggles">
+        <button id="muteBtn" class="chip-btn" type="button"><span>Sound: on</span></button>
+        <button id="fullBtn" class="chip-btn" type="button">Fullscreen</button>
+      </div>
       <button id="quitBtn" class="big-btn plain">Save &amp; quit</button>
     </div>
   </div>
@@ -215,6 +242,7 @@
 <script src="js/world.js"></script>
 <script src="js/rpg.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/weather.js"></script>
 <script src="js/save.js"></script>
 <script src="js/intro.js"></script>
 <script src="js/game.js"></script>
