@@ -13,7 +13,7 @@
   const TS = (SW.TEX_SCALE = 0.75); // ground texture pixels per world unit
   const MARGIN = (SW.TEX_MARGIN = STEP * 2); // textures overlap neighbours to hide seams
 
-  const ISLAND_R = (SW.ISLAND_R = 20000);
+  const ISLAND_R = (SW.ISLAND_R = 30000);
   const B = (SW.BIOME = {
     DEEP: 0, WATER: 1, SHALLOW: 2, SAND: 3, MEADOW: 4, GRASS: 5, FOREST: 6, HIGH: 7, PEAK: 8, SWAMP: 9,
     DESERT: 10, TUNDRA: 11, AUTUMN: 12, MUSHROOM: 13,
@@ -88,6 +88,8 @@
       this.removed = new Map(); // object id -> game time it was taken
       this.damage = new Map();  // object id -> hits remaining
       this.structures = [];
+      this.clearings = [];      // [x, y, r]: kept free of trees and rocks (villages, cave mountains)
+      this.fixed = [];          // solid colliders that aren't structures: huts, mountains
       this.nextId = 1;
       this.frozen = 0;          // 0..1, shallow water ice from snowfall
       this.regrowMul = 1;       // rain makes things grow back faster
@@ -125,11 +127,20 @@
     }
     biomeAt(x, y) { const e = this.elev(x, y); return this.classify(e, this.moist(x, y), this.temp(x, y, e)); }
     static levelOf(b) { return b <= B.SHALLOW ? 0 : b === B.HIGH || b === B.PEAK ? 2 : 1; }
-    // Danger rises the further a region is from where you washed ashore.
+    // Danger rises the further a region is from where you washed ashore, in
+    // wide rings, and always stays within the zone you are standing in.
     dangerAt(x, y) {
       const R = SW.REGION;
       const cx = (Math.floor(x / R) + 0.5) * R, cy = (Math.floor(y / R) + 0.5) * R;
-      return Math.min(15, 1 + Math.floor(Math.max(0, Math.hypot(cx - this.spawn.x, cy - this.spawn.y) - 1100) / 1500));
+      const d = 1 + Math.floor(Math.max(0, Math.hypot(cx - this.spawn.x, cy - this.spawn.y) - 1800) / 2600);
+      const z = SW.zoneAt ? SW.zoneAt(this, x, y) : 0, Z = SW.ZONES;
+      if (!Z) return Math.min(15, d);
+      const lo = Z[z].minDanger, hi = z + 1 < Z.length ? Z[z + 1].minDanger - 1 : 15;
+      return Math.max(lo, Math.min(hi, d));
+    }
+    inClearing(x, y) {
+      for (const [cx, cy, r] of this.clearings) if ((x - cx) * (x - cx) + (y - cy) * (y - cy) < r * r) return true;
+      return false;
     }
     regionAt(x, y) {
       const R = SW.REGION;
@@ -160,6 +171,7 @@
           const GX = cx * n + gx, GY = cy * n + gy;
           const r1 = hash(GX, GY, seed + 11), r2 = hash(GX, GY, seed + 12), p = hash(GX, GY, seed + 13);
           const x = (GX + 0.15 + r1 * 0.7) * CELL, y = (GY + 0.15 + r2 * 0.7) * CELL;
+          if (this.inClearing(x, y)) continue;
           const e = this.elev(x, y), m = this.moist(x, y), b = this.classify(e, m, this.temp(x, y, e));
           // clusters and clearings: density swings across the map, scaled by the world setting
           const dens = fbm(this.nT, x / 300, y / 300, 2);
@@ -271,6 +283,9 @@
       }
       for (const s of this.structures) {
         if (Math.abs(s.x - x) < rad && Math.abs(s.y - y) < rad) out.push({ x: s.x, y: s.y, r: s.r, s });
+      }
+      for (const f of this.fixed) {
+        if (Math.abs(f.x - x) < rad + f.r && Math.abs(f.y - y) < rad + f.r) out.push(f);
       }
       return out;
     }

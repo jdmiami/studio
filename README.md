@@ -52,13 +52,84 @@ The HUD sits in the corners and edges so the middle of the screen, where your ch
 ## The RPG
 
 - **Levels.** You earn XP for gathering, fishing, fights, chests, quests, new regions and surviving nights. Each level gives +10 max health and stronger hits.
-- **Regions and danger.** The island is split into named regions (for example "Thistle Thicket"). Danger starts at 1 where you wash ashore and rises toward the coasts, up to 13 or more. Creatures match their region's danger, and about 6% are tougher Elites that drop better loot.
+- **Regions and danger.** The island is split into named regions (for example "Thistle Thicket"). Danger starts at 1 where you wash ashore and rises in wide rings toward the coasts. Creatures match their region's danger, and about 6% are tougher Elites that drop better loot.
 - **Creatures.** Thornbacks charge at you. Snapjaws scuttle sideways on beaches. Gloops split in two when they die. Pebblors are slow rock golems that hit hard. Scribbles come out at night and avoid firelight. Puffs are harmless and drop meat.
-- **Gear.** Weapons go Stone Sword (3), Crystal Blade (6), Ink Edge (10). Armour goes Bark Vest (15%), Stone Mail (30%), Crystal Plate (45%). Tools are an axe, pickaxe, fishing rod and lantern.
+- **Gear.** Weapons go Stone Sword (3), Crystal Blade (6), Ink Edge (10). Armour goes Bark Vest (15%), Stone Mail (30%), Crystal Plate (45%). Tools are an axe, pickaxe, fishing rod, lantern and the Warm Cloak. Only the starter recipes are known at first; the rest you learn (see **Know-how** below).
 - **Fishing.** Cast into any water and wait for the "!", then reel in quickly. Deep water holds trout, and rare Crystal Koi get more common in dangerous regions.
 - **Quests.** You always have three procedural quests (gather, hunt, fish, explore a named region). They come from the seed, so the same island gives the same quest line.
-- **Treasure chests** are scattered across the island. Their loot scales with danger.
+- **Treasure chests** are scattered across the island. Their loot scales with danger, and some hold rare gems or a mod.
 - **Death** isn't the end. You wake at your nearest campfire and drop half your materials.
+
+## Zones
+
+The island is five rings around where you wash ashore. Each ring is wide, so there's a lot to explore at every stage. An ink barrier stops you crossing into the next ring until you reach its level, on foot, by raft or by glider.
+
+| Zone | Level to enter | Danger | Settlement | Cave |
+| --- | --- | --- | --- | --- |
+| Sunny Shallows | 1 | 1–2 | Reedwick, a reed-hut fishing village | Mossmouth Burrow |
+| Bramble Reach | 3 | 3–4 | Stonebrook, a town of stone masons | Echo Mine |
+| Lantern Wilds | 6 | 5–6 | Lumenport, the city of lamps | Sunken Grotto |
+| Frost Heights | 9 | 7–8 | Hearthhold, a clan of igloos around a great hearth | Frostfang Hollow |
+| Ink Rim | 12 | 9+ | Quillspire, a monastery of scribes | The Inkwell |
+
+The barrier shows as a wobbly line of ink posts, and the island map shows the rings with the level each one needs. One Lost Page waits in each ring (two on the Ink Rim). The island is now 60,000 units across.
+
+## Settlements and side quests
+
+Every settlement has an elder and a trader. A yellow arrow by your feet points to the next settlement you haven't met, or to the cave or person your current side quest needs.
+
+- **Elders** give side quests in a chain: hunt something, bring materials, carry a letter to another settlement and back, or fetch a cave's relic. Finishing one teaches you **know-how**, plus XP and shells. Elders also tell you about the next zone, where to find things, and the island's overall story. Tap **Ask about the island**.
+- **Traders** buy and sell for **shells**. You can sell almost anything you gather, and rare gems (Amber, Ruby, Moon Opal, Star Shard) are worth the most. Each trader stocks food, supplies and mods that suit their settlement.
+
+## Know-how and relics
+
+Past the starter recipes, crafting needs more than materials: you also have to learn how, and some recipes need a relic from a cave. The Craft panel says what's missing ("Learn Windcraft from the elder of Reedwick", "Needs the Sunstone from Mossmouth Burrow").
+
+| Know-how | Taught in | Unlocks |
+| --- | --- | --- |
+| Lantern-making | Reedwick | Lantern |
+| Windcraft | Reedwick (bring the Sunstone) | Leaf Glider (needs the Sunstone), Feather Charm |
+| Masonry | Stonebrook | Stone Mail |
+| Runecraft | Stonebrook (bring the Echo Crystal) | Crystal Blade (needs the Echo Crystal), Keen Rune, fitting mods |
+| Tidecraft | Lumenport (deliver a letter) | Crystal Plate, Pot of Tar |
+| Frostcraft | Lumenport (bring the Tide Pearl) | Warm Cloak (needs the Tide Pearl) |
+| Inkcraft | Hearthhold | Ink Edge (needs the Frost Heart) |
+| Bookbinding | Quillspire (bring the Ink Crown) | The Great Sticker Book |
+
+Relics are never used up. The Sunstone also melts ice and the Tide Pearl washes away living ink in later caves.
+
+**The goal:** find all six Lost Pages, take the Ink Crown from the Inkwell, learn Bookbinding, and craft the Great Sticker Book. That ends the Ink: Scribbles stop coming at night.
+
+## Mods
+
+Mods upgrade your gear. Fit up to three to each piece from the **Mods** tab in Crafting once you know Runecraft. They come from caves, chests, traders and a few recipes.
+
+| Mod | Fits | Effect |
+| --- | --- | --- |
+| Keen Rune | Weapon | +2 damage |
+| Swift Rune | Axe or Pickaxe | Chops or mines 50% faster |
+| Lucky Rune | Pickaxe or Fishing Rod | Bonus crystals and amber, or rare fish and quicker bites |
+| Ward Rune | Armour | Blocks 10% more damage |
+| Feather Charm | Leaf Glider | Sinks 30% slower |
+| Pot of Tar | Raft | Soaks up water half as fast |
+| Fire Pepper | Cooking | All food fills and heals 50% more |
+
+## Caves
+
+Each zone has one hand-placed cave mountain that pops up as you get close. Walk up to its door (or tap it) to see what you'll need inside, then enter. Inside, the game becomes a **2D side view**:
+
+| Input | In a cave |
+| --- | --- |
+| A / D, ← / →, stick | Walk |
+| Space, W, ↑, Jump button | Jump |
+| W / S, ↑ / ↓, stick up or down | Climb ladders; down drops you through planks |
+| E, J, Enter, click, Use button | Swing, strike a rune, open the chest, read the mural, break a wall |
+| The glowing door | Go back outside |
+
+- **Ladders** go up and down. **Slides** are one-way: you shoot down them to the floor below. **Planks** can be stood on or dropped through. **Spikes** hurt.
+- **Underground creatures:** Bats wake up and swoop at you, grubs crawl along the floors, and deeper caves add Gloops, Pebblors and Scribbles.
+- **Walls that need something:** vines need an axe, rubble needs a pickaxe, ice needs the Sunstone, and living ink needs the Tide Pearl. The Sunken Grotto and the Inkwell are pitch dark without a lantern. If you aren't ready, walk out and come back later. The cave remembers what you broke and picked up.
+- **The puzzle:** a mural near the door shows the rune switches in a coloured order. Strike them in that order (hitting one out of turn resets them all) to open the vault gate. The relic chest behind it finishes the cave and also gives a rare gem, shells and XP. Side tunnels hide extra gems, a mod and bags of shells.
 
 ## Saving and resuming
 
@@ -120,7 +191,7 @@ Pick a **World density** on the title screen: Sparse, Normal or Lush. It sets ho
 
 ## The world
 
-- One island about 40,000 units across. Layered value noise makes the coastline, lakes, mountain ranges, moisture and temperature.
+- One island about 60,000 units across. Layered value noise makes the coastline, lakes, mountain ranges, moisture and temperature.
 - Ground is generated in 256-unit chunks. Each chunk is painted once, from above, into flat textures (ground, cliff sides, cliff tops, ice). The camera turns these with an affine transform, so the view can rotate to any angle. Cliffs are built by stacking copies of each raised layer, like cardboard.
 - The composed ground is cached in a padded offscreen buffer. While you only walk, each frame copies that buffer once. It's redrawn when the view turns or zooms, when you walk past its edge, or when snow or ice changes.
 - Objects are placed on a jittered grid with a seeded hash, so they're identical every visit. Trees leave stumps and regrow, and bushes refill.
@@ -137,6 +208,8 @@ Pick a **World density** on the title screen: Sparse, Normal or Lush. It sets ho
 | `js/sprites.js` | All art (canvas paths) and the sticker builder (border, shadow, gloss, white back for peel flips) |
 | `js/world.js` | Island shape, biomes, temperature, regions and danger, object placement and density, chunk textures |
 | `js/rpg.js` | Items, gear, recipes, creatures, fish, XP curve, quest generator, region names, chest loot, Lost Pages and treasure maps |
+| `js/realm.js` | Zones, settlements and their quests, lore and stock, know-how, relics, rare items, mods, cave list, and where they're placed |
+| `js/cave.js` | The 2D cave mode: physics, ladders, slides, creatures, breakable walls, the rune puzzle, drawing, and the five cave maps |
 | `js/audio.js` | Synthesised sound effects (no audio files) |
 | `js/weather.js` | Weather by climate, travelling gust field, drifting rain and snow cells, soak map, particles and cloud shadows, weather effects, moon phases |
 | `js/globe.js` | The WebGL planet projection (fragment shader) |

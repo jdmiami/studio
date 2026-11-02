@@ -92,12 +92,22 @@
   <div id="touchUI">
     <div id="stick"><div id="knob"></div></div>
     <div class="tpad">
-      <button id="tFly" class="tbtn" hidden><img data-icon="glider" alt=""><span>Fly</span></button>
+      <button id="tFly" class="tbtn" hidden><img data-icon="glider" alt=""><span id="tFlyLbl">Glide</span></button>
       <button id="tEat" class="tbtn"><img data-icon="itemBerry" alt=""><span>Eat</span></button>
       <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span id="tActLbl">Use</span></button>
     </div>
   </div>
 </div>
+
+<section id="talkPanel" class="talk" hidden aria-live="polite" aria-label="Conversation">
+  <header>
+    <img id="talkFace" alt="">
+    <div><h2 id="talkName"></h2><p id="talkRole"></p></div>
+    <button id="talkClose" class="round-btn" type="button" aria-label="Close">×</button>
+  </header>
+  <div id="talkBody"></div>
+  <div id="talkActions" class="talk-actions"></div>
+</section>
 
 <section id="craftPanel" hidden aria-label="Crafting">
   <header>
@@ -121,7 +131,9 @@
       <li><i class="dot you"></i>You</li>
       <li><i class="dot fire"></i>Campfire (click to travel)</li>
       <li><i class="dot quest"></i>Quest target</li>
-      <li><i class="ring"></i>Danger rises with distance</li>
+      <li><i class="dot village"></i>Settlement</li>
+      <li><i class="dot cave"></i>Cave (green when finished)</li>
+      <li><i class="ring"></i>Zone border (needs a level)</li>
     </ul>
   </div>
 </section>
@@ -244,11 +256,13 @@
 <script src="js/sprites.js"></script>
 <script src="js/world.js"></script>
 <script src="js/rpg.js"></script>
+<script src="js/realm.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/weather.js"></script>
 <script src="js/globe.js"></script>
 <script src="js/save.js"></script>
 <script src="js/intro.js"></script>
+<script src="js/cave.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

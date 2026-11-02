@@ -177,7 +177,9 @@
       quests: [], questSeq: 0, regionsSeen: new Set(), region: null, regionT: 0,
       order: null, fishing: null, hover: null, marker: null,
       drift: Math.random() * TAU, worldMap: null, adv: null, climateT: 0, climate: 'temperate',
+      realm: null, known: STARTER_KNOWN(), mods: {}, caves: {}, tq: {}, zonesSeen: [0], inCave: null, talking: false, won: false,
     };
+    setupRealm(); lastZone = 0;
     for (const ch of nearChunks(sp.x, sp.y, 1)) ch.objs = ch.objs.filter((o) => !(OBJ[o.type].r && dist(o.x, o.y, sp.x, sp.y) < 64));
     if (mode === 'play') { for (let i = 0; i < 3; i++) addQuest(); G.adv = SW.makeAdventure(world); }
     hotbarDirty = craftDirty = questDirty = true;
@@ -295,14 +297,15 @@
   function attackPower() {
     let w = 1;
     for (const k of ['inkBlade', 'gemSword', 'sword']) if (G.tools[k]) { w = TOOLS[k].dmg; break; }
-    return w + Math.floor((G.player.level - 1) * 0.5);
+    return w + Math.floor((G.player.level - 1) * 0.5) + 2 * modsOn('weapon', 'runeKeen');
   }
   function bestWeapon() { for (const k of ['inkBlade', 'gemSword', 'sword']) if (G.tools[k]) return k; return null; }
-  function armorDef() { for (const k of ['crystalPlate', 'stoneMail', 'barkVest']) if (G.tools[k]) return TOOLS[k].def; return 0; }
+  function armorBase() { for (const k of ['crystalPlate', 'stoneMail', 'barkVest']) if (G.tools[k]) return TOOLS[k].def; return 0; }
+  function armorDef() { const b = armorBase(); return b > 0 ? Math.min(0.75, b + 0.1 * modsOn('armor', 'runeWard')) : 0; }
 
   function addQuest() {
     const p = G.player;
-    G.quests.push(SW.makeQuest(G.world, G.questSeq++, { level: p.level, x: p.x, y: p.y, hasRod: !!G.tools.rod }));
+    G.quests.push(SW.makeQuest(G.world, G.questSeq++, { level: p.level, x: p.x, y: p.y, hasRod: !!G.tools.rod, maxZone: G.realm ? maxZone() : 0 }));
     questDirty = true;
   }
   function questEvent(kind, key, n) {
@@ -402,8 +405,8 @@
       return;
     }
     let dmg = 1 + Math.floor((p.level - 1) * 0.25);
-    if (def.tool === 'axe' && G.tools.axe) dmg *= 2;
-    if (def.tool === 'pick' && G.tools.pick) dmg *= 2.5;
+    if (def.tool === 'axe' && G.tools.axe) dmg *= 2 * Math.pow(1.5, modsOn('axe', 'runeSwift'));
+    if (def.tool === 'pick' && G.tools.pick) dmg *= 2.5 * Math.pow(1.5, modsOn('pick', 'runeSwift'));
     let hp = G.world.damage.has(o.id) ? G.world.damage.get(o.id) : def.hp;
     hp -= dmg;
     G.hitT.set(o.id, G.time);
@@ -426,7 +429,10 @@
     if (def.chest) {
       const danger = G.world.dangerAt(o.x, o.y);
       const rand = SW.rng((G.seed + o.x * 7 + o.y * 13) >>> 0);
-      dropItems(SW.chestLoot(rand, danger), o.x, o.y, o.lvl);
+      const loot = SW.chestLoot(rand, danger);
+      if (rand() < 0.18 + danger * 0.03) loot[danger >= 7 ? 'moonOpal' : danger >= 4 ? 'ruby' : 'amber'] = 1;
+      if (rand() < 0.08 + danger * 0.01) { const mods = Object.keys(SW.MODS); loot[mods[Math.floor(rand() * mods.length)]] = 1; }
+      dropItems(loot, o.x, o.y, o.lvl);
       gainXP(10 * danger, o.x, o.y, o.lvl * LH);
       G.stats.chests++;
       const open = G.adv ? G.adv.treasures.filter((t) => !t.dug).length : 9;
@@ -436,6 +442,9 @@
     } else {
       if (!def.tree) dropItems(def.drops, o.x, o.y, o.lvl, true);
       gainXP(def.tool ? 2 : 1, o.x, o.y, o.lvl * LH);
+      // Lucky Runes on the pickaxe turn up bonus crystals, and now and then amber
+      const luck = def.tool === 'pick' ? modsOn('pick', 'runeLucky') : 0;
+      if (luck && Math.random() < 0.22 * luck) dropItems(Math.random() < 0.2 ? { amber: 1 } : { gem: 1 }, o.x, o.y, o.lvl, true);
     }
     if (G.order && G.order.o === o) G.order = null;
   }
@@ -476,6 +485,10 @@
       if (d < 30 + m.r && d < bd) { bd = d; best = m; }
     }
     if (best) { swingAt(best); return; }
+    if (G.realm) {
+      for (const t of G.realm.tribes) for (const n of t.npcs) if (dist(p.x, p.y, n.x, n.y) < 60) { talkTo(n); return; }
+      for (const c of G.realm.caves) if (dist(p.x, p.y, c.x, c.y + 40) < 80) { openTalk({ kind: 'cave', cave: c }); return; }
+    }
     for (const s of G.world.structures) if (dist(hx, hy, s.x, s.y) < 30 + s.r) { useStructure(s); return; }
     let target = null; bd = 1e9;
     for (const ch of nearChunks(p.x, p.y, 1)) {
@@ -527,7 +540,16 @@
     if (m.elite) { drops.gem = (drops.gem || 0) + 1 + Math.floor(m.lvl / 4); drops.salve = 1; }
     dropItems(drops, m.x, m.y, m.lvlOff / LH);
     gainXP(Math.round(SW.xpForKill(m) * (m.small ? 0.4 : 1)), m.x, m.y, m.lvlOff);
-    if (!def.passive) { G.stats.kills++; questEvent('hunt', m.type, 1); }
+    if (!def.passive) {
+      G.stats.kills++; questEvent('hunt', m.type, 1);
+      for (const t of SW.TRIBES) for (const q of t.quests) {
+        const st = G.tq[q.id];
+        if (q.kind === 'hunt' && q.key === m.type && st && st.state === 'active' && (st.have || 0) < q.need) {
+          st.have = (st.have || 0) + 1; questDirty = true;
+          if (st.have === q.need) toast(`${q.title}: done! Go back to ${t.elder} in ${t.name}.`, 4800);
+        }
+      }
+    }
     if (def.split && !m.small) {
       for (let i = 0; i < 2; i++) {
         const s = SW.makeEnemy('gloop', m.x + (i ? 14 : -14), m.y, m.lvl, false);
@@ -560,10 +582,12 @@
     if (def.food) {
       if (def.food.hp > 0 && def.food.hunger === 0 && p.hp >= p.maxHp) { toast('You are already at full health.'); return; }
       G.inv[item]--; if (!G.inv[item]) delete G.inv[item];
-      p.hunger = clamp(p.hunger + def.food.hunger, 0, 100);
-      p.hp = clamp(p.hp + def.food.hp, 0, p.maxHp);
-      if (def.food.hunger) spawnText(p.x, p.y, p.lvlOff + 56, '+' + def.food.hunger + ' food', '#ff9a3c');
-      if (def.food.hp) spawnText(p.x + 10, p.y, p.lvlOff + 40, (def.food.hp > 0 ? '+' : '') + def.food.hp + ' hp', def.food.hp > 0 ? '#2fb36f' : '#ff3b5c');
+      const spice = 1 + 0.5 * modsOn('food', 'firePepper');
+      const fh = Math.round(def.food.hunger * spice), fp = def.food.hp > 0 ? Math.round(def.food.hp * spice) : def.food.hp;
+      p.hunger = clamp(p.hunger + fh, 0, 100);
+      p.hp = clamp(p.hp + fp, 0, p.maxHp);
+      if (fh) spawnText(p.x, p.y, p.lvlOff + 56, '+' + fh + ' food', '#ff9a3c');
+      if (fp) spawnText(p.x + 10, p.y, p.lvlOff + 40, (fp > 0 ? '+' : '') + fp + ' hp', fp > 0 ? '#2fb36f' : '#ff3b5c');
       if (item === 'meat' || item === 'fish') tipOnce('raw', 'Raw food hurts a little. Grill it at a campfire.');
       SW.audio.play('eat');
       hotbarDirty = craftDirty = true;
@@ -600,6 +624,8 @@
     if (G.mode !== 'play') return;
     if (r.tool && G.tools[r.tool]) return;
     if (r.requires && !G.tools[r.requires]) { toast('Craft a ' + TOOLS[r.requires].name + ' first.'); return; }
+    const lock = recipeLock(r);
+    if (lock) { toast(lock); SW.audio.play('deny'); return; }
     if (r.fire && !nearFire(G.player.x, G.player.y)) { toast('Stand next to a lit campfire to cook.'); SW.audio.play('deny'); return; }
     if (!hasCost(r.cost)) { SW.audio.play('deny'); return; }
     payCost(r.cost);
@@ -608,6 +634,7 @@
       if (r.tool === 'rod') tipOnce('rod', 'Tap any water to fish. Reel in when the "!" appears.');
       if (r.tool === 'raft') tipOnce('raft', 'Walk into the water to sail, or tap far water to sail there.');
       if (r.tool === 'glider') tipOnce('glider', 'Press G or the Fly button to take off. The blue bar shows how long you can glide.');
+      if (r.tool === 'greatBook') winGame();
     } else addItem(r.gives, 1);
     G.stats.crafted++;
     gainXP(3);
@@ -660,7 +687,7 @@
     if (!G.world.isWater(x, y)) return;
     p.fx = (x - p.x) / d; p.fy = (y - p.y) / d;
     faceToward(x - p.x, y - p.y);
-    G.fishing = { phase: 'cast', t: 0, x, y, biteAt: (1.6 + Math.random() * 3.2) * WX.biteMul(), nibbles: 0 };
+    G.fishing = { phase: 'cast', t: 0, x, y, biteAt: (1.6 + Math.random() * 3.2) * WX.biteMul() * Math.pow(0.8, modsOn('rod', 'runeLucky')), nibbles: 0 };
     G.order = null;
     SW.audio.play('swing');
   }
@@ -670,7 +697,7 @@
     const p = G.player;
     if (f.phase === 'bite') {
       const deep = G.world.elev(f.x, f.y) < 0.37;
-      const fish = SW.rollFish(Math.random, deep, G.world.dangerAt(p.x, p.y));
+      const fish = SW.rollFish(Math.random, deep, G.world.dangerAt(p.x, p.y) + 4 * modsOn('rod', 'runeLucky'));
       const cm = Math.round(fish.min + Math.random() * (fish.max - fish.min));
       f.phase = 'reel'; f.t = 0; f.fish = fish;
       SW.audio.play('pickup'); buzz(15);
@@ -744,6 +771,263 @@
     toast(Object.keys(lost).length ? 'Back on your feet. You dropped half your materials.' : 'Back on your feet.');
   }
 
+  // ---------------- the realm: zones, tribes, caves, know-how, trade, mods ----------------
+  const ZONES = SW.ZONES;
+  const STARTER_KNOWN = () => new Set(RECIPES.filter((r) => !r.learn).map((r) => r.id));
+  function setupRealm() {
+    const w = G.world;
+    const R = SW.placeRealm(w);
+    for (const t of R.tribes) {
+      const n = t.buildings.length, rad = t.city ? 210 : 150;
+      t.spots = t.buildings.map((spr, i) => {
+        const a = (i / n) * TAU - Math.PI / 2 + 0.3;
+        return { x: Math.round(t.x + Math.cos(a) * rad), y: Math.round(t.y + Math.sin(a) * rad * 0.8 - 30), spr };
+      });
+      t.npcs = [
+        { role: 'elder', tribe: t, x: t.x - 46, y: t.y + 34, spr: 'elder_' + t.style, name: t.elder },
+        { role: 'trader', tribe: t, x: t.x + 52, y: t.y + 30, spr: 'trader_' + t.style, name: t.trader },
+      ];
+      w.clearings.push([t.x, t.y, rad + 120]);
+      for (const s of t.spots) w.fixed.push({ x: s.x, y: s.y, r: 38 });
+      for (const n2 of t.npcs) w.fixed.push({ x: n2.x, y: n2.y, r: 12 });
+    }
+    R.caves.forEach((c, i) => {
+      c.spr = 'caveMount' + i;
+      w.clearings.push([c.x, c.y - 40, 240]);
+      // the mountain is solid except for its doorway
+      w.fixed.push({ x: c.x, y: c.y - 70, r: 70 }, { x: c.x - 80, y: c.y - 20, r: 34 }, { x: c.x + 80, y: c.y - 20, r: 34 });
+    });
+    G.realm = R;
+  }
+  function maxZone() { let z = 0; while (z + 1 < ZONES.length && G.player.level >= ZONES[z + 1].level) z++; return z; }
+  const zoneOf = (x, y) => SW.zoneAt(G.world, x, y);
+  const caveSave = (id) => (G.caves[id] = G.caves[id] || { solved: false, taken: false, broken: [], picked: [] });
+  const has = (name) => !!(G.tools[name] || (G.inv[name] || 0) > 0);
+  // the ink barrier between zones
+  let barrierT = 0;
+  function checkBarrier(px, py) {
+    const p = G.player;
+    if (zoneOf(p.x, p.y) <= maxZone()) return;
+    // pushed back over the line you crossed
+    p.x = px; p.y = py; p.vx *= -0.4; p.vy *= -0.4; G.order = null;
+    if (zoneOf(p.x, p.y) > maxZone()) { const sp = G.world.spawn, d = dist(p.x, p.y, sp.x, sp.y), R = SW.ZONE_R[maxZone()] - 30; p.x = sp.x + ((p.x - sp.x) / d) * R; p.y = sp.y + ((p.y - sp.y) / d) * R; }
+    if (G.time - barrierT > 3) {
+      barrierT = G.time;
+      const z = ZONES[maxZone() + 1];
+      toast(`The ink barrier holds you back. You need Level ${z.level} to enter the ${z.name}.`);
+      SW.audio.play('deny'); buzz(30);
+      spawnPoof(p.x, p.y, p.lvlOff + 20, '#5b4f78');
+    }
+  }
+  let lastZone = 0;
+  function zoneWatch() {
+    const z = zoneOf(G.player.x, G.player.y);
+    if (z !== lastZone) {
+      if (z > lastZone && !G.zonesSeen.includes(z)) {
+        G.zonesSeen.push(z);
+        const Zd = ZONES[z], hi = z + 1 < ZONES.length ? ZONES[z + 1].minDanger - 1 : 15;
+        setTimeout(() => banner(Zd.name, `Danger ${Zd.minDanger}–${hi}. Find ${SW.TRIBES[z].name} and the cave of this land.`, Zd.color), 600);
+        gainXP(20 + z * 30);
+      }
+      lastZone = z;
+    }
+  }
+
+  // ---------------- talking ----------------
+  let talk = null;   // { kind: 'elder' | 'trader' | 'cave', tribe, cave, tab, loreI }
+  function openTalk(t) { talk = t; G.talking = true; G.order = null; toggleCraft(false); renderTalk(); $('talkPanel').hidden = false; SW.audio.play('pickup'); }
+  function closeTalk() { talk = null; G.talking = false; $('talkPanel').hidden = true; }
+  function talkTo(n) {
+    G.metTribes = G.metTribes || [];
+    if (!G.metTribes.includes(n.tribe.id)) { G.metTribes.push(n.tribe.id); gainXP(15 + n.tribe.zone * 15); questDirty = true; }
+    openTalk({ kind: n.role, tribe: n.tribe });
+  }
+  function questOf(tribe) {
+    for (const q of tribe.quests) if ((G.tq[q.id] || {}).state !== 'done') return q;
+    return null;
+  }
+  function questText(q, tribe) {
+    const cave = G.realm.caves[tribe.zone];
+    return q.ask.replace('{dir}', SW.dirWord(cave.x - tribe.x, cave.y - tribe.y));
+  }
+  function questReady(q) {
+    const st = G.tq[q.id] || {};
+    if (q.kind === 'hunt') return (st.have || 0) >= q.need;
+    if (q.kind === 'bring') return hasCost(q.cost);
+    if (q.kind === 'relic') return (G.inv[q.key] || 0) > 0;
+    if (q.kind === 'deliver') return st.state === 'relay';
+    return false;
+  }
+  function questProgress(q) {
+    const st = G.tq[q.id] || {};
+    if (q.kind === 'hunt') return `${Math.min(q.need, st.have || 0)}/${q.need}`;
+    if (q.kind === 'bring') return Object.entries(q.cost).map(([k, n]) => `${Math.min(n, G.inv[k] || 0)}/${n} ${ITEMS[k].name.toLowerCase()}`).join(', ');
+    if (q.kind === 'relic') return G.inv[q.key] ? 'found!' : 'in the cave';
+    if (q.kind === 'deliver') return st.state === 'relay' ? 'answer in hand' : 'to ' + SW.TRIBES.find((t) => t.id === q.key).name;
+    return '';
+  }
+  function finishQuest(q, tribe) {
+    if (q.kind === 'bring') payCost(q.cost);
+    G.tq[q.id] = { state: 'done' };
+    gainXP(q.xp);
+    addItem('shell', q.shells);
+    if (q.gift) for (const k in q.gift) addItem(k, q.gift[k]);
+    if (q.teach) { G.known.add(q.teach); for (const r of RECIPES) if (r.learn === q.teach) G.known.add(r.id); setTimeout(() => banner('New know-how: ' + SW.KNOW[q.teach].name, 'Taught by ' + tribe.elder + '. Check the Craft panel.', tribe.color), 400); }
+    SW.audio.play('sting');
+    spawnPoof(G.player.x, G.player.y, G.player.lvlOff + 30, '#ffd23f');
+    questDirty = craftDirty = true;
+  }
+  function talkAction(a) {
+    if (!talk) return;
+    const tribe = talk.tribe;
+    if (a === 'bye') { closeTalk(); return; }
+    if (a === 'accept') { const q = questOf(tribe); G.tq[q.id] = { state: 'active', have: 0 }; questDirty = true; SW.audio.play('craft'); toast('New side quest: ' + q.title); }
+    else if (a === 'handin') { const q = questOf(tribe); if (questReady(q)) { finishQuest(q, tribe); talk.note = q.done; } }
+    else if (a === 'lore') { talk.loreI = ((talk.loreI ?? -1) + 1) % tribe.lore.length; talk.note = tribe.lore[talk.loreI]; }
+    else if (a === 'relay') { G.tq[talk.relay.id].state = 'relay'; talk.note = talk.relay.relay; questDirty = true; SW.audio.play('pickup'); }
+    else if (a === 'buy' || a === 'sell') { talk.tab = a; }
+    else if (a.startsWith('b:')) { const [, item, price] = a.split(':'); if ((G.inv.shell || 0) >= +price) { payCost({ shell: +price }); addItem(item, 1); SW.audio.play('craft'); } else SW.audio.play('deny'); }
+    else if (a.startsWith('s:')) { const item = a.slice(2); if ((G.inv[item] || 0) > 0) { payCost({ [item]: 1 }); addItem('shell', SW.VALUE[item]); SW.audio.play('pickup'); } }
+    else if (a === 'enter') { const c = talk.cave; closeTalk(); enterCave(c); return; }
+    renderTalk();
+  }
+  function renderTalk() {
+    if (!talk) return;
+    const t = talk, tribe = t.tribe;
+    let face, name, role, body = '', acts = [];
+    const btn = (id, label, cls = '') => `<button class="big-btn ${cls}" data-talk="${id}">${label}</button>`;
+    if (t.kind === 'cave') {
+      const c = t.cave, st = caveSave(c.id);
+      face = c.spr; name = c.name; role = st.taken ? 'Finished' : ZONES[c.zone].name;
+      const needs = c.needs.map((n) => `<li class="${has(n) ? 'ok' : 'no'}">${has(n) ? '✓' : '✗'} ${(TOOLS[n] || ITEMS[n]).name}</li>`).join('');
+      body = `<p>${st.taken ? 'You found the ' + ITEMS[c.relic].name + ' here. There may still be gems in the side tunnels.' : 'A cave mountain. Somewhere inside is the ' + ITEMS[c.relic].name + ', sealed behind a rune puzzle.'}</p>` +
+        `<p class="talk-small">To get all the way through you will need:</p><ul class="needs">${needs}</ul>` +
+        `<p class="talk-small">You can come back out of the door any time.</p>`;
+      acts = [btn('enter', 'Enter the cave'), btn('bye', 'Not yet', 'plain')];
+    } else if (t.kind === 'elder') {
+      face = 'elder_' + tribe.style; name = tribe.elder; role = 'Elder of ' + tribe.name;
+      const q = questOf(tribe), st = q ? G.tq[q.id] || {} : {};
+      // someone else's letter?
+      const relayQ = SW.TRIBES.flatMap((tr) => tr.quests).find((qq) => qq.kind === 'deliver' && qq.key === tribe.id && (G.tq[qq.id] || {}).state === 'active');
+      t.relay = relayQ;
+      body = `<p>${t.note || tribe.greet}</p>`;
+      if (relayQ) acts.push(btn('relay', 'Hand over the letter'));
+      if (q && !st.state) { body += `<div class="quest-card"><b>${q.title}</b><p>${questText(q, tribe)}</p></div>`; acts.push(btn('accept', 'Accept quest')); }
+      else if (q && st.state) {
+        body += `<div class="quest-card"><b>${q.title}</b><p>${questText(q, tribe)}</p><p class="talk-small">Progress: ${questProgress(q)}</p></div>`;
+        if (questReady(q)) acts.push(btn('handin', 'Hand in'));
+      } else if (!q) body += '<p class="talk-small">You have done everything we asked. Thank you, little sticker.</p>';
+      acts.push(btn('lore', 'Ask about the island', 'alt'), btn('bye', 'Goodbye', 'plain'));
+    } else {
+      face = 'trader_' + tribe.style; name = tribe.trader; role = 'Trader in ' + tribe.name;
+      const tab = t.tab || 'buy';
+      body = `<p class="talk-small">You have <b>${G.inv.shell || 0}</b> shells. ${tab === 'buy' ? 'What catches your eye?' : 'I pay fair prices. Rare gems pay best.'}</p><div class="trade">`;
+      if (tab === 'buy') {
+        for (const [item, price] of tribe.stock) {
+          const ok = (G.inv.shell || 0) >= price;
+          body += `<div class="trow"><img src="${SW.spriteURL(ITEMS[item].icon)}" alt=""><span>${ITEMS[item].name}${ITEMS[item].mod ? `<small>${SW.MODS[item].desc}</small>` : ''}</span><button class="chip-btn" data-talk="b:${item}:${price}" ${ok ? '' : 'disabled'}>${price} shells</button></div>`;
+        }
+      } else {
+        const sellable = SW.ITEM_ORDER.filter((k) => (G.inv[k] || 0) > 0 && SW.VALUE[k]);
+        if (!sellable.length) body += '<p class="talk-small">You have nothing I can buy.</p>';
+        for (const item of sellable) body += `<div class="trow"><img src="${SW.spriteURL(ITEMS[item].icon)}" alt=""><span>${ITEMS[item].name} <small>you have ${G.inv[item]}</small></span><button class="chip-btn" data-talk="s:${item}">Sell for ${SW.VALUE[item]}</button></div>`;
+      }
+      body += '</div>';
+      acts = [btn('buy', 'Buy', tab === 'buy' ? '' : 'plain'), btn('sell', 'Sell', tab === 'sell' ? '' : 'plain'), btn('bye', 'Goodbye', 'plain')];
+    }
+    $('talkFace').src = SW.spriteURL(face);
+    $('talkName').textContent = name; $('talkRole').textContent = role;
+    $('talkBody').innerHTML = body;
+    $('talkActions').innerHTML = acts.join('');
+  }
+
+  // ---------------- caves ----------------
+  const caveHud = { x: 0, y: 0 };
+  const caves = SW.makeCaves({
+    player: () => G.player,
+    view: () => ({ w: W, h: H, k: clamp(H / (11.5 * 32), 0.85, 2.4), hudX: caveHud.x, hudY: caveHud.y }),
+    sound: (n) => SW.audio.play(n),
+    toast: (m) => toast(m, 4200),
+    banner: (a, b, c) => banner(a, b, c),
+    xp: (n) => gainXP(n),
+    give: (item, n) => { addItem(item, n); },
+    has,
+    attack: () => attackPower(),
+    hurt: (dmg) => {
+      const p = G.player;
+      const n = Math.max(1, Math.round(dmg * (1 - armorDef())));
+      p.hp -= n; p.hurtT = 0.35;
+      SW.audio.play('hurt'); buzz(40);
+      $('hud').classList.remove('ouch'); void $('hud').offsetWidth; $('hud').classList.add('ouch');
+      return n;
+    },
+    shake: () => {},
+    toolSprite: () => { const w = bestWeapon(); return w ? { sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade' }[w] : G.tools.pick ? 'toolPick' : G.tools.axe ? 'toolAxe' : 'toolHand'; },
+    exitCave: () => exitCave(),
+    died: () => { const c = G.inCave; exitCave(true); die(); return c; },
+    caveDone: (def) => { G.stats.caves = (G.stats.caves || 0) + 1; questDirty = true; },
+  });
+  function enterCave(c) {
+    G.inCave = c.id; G.order = null; G.fishing = null; G.player.flying = false; G.player.alt = 0; G.player.boat = false;
+    caves.enter(c, caveSave(c.id));
+    document.body.classList.add('in-cave');
+    if (globe) globe.canvas.hidden = fxCv.hidden = true;
+    SW.audio.play('whoosh');
+    setTimeout(() => banner(c.name, caveSave(c.id).taken ? 'Finished. Explore the side tunnels.' : 'Read the mural, then strike the runes in its order.', ZONES[c.zone].color), 200);
+    tipOnce('cave1', touchMode() ? 'Stick to move, push up to jump or climb ladders, Use to strike and open. Walk into the glowing door to leave.' : 'A/D move, W or Space jump, W/S climb ladders, E or J to strike and open. The glowing door takes you outside.');
+    hud.region = '';
+  }
+  function exitCave(silent) {
+    const c = G.realm.caves.find((cc) => cc.id === G.inCave);
+    caves.leave();
+    G.inCave = null;
+    document.body.classList.remove('in-cave');
+    if (globe && curve.globe) globe.canvas.hidden = fxCv.hidden = false;
+    if (c) { G.player.x = c.x; G.player.y = c.y + 70; G.player.vx = G.player.vy = 0; G.cam.x = G.player.x; G.cam.y = G.player.y; }
+    if (!silent) { SW.audio.play('whoosh'); toast('Back outside.'); }
+    hud.region = '';
+    prebuild();
+  }
+  const touchMode = () => document.body.classList.contains('touch');
+  let caveUp = false;
+  function caveInput() {
+    let x = input.x, y = input.y;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) x = -1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) x = 1;
+    const up = keys.has('KeyW') || keys.has('ArrowUp') || input.y < -0.55;
+    if (up) y = -1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) y = 1;
+    const upEdge = up && !caveUp; caveUp = up;
+    const jumpKey = input.jumpEdge || false; input.jumpEdge = false;
+    const use = input.useEdge || false; input.useEdge = false;
+    return { x: Math.abs(x) < 0.2 ? 0 : clamp(x, -1, 1), y: Math.abs(y) < 0.45 ? 0 : Math.sign(y), upEdge, jumpKey, use };
+  }
+
+  function caveSurvival(dt) {
+    const p = G.player;
+    p.hurtT -= dt;
+    p.hunger = Math.max(0, p.hunger - dt * 0.4);
+    if (p.hunger <= 0) p.hp -= dt * 1.6;
+    else if (p.hunger > 50 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + dt * (0.8 + p.level * 0.1));
+  }
+
+  // ---------------- mods ----------------
+  const modsOn = (slot, id) => (G.mods[slot] || []).filter((m) => !id || m === id).length;
+  function slotOwned(slot) {
+    if (slot === 'weapon') return !!bestWeapon();
+    if (slot === 'armor') return armorBase() > 0;
+    if (slot === 'food') return true;
+    return !!G.tools[slot];
+  }
+  function fitMod(id, slot) {
+    if (!(G.inv[id] > 0) || !slotOwned(slot) || modsOn(slot) >= SW.MOD_MAX) { SW.audio.play('deny'); return; }
+    payCost({ [id]: 1 });
+    (G.mods[slot] = G.mods[slot] || []).push(id);
+    SW.audio.play('craft');
+    toast(`${ITEMS[id].name} fitted to your ${SW.MOD_SLOTS[slot]}.`);
+    craftDirty = true; renderToolbelt();
+  }
+
   // ---------------- orders (click / tap to act) ----------------
   function setOrder(o) {
     G.order = o;
@@ -766,6 +1050,8 @@
       return { x: o.s.x, y: o.s.y, reach: o.s.r + PR + 14 };
     }
     if (o.kind === 'fish') return { x: o.x, y: o.y, reach: 0 };
+    if (o.kind === 'talk') return { x: o.npc.x, y: o.npc.y, reach: 52 };
+    if (o.kind === 'cave') return { x: o.cave.x, y: o.cave.y + 40, reach: 70 };
     return null;
   }
   function runOrder(dt) {
@@ -785,6 +1071,8 @@
       p.fx = dx / d; p.fy = dy / d;
       faceToward(dx, dy);
       if (o.kind === 'move') { G.order = null; return [0, 0]; }
+      if (o.kind === 'talk') { G.order = null; talkTo(o.npc); return [0, 0]; }
+      if (o.kind === 'cave') { G.order = null; openTalk({ kind: 'cave', cave: o.cave }); return [0, 0]; }
       if (p.atkCd <= 0 && !p.flying) {
         if (o.kind === 'gather') harvestObject(o.o);
         else if (o.kind === 'attack') swingAt(o.m);
@@ -818,7 +1106,7 @@
 
   // What's under the cursor? Creatures win over structures, structures over scenery.
   function pick(mx, my) {
-    for (const want of [2, 1, 0]) { const hit = pickKind(mx, my, want); if (hit) return hit; }
+    for (const want of [2, 7, 6, 1, 0]) { const hit = pickKind(mx, my, want); if (hit) return hit; }
     return null;
   }
   function pickKind(mx, my, want) {
@@ -827,6 +1115,7 @@
       if (d.k !== want || d.sx === undefined) continue;
       if (d.k === 0) { if (OBJ[d.o.type].decor || d.spr !== d.o.type) continue; }
       if (d.k === 2 && d.m.dying) continue;
+      if (d.k === 6 && !d.cave) continue;
       const spr = SW.sprites[d.spr];
       if (!spr) continue;
       const sc = Z * (d.sc || 1), ky = d.ky || 1;
@@ -855,6 +1144,8 @@
   function orderFromPoint(mx, my) {
     const hit = pick(mx, my);
     if (hit) {
+      if (hit.k === 7) return { kind: 'talk', npc: hit.npc };
+      if (hit.k === 6) return { kind: 'cave', cave: hit.cave };
       if (hit.k === 2) return { kind: 'attack', m: hit.m };
       if (hit.k === 1) return { kind: 'use', s: hit.s };
       return { kind: 'gather', o: hit.o };
@@ -967,7 +1258,7 @@
       // the wind carries you: strongly in the air, a little on the water
       const drift = p.flying ? 150 * here.gust : p.boat ? 40 * here.gust : 0;
       // snow underfoot makes you slide
-      const grip = p.flying ? 0.35 : p.boat ? 0.5 : WX.grip();
+      const grip = p.flying ? 0.35 : p.boat ? 0.5 : G.tools.warmCloak ? Math.max(0.6, WX.grip()) : WX.grip();
       const k = 1 - Math.exp(-dt * 14 * grip);
       p.vx = lerp(p.vx, mx * spd + windX * drift, k); p.vy = lerp(p.vy, my * spd + windY * drift, k);
       p.moving = il > 0.15 && spd > 0;
@@ -981,12 +1272,15 @@
           else G.parts.push({ k: 'dust', x: p.x - p.fx * 8, y: p.y + 2, lvl: p.lvlOff, t: 0, life: 0.45 });
         }
       } else p.running = false;
+      const bx = p.x, by = p.y;
       moveBody(p, PR, dt, { water: p.flying || canSail(), ghost: p.flying });
+      checkBarrier(bx, by);
+      zoneWatch();
       if (!world.isWater(p.x, p.y) && !p.flying) { p.lastLand.x = p.x; p.lastLand.y = p.y; }
 
       // gliding: launch hop, then a steady sink; gusts give lift, more when you ride the wind
       if (p.flying) {
-        const sink = 20 * (1 + p.leafWet * 2.4);
+        const sink = 20 * (1 + p.leafWet * 2.4) * Math.pow(0.7, modsOn('glider', 'featherCharm'));
         const lift = here.gust * 20 * (0.55 + 0.75 * Math.max(0, downwind));
         p.vz = lerp(p.vz, lift - sink, 1 - Math.exp(-dt * 1.6));
         p.alt += p.vz * dt;
@@ -1000,7 +1294,7 @@
       }
       // the raft soaks up water while you sail (rain and choppy gusts make it worse) and dries on land
       if (p.boat) {
-        p.raftWet = Math.min(1, p.raftWet + dt * (1 + here.rain * 2 + here.gust * 0.6) / 55);
+        p.raftWet = Math.min(1, p.raftWet + dt * (1 + here.rain * 2 + here.gust * 0.6) * Math.pow(0.5, modsOn('raft', 'tarPot')) / 55);
         if (p.raftWet >= 1) landPlayer(true);
         else if (p.raftWet > 0.75) tipOnce('raftSoggy', 'Your raft is getting soggy. Head for land before it folds!');
       } else if (!world.isWater(p.x, p.y)) {
@@ -1024,7 +1318,7 @@
 
       // hunger & health (cold makes you hungrier unless you're near a fire)
       const warm = !!nearFire(p.x, p.y, 40);
-      p.hunger = Math.max(0, p.hunger - dt * 0.4 * (p.running && p.moving ? 1.8 : 1) * WX.hungerMul(warm));
+      p.hunger = Math.max(0, p.hunger - dt * 0.4 * (p.running && p.moving ? 1.8 : 1) * WX.hungerMul(warm || !!G.tools.warmCloak));
       if (p.hunger <= 0) { p.hp -= dt * 1.6; if (p.hp <= 0) die(); }
       else if (p.hunger > 50 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + dt * (0.8 + p.level * 0.1));
       if (p.hunger < 30 && !G.tips.hungry) { G.tips.hungry = 1; toast('Your tummy is rumbling. Press F to eat.'); }
@@ -1108,7 +1402,7 @@
     // the moon and the Lost Pages change how many Scribbles come out
     const moonMod = moon.ink ? 4 : moon.index === 0 ? 2 : moon.index === 4 ? -1 : 0;
     const cap = Math.max(1, Math.min(16, 1 + day + danger + moonMod - (G.adv ? G.adv.next : 0)));
-    if (night && phase < 0.93 && scribbles < cap && WX.rain() < 1.2) {
+    if (night && !G.won && phase < 0.93 && scribbles < cap && WX.rain() < 1.2) {
       for (let tries = 0; tries < 8; tries++) {
         const [x, y] = ring();
         if (world.isWater(x, y) || inFireLight(x, y)) continue;
@@ -1527,6 +1821,15 @@
     }
     for (const s of world.structures) drawList.push({ d: depthOf(s.x - G.cam.x, s.y - G.cam.y), k: 1, s, spr: s.type === 'campfire' ? 'campfire' : 'wall', pop: popOf('s' + s.id, s.x, s.y, dt) });
     for (const m of G.mobs) drawList.push({ d: depthOf(m.x - G.cam.x, m.y - G.cam.y), k: 2, m, spr: mobSprite(m), sc: m.scale });
+    if (G.realm) {
+      const near = (x, y) => Math.abs(x - G.cam.x) < 2600 && Math.abs(y - G.cam.y) < 2600;
+      for (const t of G.realm.tribes) {
+        if (!near(t.x, t.y)) continue;
+        for (const sp of t.spots) drawList.push({ d: depthOf(sp.x - G.cam.x, sp.y - G.cam.y), k: 6, x: sp.x, y: sp.y, spr: sp.spr, pop: popOf('h' + sp.x + ',' + sp.y, sp.x, sp.y, dt) });
+        for (const n of t.npcs) drawList.push({ d: depthOf(n.x - G.cam.x, n.y - G.cam.y), k: 7, x: n.x, y: n.y, spr: n.spr, npc: n, pop: popOf('n' + n.x + ',' + n.y, n.x, n.y, dt) });
+      }
+      for (const c of G.realm.caves) if (near(c.x, c.y)) drawList.push({ d: depthOf(c.x - G.cam.x, c.y - G.cam.y), k: 6, x: c.x, y: c.y, spr: c.spr, cave: c, pop: popOf('c' + c.id, c.x, c.y, dt) });
+    }
     if (G.adv && G.mode !== 'title') {
       const page = G.adv.pages[G.adv.next];
       if (page) drawList.push({ d: depthOf(page.x - G.cam.x, page.y - G.cam.y), k: 4, x: page.x, y: page.y, spr: 'lostPage' });
@@ -1558,12 +1861,13 @@
     const hov = G.hover;
     for (const d of drawList) {
       if (d.k === 3) { pastPlayer = true; drawPlayer(); continue; }
-      d.glow = !!(hov && ((d.k === 0 && hov.o === d.o) || (d.k === 1 && hov.s === d.s) || (d.k === 2 && hov.m === d.m))) ||
+      d.glow = !!(hov && ((d.k === 0 && hov.o === d.o) || (d.k === 1 && hov.s === d.s) || (d.k === 2 && hov.m === d.m) || (d.k === 7 && hov.npc === d.npc) || (d.k === 6 && d.cave && hov.cave === d.cave))) ||
         !!(G.order && ((d.k === 0 && G.order.o === d.o) || (d.k === 2 && G.order.m === d.m) || (d.k === 1 && G.order.s === d.s)));
       d.cover = pastPlayer && G.mode === 'play' ? pbox : null;
       if (d.k === 0) drawObject(d, windX);
       else if (d.k === 1) drawStructure(d);
       else if (d.k === 2) drawMob(d);
+      else if (d.k === 6 || d.k === 7) drawLandmark(d);
       else drawMarker(d);
     }
 
@@ -1613,6 +1917,9 @@
     if (page) arrows.push([page.x, page.y, 0.9]);
     const q = G.quests.find((q) => q.kind === 'explore' && !q.done);
     if (q) arrows.push([q.tx, q.ty, 0.7]);
+    const goal = realmGoal();
+    if (goal) arrows.push([goal.x, goal.y, 1]);
+    drawBarrier();
     const base = proj(p.x, p.y, p.lvlOff);
     const bx = base.x, by = base.y;
     for (const [tx, ty, s] of arrows) {
@@ -1676,6 +1983,76 @@
       drawSprite('flame' + f, sx, sy - 10 * Z * ky, Math.sin(G.time * 5) * 0.06 + lean, fk * (1 + Math.sin(G.time * 13) * 0.04), fk * (1 + Math.sin(G.time * 11) * 0.06));
     }
     ctx.globalAlpha = 1;
+  }
+
+  // settlement buildings, tribe folk and cave mountains: pop-up stickers like the rest
+  // where the realm wants you next: this zone's tribe if you haven't met it,
+  // else the cave of an active relic quest
+  function realmGoal() {
+    if (!G.realm || G.mode !== 'play') return null;
+    const z = Math.min(maxZone(), zoneOf(G.player.x, G.player.y));
+    const t = G.realm.tribes[z];
+    if (!(G.metTribes || []).includes(t.id)) return t;
+    for (const tr of G.realm.tribes) for (const q of tr.quests) {
+      const st = G.tq[q.id];
+      if (q.kind === 'relic' && st && st.state === 'active') return (G.inv[q.key] || 0) > 0 ? tr : G.realm.caves[tr.zone];
+      if (q.kind === 'deliver' && st && st.state === 'active') return G.realm.tribes.find((x) => x.id === q.key);
+      if (q.kind === 'deliver' && st && st.state === 'relay') return tr;
+      if (st && st.state === 'active' && questReady(q)) return tr;
+    }
+    return null;
+  }
+  // the ink barrier: a wobbly line of ink posts where the next zone starts
+  function drawBarrier() {
+    if (!G.realm) return;
+    const mz = maxZone();
+    if (mz >= SW.ZONE_R.length) return;
+    const R0 = SW.ZONE_R[mz], sp = G.world.spawn, p = G.player;
+    const dp = dist(p.x, p.y, sp.x, sp.y);
+    if (Math.abs(dp - R0) > 1300) return;
+    const a0 = Math.atan2(p.y - sp.y, p.x - sp.x), span = 1500 / R0, step = 26 / R0;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const pts = [];
+    for (let a = a0 - span; a <= a0 + span; a += step) {
+      const x = sp.x + Math.cos(a) * R0, y = sp.y + Math.sin(a) * R0;
+      if (G.world.isWater(x, y)) { pts.push(null); continue; }
+      const pt = proj(x, y, G.world.levelAt(x, y) * LH);
+      pts.push([pt.x, pt.y + Math.sin(G.time * 3 + a * 900) * 2 * Z]);
+    }
+    for (const [w, col] of [[9, '#ffffff'], [5, '#5b4f78']]) {
+      ctx.lineWidth = w * Z; ctx.strokeStyle = col; ctx.setLineDash(col === '#ffffff' ? [] : [10 * Z, 8 * Z]);
+      ctx.beginPath(); let pen = false;
+      for (const q of pts) { if (!q) { pen = false; continue; } if (pen) ctx.lineTo(q[0], q[1]); else { ctx.moveTo(q[0], q[1]); pen = true; } }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // ink posts
+    for (let i = 0; i < pts.length; i += 5) {
+      const q = pts[i]; if (!q) continue;
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(q[0], q[1] - 14 * Z, 6 * Z, 16 * Z, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#2b2340'; ctx.beginPath(); ctx.ellipse(q[0], q[1] - 14 * Z, 4 * Z, 13 * Z, 0, 0, TAU); ctx.fill();
+    }
+    if (Math.abs(dp - R0) < 500) { const z = ZONES[mz + 1]; pillText(`${z.name}: Level ${z.level}`, VCX, VCY - 120 * Z, '#5b4f78', 12); }
+  }
+
+  function drawLandmark(d) {
+    const lvl = G.world.levelAt(d.x, d.y) * LH;
+    const pt = proj(d.x, d.y, lvl);
+    const ky = popScale(d.pop || 0), bob = d.k === 7 ? Math.abs(Math.sin(G.time * 2.2 + d.x)) * 2 * Z : 0;
+    d.sx = pt.x; d.sy = pt.y; d.ky = ky;
+    if (covers(d, SW.sprites[d.spr], pt.x, pt.y, 1)) ctx.globalAlpha = d.k === 6 ? 0.45 : 0.6;
+    if (d.glow) drawSprite(d.spr, pt.x, pt.y + 3 * Z, 0, 1.06, 1.05 * ky, 'glow');
+    drawSprite(d.spr, pt.x, pt.y - bob, 0, 1, ky);
+    ctx.globalAlpha = 1;
+    // a name tag over folk near you, and over cave doors
+    const p = G.player;
+    if (ky > 0.7 && d.k === 7 && dist(p.x, p.y, d.x, d.y) < 300) {
+      const q = d.npc.role === 'elder' ? questOf(d.npc.tribe) : null;
+      const mark = q && (!(G.tq[q.id] || {}).state || questReady(q)) ? (questReady(q) ? ' ✓' : ' !') : '';
+      pillText(d.npc.name + mark, pt.x, pt.y - 62 * Z, mark ? '#e0a400' : '#3b2f4f', 11);
+    }
+    if (ky > 0.7 && d.cave && dist(p.x, p.y, d.x, d.y) < 520) pillText(d.cave.name + (caveSave(d.cave.id).taken ? ' ✓' : ''), pt.x, pt.y - 160 * Z, '#3b2f4f', 12);
   }
 
   function drawMarker(d) {
@@ -2018,10 +2395,12 @@
     const spr = SW.sprites[d.spr];
     const top = d.sy - (spr.ay - 4) * Z * (d.sc || 1) - 10;
     let label = '';
-    if (d.k === 0) label = SW.objVerb(d.o.type) + ' ' + SW.OBJ_NAME[d.o.type];
+    if (d.k === 7) label = 'Talk to ' + d.npc.name;
+    else if (d.k === 6) label = 'Enter ' + d.cave.name;
+    else if (d.k === 0) label = SW.objVerb(d.o.type) + ' ' + SW.OBJ_NAME[d.o.type];
     else if (d.k === 1) label = d.s.type === 'campfire' ? ((G.inv.wood || 0) > 0 && d.s.fuel < 150 ? 'Add wood to fire' : 'Campfire') : 'Stake Wall';
     else if (ENEMIES[d.m.type].passive) label = 'Hunt Puff';
-    G.hover = { o: d.o, s: d.s, m: d.m, label, lx: d.sx, ly: top };
+    G.hover = { o: d.o, s: d.s, m: d.m, npc: d.npc, cave: d.cave, label, lx: d.sx, ly: d.k >= 6 ? d.sy - (spr.ay - 4) * Z * (d.ky || 1) - 10 : top };
     canvas.style.cursor = 'pointer';
   }
 
@@ -2048,27 +2427,62 @@
   }
   function renderToolbelt() {
     const owned = Object.keys(TOOLS).filter((t) => G.tools[t]);
-    $('toolbelt').innerHTML = owned.map((t) => `<span class="tool" title="${TOOLS[t].name}"><img src="${SW.spriteURL(TOOLS[t].icon)}" alt="${TOOLS[t].name}"></span>`).join('');
+    const slotOf = (t) => (TOOLS[t].kind === 'weapon' ? (t === bestWeapon() ? 'weapon' : null) : TOOLS[t].kind === 'armor' ? 'armor' : t);
+    $('toolbelt').innerHTML = owned.map((t) => {
+      const sl = slotOf(t), n = sl ? modsOn(sl) : 0;
+      return `<span class="tool" title="${TOOLS[t].name}${n ? ` (${n} mod${n > 1 ? 's' : ''})` : ''}"><img src="${SW.spriteURL(TOOLS[t].icon)}" alt="${TOOLS[t].name}">${n ? `<b>${n}</b>` : ''}</span>`;
+    }).join('') + SW.RELICS.filter((r) => G.inv[r] > 0).map((r) => `<span class="tool relic" title="${ITEMS[r].name}: ${ITEMS[r].desc}"><img src="${SW.spriteURL(ITEMS[r].icon)}" alt="${ITEMS[r].name}"></span>`).join('');
     $('tFly').hidden = !G.tools.glider;
     $('energyRow').hidden = !G.tools.glider;
     $('raftRow').hidden = !G.tools.raft;
+  }
+  // why a recipe can't be made yet (know-how, relic, pages), or '' if it can
+  function recipeLock(r) {
+    if (r.learn && !G.known.has(r.id) && !G.known.has(r.learn)) return `Learn ${SW.KNOW[r.learn].name} from the elder of ${SW.KNOW[r.learn].from}.`;
+    if (r.relic && !(G.inv[r.relic] > 0)) return `Needs the ${ITEMS[r.relic].name} from ${SW.CAVES.find((c) => c.relic === r.relic).name}.`;
+    if (r.pages && (G.adv ? G.adv.next : 0) < r.pages) return `Needs all ${r.pages} Lost Pages.`;
+    return '';
+  }
+  function winGame() {
+    G.won = true;
+    G.mobs = G.mobs.filter((m) => m.type !== 'scribble');
+    setTimeout(() => banner('The Book is bound!', 'The Ink is gone. Every page, every sticker, home again.', '#8a63e8'), 600);
+    SW.audio.play('dawn'); setTimeout(() => SW.audio.play('sting'), 900);
+    gainXP(2000);
+  }
+  function renderMods() {
+    const held = Object.keys(SW.MODS).filter((m) => G.inv[m] > 0);
+    let html = '<div class="mods"><h3>Fit mods</h3>';
+    if (!G.known.has('runecraft')) html += '<p class="talk-small">Learn Runecraft in Stonebrook to fit mods. Until then you can still collect and sell them.</p>';
+    else if (!held.length) html += '<p class="talk-small">You have no mods. Find them in caves and chests, buy them from traders, or craft some below.</p>';
+    for (const id of held) {
+      const btns = SW.MODS[id].slots.map((slot) => {
+        const ok = G.known.has('runecraft') && slotOwned(slot) && modsOn(slot) < SW.MOD_MAX;
+        return `<button class="chip-btn" data-mod="${id}:${slot}" ${ok ? '' : 'disabled'}>${SW.MOD_SLOTS[slot]} ${modsOn(slot)}/${SW.MOD_MAX}</button>`;
+      }).join('');
+      html += `<div class="trow"><img src="${SW.spriteURL(ITEMS[id].icon)}" alt=""><span>${ITEMS[id].name} ×${G.inv[id]}<small>${SW.MODS[id].desc}</small></span><span class="modbtns">${btns}</span></div>`;
+    }
+    const fitted = Object.entries(G.mods).filter(([, v]) => v.length);
+    if (fitted.length) html += '<p class="talk-small">Fitted: ' + fitted.map(([slot, v]) => `${SW.MOD_SLOTS[slot]} (${v.map((m) => ITEMS[m].name).join(', ')})`).join('; ') + '</p>';
+    return html + '</div>';
   }
   function renderCraft() {
     craftDirty = false;
     const fire = nearFire(G.player.x, G.player.y);
     $('craftTabs').innerHTML = SW.RECIPE_CATS.map(([id, label]) => `<button data-cat="${id}" class="${id === craftCat ? 'on' : ''}">${label}</button>`).join('');
-    $('craftList').innerHTML = RECIPES.filter((r) => craftCat === 'all' || r.cat === craftCat).map((r) => {
+    $('craftList').innerHTML = (craftCat === 'mods' ? renderMods() : '') + RECIPES.filter((r) => craftCat === 'all' || r.cat === craftCat).map((r) => {
       const name = r.tool ? TOOLS[r.tool].name : ITEMS[r.gives].name;
       const icon = r.tool ? TOOLS[r.tool].icon : ITEMS[r.gives].icon;
       const owned = r.tool && G.tools[r.tool];
-      const locked = r.requires && !G.tools[r.requires];
+      const lock = recipeLock(r);
+      const locked = (r.requires && !G.tools[r.requires]) || !!lock;
       const afford = hasCost(r.cost) && (!r.fire || fire) && !locked;
       const cost = Object.entries(r.cost).map(([k, n]) => {
         const ok = (G.inv[k] || 0) >= n;
         return `<span class="cost${ok ? '' : ' short'}"><img src="${SW.spriteURL(ITEMS[k].icon)}" alt="${ITEMS[k].name}">${G.inv[k] || 0}/${n}</span>`;
       }).join('');
-      const note = owned ? '<span class="tag">Owned</span>' : locked ? `<span class="tag">Needs ${TOOLS[r.requires].name}</span>` : r.fire && !fire ? '<span class="tag">Needs a lit fire nearby</span>' : '';
-      return `<div class="recipe${owned ? ' owned' : ''}${afford && !owned ? ' ready' : ''}">` +
+      const note = owned ? '<span class="tag">Owned</span>' : lock ? `<span class="tag lock">${lock}</span>` : locked ? `<span class="tag">Needs ${TOOLS[r.requires].name}</span>` : r.fire && !fire ? '<span class="tag">Needs a lit fire nearby</span>' : '';
+      return `<div class="recipe${owned ? ' owned' : ''}${afford && !owned ? ' ready' : ''}${lock ? ' locked' : ''}">` +
         `<img class="ricon" src="${SW.spriteURL(icon)}" alt="">` +
         `<div class="rbody"><h3>${name}</h3><p>${r.desc}</p><div class="costs">${cost}${note}</div></div>` +
         `<button class="craft-go" data-recipe="${r.id}" ${afford && !owned ? '' : 'disabled'}>${owned ? 'Done' : 'Craft'}</button></div>`;
@@ -2100,6 +2514,12 @@
         rows.push(`<li class="adv"><span class="qt">Lost Page ${adv.next + 1}/6</span><span class="qp">${(d / 1000).toFixed(1)} km ${compass(page.x - p.x, page.y - p.y)}</span><i style="width:${(adv.next / 6) * 100}%"></i></li>`);
       } else rows.push('<li class="adv done"><span class="qt">The Book is whole</span><span class="qp">6/6</span><i style="width:100%"></i></li>');
       for (const t of adv.treasures) if (!t.dug) { const d = dist(p.x, p.y, t.x, t.y); rows.push(`<li class="adv"><span class="qt">Treasure map</span><span class="qp">${(d / 1000).toFixed(1)} km ${compass(t.x - p.x, t.y - p.y)}</span><i style="width:0"></i></li>`); }
+    }
+    for (const t of SW.TRIBES) for (const q of t.quests) {
+      const st = G.tq[q.id];
+      if (!st || st.state === 'done') continue;
+      const ready = questReady(q);
+      rows.push(`<li class="tribe${ready ? ' done' : ''}"><span class="qt">${t.name}: ${q.title}</span><span class="qp">${ready ? 'hand in' : questProgress(q)}</span><i style="width:${ready ? 100 : 0}%"></i></li>`);
     }
     for (const q of G.quests) {
       let prog = `${q.have}/${q.need}`;
@@ -2220,7 +2640,10 @@
     renderQuests(dt);
     renderDial();
     renderMinimap(dt);
-    const useLbl = G.fishing ? (G.fishing.phase === 'bite' ? 'Reel!' : 'Reel') : 'Use';
+    const useLbl = G.inCave ? caves.hint() || 'Use' : G.fishing ? (G.fishing.phase === 'bite' ? 'Reel!' : 'Reel') : 'Use';
+    $('tFly').hidden = !(G.inCave || G.tools.glider);
+    const flyLbl = G.inCave ? 'Jump' : 'Glide';
+    if ($('tFlyLbl') && $('tFlyLbl').textContent !== flyLbl) $('tFlyLbl').textContent = flyLbl;
     if ($('tActLbl').textContent !== useLbl) $('tActLbl').textContent = useLbl;
     $('tAct').classList.toggle('bite', !!(G.fishing && G.fishing.phase === 'bite'));
     $('tFly').classList.toggle('on', p.flying);
@@ -2242,6 +2665,9 @@
     if (gapR - gapL >= 230) { top = 10; left = gapL; width = gapR - gapL; mode = 'gap'; }
     else if (below + 50 + bh < charTop) { top = below; left = 12; width = W - 24; mode = 'below'; }
     else { top = Math.max(charBottom + 6, (hot.top || H) - 56); left = 12; width = W - 24; mode = 'bottom'; }
+    // the cave's rune pill: between the top corners if there's room, else above the hotbar on the left
+    if (gapR - gapL >= 200) { caveHud.x = (gapL + gapR) / 2; caveHud.y = mode === 'gap' ? 18 : 18; }
+    else { caveHud.x = Math.max(70, (hot.left || 12) + 70); caveHud.y = (hot.top || H) - 44; }
     // while a banner is up, the tip sits just under it (or just over it at the bottom)
     const tops = mode === 'bottom' ? { banner: top - bh, toast: top } : { banner: top, toast: top + bh };
     for (const id of ['toast', 'banner']) {
@@ -2278,12 +2704,29 @@
     const toM = (x, y) => [((x + E) / (E * 2)) * size, ((y + E) / (E * 2)) * size];
     const [sx0, sy0] = toM(G.world.spawn.x, G.world.spawn.y);
     g.font = '800 12px Sniglet, system-ui, sans-serif'; g.textAlign = 'center'; g.lineJoin = 'round';
-    for (const dgr of [3, 6, 9, 12]) {
-      const r = ((1100 + (dgr - 1) * 1500) / (E * 2)) * size;
-      g.setLineDash([]); g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.arc(sx0, sy0, r, 0, TAU); g.stroke();
-      g.setLineDash([6, 6]); g.lineWidth = 2; g.strokeStyle = dgr >= 9 ? 'rgba(214,48,79,0.85)' : 'rgba(59,47,79,0.7)'; g.stroke();
-      g.setLineDash([]); g.lineWidth = 4; g.strokeStyle = '#ffffff'; g.strokeText('Danger ' + dgr, sx0, sy0 - r - 4);
-      g.fillStyle = dgr >= 9 ? '#d6304f' : '#3b2f4f'; g.fillText('Danger ' + dgr, sx0, sy0 - r - 4);
+    // zone rings: open ones dashed, locked ones in red with the level you need
+    const mz = maxZone();
+    SW.ZONE_R.forEach((R0, i) => {
+      const r = (R0 / (E * 2)) * size, z = ZONES[i + 1], locked = i + 1 > mz;
+      g.setLineDash([]); g.lineWidth = 5; g.strokeStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(sx0, sy0, r, 0, TAU); g.stroke();
+      g.setLineDash(locked ? [] : [6, 6]); g.lineWidth = locked ? 3 : 2; g.strokeStyle = locked ? 'rgba(91,79,120,0.95)' : 'rgba(59,47,79,0.6)'; g.stroke();
+      const label = z.name + (locked ? ' · Lv ' + z.level : '');
+      g.setLineDash([]); g.lineWidth = 4; g.strokeStyle = '#ffffff'; g.strokeText(label, sx0, sy0 - r - 4);
+      g.fillStyle = locked ? '#5b4f78' : '#3b2f4f'; g.fillText(label, sx0, sy0 - r - 4);
+    });
+    if (G.realm) {
+      for (const t of G.realm.tribes) {
+        const [x, y] = toM(t.x, t.y), met = (G.metTribes || []).includes(t.id);
+        g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(x - 9, y + 6); g.lineTo(x - 9, y - 2); g.lineTo(x, y - 10); g.lineTo(x + 9, y - 2); g.lineTo(x + 9, y + 6); g.closePath(); g.fill();
+        g.fillStyle = t.color; g.beginPath(); g.moveTo(x - 6, y + 4); g.lineTo(x - 6, y - 1); g.lineTo(x, y - 7); g.lineTo(x + 6, y - 1); g.lineTo(x + 6, y + 4); g.closePath(); g.fill();
+        if (met || t.zone <= mz) { g.lineWidth = 4; g.strokeStyle = '#ffffff'; g.strokeText(t.name, x, y + 18); g.fillStyle = '#3b2f4f'; g.fillText(t.name, x, y + 18); }
+      }
+      for (const c of G.realm.caves) {
+        const [x, y] = toM(c.x, c.y), done = caveSave(c.id).taken;
+        g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(x - 10, y + 6); g.lineTo(x, y - 9); g.lineTo(x + 10, y + 6); g.closePath(); g.fill();
+        g.fillStyle = done ? '#6bbf4a' : '#5a5e70'; g.beginPath(); g.moveTo(x - 7, y + 4); g.lineTo(x, y - 6); g.lineTo(x + 7, y + 4); g.closePath(); g.fill();
+        g.fillStyle = '#16121f'; g.beginPath(); g.arc(x, y + 4, 2.5, Math.PI, 0); g.fill();
+      }
     }
     for (const s of G.world.structures) {
       if (s.type !== 'campfire') continue;
@@ -2372,12 +2815,13 @@
       removed.push([id, Math.round(t)]);
     }
     return {
-      v: 3, game: 'stickerwild', seed: G.seed, seedText: G.seedText, density: G.density, time: Math.round(now * 10) / 10, savedAt: Date.now(),
+      v: 4, game: 'stickerwild', seed: G.seed, seedText: G.seedText, density: G.density, time: Math.round(now * 10) / 10, savedAt: Date.now(),
       player: { x: Math.round(p.x), y: Math.round(p.y), hp: Math.round(p.hp), maxHp: p.maxHp, hunger: Math.round(p.hunger), level: p.level, xp: p.xp, energy: p.energy, leafWet: +p.leafWet.toFixed(3), raftWet: +p.raftWet.toFixed(3) },
       inv: G.inv, tools: G.tools, stats: G.stats, tips: G.tips,
       quests: G.quests.filter((q) => !q.done), questSeq: G.questSeq, regionsSeen: [...G.regionsSeen],
       adv: G.adv, removed, damage: [...G.world.damage],
       structures: G.world.structures.map((s) => ({ ...s, fuel: Math.round(s.fuel) })), nextId: G.world.nextId,
+      known: [...G.known], mods: G.mods, caves: G.caves, tq: G.tq, zonesSeen: G.zonesSeen, metTribes: G.metTribes || [], won: G.won,
     };
   }
   function validSave(s) { return !!(s && typeof s === 'object' && typeof s.seed === 'number' && s.player && typeof s.player.x === 'number'); }
@@ -2395,6 +2839,13 @@
     G.questSeq = s.questSeq || G.questSeq;
     if (s.quests && s.quests.length) { G.quests = s.quests; while (G.quests.length < 3) addQuest(); }
     if (s.adv && s.adv.pages) G.adv = s.adv;
+    // v4: know-how, mods, caves, tribe quests. Older saves keep what they already made.
+    G.known = new Set([...STARTER_KNOWN(), ...(s.known || [])]);
+    if (!s.known) for (const r of RECIPES) if (r.tool && G.tools[r.tool]) { G.known.add(r.id); if (r.learn) G.known.add(r.learn); }
+    G.mods = s.mods || {}; G.caves = s.caves || {}; G.tq = s.tq || {}; G.zonesSeen = s.zonesSeen || [0]; G.metTribes = s.metTribes || []; G.won = !!s.won;
+    // a save made in a zone you can't reach yet (older, smaller islands) puts you back at the line
+    if (zoneOf(G.player.x, G.player.y) > maxZone()) { const sp = G.world.spawn; G.player.x = sp.x; G.player.y = sp.y; }
+    lastZone = zoneOf(G.player.x, G.player.y);
     G.cam.x = G.player.x; G.cam.y = G.player.y;
     G.lastPhaseNight = isNight(phaseOf(G.time));
     hotbarDirty = craftDirty = questDirty = true;
@@ -2466,6 +2917,7 @@
     input.x = dz(gp.axes[0] || 0); input.y = dz(gp.axes[1] || 0);
     input.spin = dz(gp.axes[2] || 0) + (btn(5) ? 1 : 0) - (btn(4) ? 1 : 0);
     input.act = btn(0) || input.actTouch;
+    if (G.inCave) { if (edge(0)) input.jumpEdge = true; if (edge(2) || edge(5)) input.useEdge = true; }
     if (edge(0) && G.fishing) reel();
     if (edge(1)) eatBest();
     if (edge(2)) toggleCraft();
@@ -2496,6 +2948,16 @@
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
       if (e.repeat) return;
       keys.add(e.code);
+      if (G.talking && e.code === 'Escape') { closeTalk(); return; }
+      if (G.inCave && G.mode === 'play') {
+        if (e.code === 'Space' || e.code === 'KeyK') input.jumpEdge = true;
+        if (e.code === 'KeyE' || e.code === 'KeyJ' || e.code === 'Enter') input.useEdge = true;
+        if (e.code === 'KeyF') eatBest();
+        if (e.code === 'KeyC' || e.code === 'Tab') toggleCraft();
+        if (e.code === 'KeyL') toggleQuests();
+        if (e.code === 'Escape' || e.code === 'KeyP') pause(true);
+        return;
+      }
       if (G.mode === 'play') {
         if (e.code === 'Space' && G.fishing) reel();
         if (e.code === 'KeyC' || e.code === 'Tab') toggleCraft();
@@ -2531,6 +2993,7 @@
     canvas.addEventListener('mousedown', (e) => {
       if (G.mode !== 'play') return;
       SW.audio.unlock();
+      if (G.inCave) { if (e.button === 0) input.useEdge = true; return; }
       if (e.button === 2 || e.button === 1) { input.rotating = true; input.rotX = e.clientX; e.preventDefault(); return; }
       if (e.button !== 0) return;
       input.mouseX = e.clientX; input.mouseY = e.clientY;
@@ -2556,7 +3019,15 @@
       if (ITEMS[it].food || ITEMS[it].place) useItem(it);
       else toast(ITEMS[it].name + ' is a crafting material. Open Craft to use it.');
     });
-    $('craftList').addEventListener('click', (e) => { const b = e.target.closest('[data-recipe]'); if (b) craft(RECIPES.find((r) => r.id === b.dataset.recipe)); });
+    $('craftList').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-recipe]');
+      if (b) craft(RECIPES.find((r) => r.id === b.dataset.recipe));
+      const m = e.target.closest('[data-mod]');
+      if (m) { const [id, slot] = m.dataset.mod.split(':'); fitMod(id, slot); renderCraft(); }
+    });
+    $('talkActions').addEventListener('click', (e) => { const b = e.target.closest('[data-talk]'); if (b) talkAction(b.dataset.talk); });
+    $('talkBody').addEventListener('click', (e) => { const b = e.target.closest('[data-talk]'); if (b) talkAction(b.dataset.talk); });
+    $('talkClose').addEventListener('click', closeTalk);
     $('craftTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-cat]'); if (b) { craftCat = b.dataset.cat; renderCraft(); } });
     $('craftBtn').addEventListener('click', () => toggleCraft());
     $('craftClose').addEventListener('click', () => toggleCraft(false));
@@ -2640,7 +3111,7 @@
       for (const t of e.changedTouches) {
         touches.delete(t.identifier);
         if (t.identifier === stickId) {
-          if (!dragging && !twist && performance.now() - t0 < 500) pointerOrder(t.clientX, t.clientY);
+          if (!dragging && !twist && performance.now() - t0 < 500) { if (G.inCave) input.useEdge = true; else pointerOrder(t.clientX, t.clientY); }
           stickId = null; dragging = false; input.x = input.y = 0; stick.classList.remove('on');
           knob.style.transform = 'translate(-50%, -50%)';
         }
@@ -2654,9 +3125,9 @@
       el.addEventListener('touchend', (e) => { e.preventDefault(); off && off(); });
       el.addEventListener('mousedown', on); el.addEventListener('mouseup', () => off && off());
     };
-    hold($('tAct'), () => { if (G.fishing) reel(); else { input.act = true; input.actTouch = true; } }, () => { input.act = false; input.actTouch = false; });
+    hold($('tAct'), () => { if (G.inCave) { input.useEdge = true; return; } if (G.fishing) reel(); else { input.act = true; input.actTouch = true; } }, () => { input.act = false; input.actTouch = false; });
     hold($('tEat'), () => G.mode === 'play' && eatBest());
-    hold($('tFly'), () => toggleFly());
+    hold($('tFly'), () => { if (G.inCave) input.jumpEdge = true; else toggleFly(); });
     window.addEventListener('orientationchange', () => setTimeout(() => { resize(); rescale(); prebuild(); }, 250));
   }
 
@@ -2678,9 +3149,14 @@
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     pollGamepad();
-    if (G.mode !== 'paused') update(dt);
-    updateHover();
-    render(dt);
+    if (G.inCave) {
+      if (G.mode === 'play' && !G.talking) { G.time += dt; caveSurvival(dt); if (G.inCave) caves.update(dt, caveInput()); }
+      if (G.inCave) caves.render(sctx, W, H, SDPR);
+    } else {
+      if (G.mode !== 'paused' && !G.talking) update(dt);
+      updateHover();
+      render(dt);
+    }
     if (G.mode !== 'title') updateHUD(dt);
     if (!$('mapScreen').hidden) renderWorldMap();
     adaptRes(dt);
@@ -2734,6 +3210,7 @@
     setAngle(a) { setAngle(a); }, get angle() { return camA; },
     toScreen: (x, y, lv = 0) => { const pt = proj(x, y, lv); return flatToScreen(pt.x, pt.y); },
     toWorld: (sx, sy) => { const f = screenToFlat(sx, sy); return f && screenToWorld(f.x, f.y); },
+    get caves() { return caves; }, enterCave: (i) => enterCave(G.realm.caves[i]), exitCave: () => exitCave(), openTalk: (t) => openTalk(t),
     get dpr() { return DPR; },
   };
   try { window.claude?.hot?.snapshot?.(() => ({ save: G && (G.mode === 'play' || G.mode === 'paused') ? serialize() : null })); } catch (e) { /* not in a viewer */ }

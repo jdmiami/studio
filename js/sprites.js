@@ -598,8 +598,188 @@
     shape(c, (c) => { polyPath(c, [[18, 7], [20, 7], [23, 11], [21, 11]]); polyPath(c, [[21, 7], [23, 7], [20, 11], [18, 11]]); }, '#ff4d6d', 1);
   }];
 
+  // ---- the realm: tribe folk, buildings, cave mountains, cave creatures, treasures ----
+  const STYLE = {
+    reed: { robe: '#7fb069', trim: '#d9c27a', skin: '#f2c99a', hat: 'cone' },
+    stone: { robe: '#8a8fa3', trim: '#c97b4a', skin: '#e8b98d', hat: 'cap' },
+    city: { robe: '#4f7fd9', trim: '#ffd23f', skin: '#f5cfa8', hat: 'tall' },
+    snow: { robe: '#b8c6e8', trim: '#ffffff', skin: '#f0c4a0', hat: 'hood' },
+    temple: { robe: '#d9534f', trim: '#ffd23f', skin: '#f3d1b0', hat: 'quill' },
+  };
+  function folkArt(st, role) {
+    return (c) => {
+      const S = STYLE[st];
+      if (role === 'elder') { line(c, [[37, 12], [37, 50]], INK, 4.4); line(c, [[37, 12], [37, 50]], '#a8743f', 2.2); shape(c, blobs([[37, 11, 4]]), S.trim, 1.6); }
+      if (role === 'trader') shape(c, (c) => rrect(c, 2, 22, 11, 18, 4), '#c98f4a');
+      shape(c, P([[10, 50], [14, 26], [30, 26], [34, 50]]), S.robe);
+      flat(c, P([[13, 50], [16, 32], [19, 50]]), S.trim);
+      shape(c, blobs([[22, 20, 10]]), S.skin);
+      flat(c, blobs([[19, 21, 1.6], [26, 21, 1.6]]), INK);
+      flat(c, (c) => ell(c, 28, 24, 2, 1.2), '#ff9a8a');
+      if (role === 'elder') shape(c, P([[15, 24], [29, 24], [22, 38]]), '#f4f4f4', 1.6);
+      if (S.hat === 'cone') shape(c, P([[8, 15], [36, 15], [22, 1]]), '#e6cf7d');
+      else if (S.hat === 'cap') shape(c, (c) => { c.moveTo(11, 15); c.arc(22, 15, 11, Math.PI, 0); c.closePath(); }, S.trim);
+      else if (S.hat === 'tall') { shape(c, (c) => rrect(c, 14, 0, 16, 13, 2), '#3b2f4f'); shape(c, (c) => rrect(c, 10, 11, 24, 4, 2), '#3b2f4f'); flat(c, (c) => rrect(c, 14, 7, 16, 3, 1), S.trim); }
+      else if (S.hat === 'hood') shape(c, (c) => { c.moveTo(10, 22); c.arc(22, 17, 13, Math.PI * 0.9, Math.PI * 2.1); c.closePath(); }, '#f4f4f4');
+      else { line(c, [[22, 10], [30, 0]], INK, 3); line(c, [[22, 10], [30, 0]], S.trim, 1.6); }
+    };
+  }
+  for (const st in STYLE) { ART['elder_' + st] = [44, 52, folkArt(st, 'elder')]; ART['trader_' + st] = [44, 52, folkArt(st, 'trader')]; }
+
+  ART.hutReed = [90, 86, (c) => {
+    shape(c, (c) => { rrect(c, 14, 44, 62, 38, 4); }, '#c9a66b');
+    [22, 34, 46, 58, 70].forEach((x) => line(c, [[x, 46], [x, 80]], '#a88752', 1.6));
+    shape(c, P([[4, 50], [45, 6], [86, 50]]), '#e6cf7d');
+    [[20, 40], [32, 30], [45, 20], [58, 30], [70, 40]].forEach(([x, y]) => line(c, [[x - 8, y + 8], [x, y], [x + 8, y + 8]], '#c9ae5d', 1.6));
+    shape(c, (c) => rrect(c, 38, 58, 16, 24, 7), '#5a3f2e');
+  }];
+  ART.totem = [34, 96, (c) => {
+    shape(c, (c) => rrect(c, 9, 10, 16, 84, 4), '#b07a46');
+    [[17, 22, '#ff4d6d'], [17, 46, '#ffd23f'], [17, 70, '#4fb3e8']].forEach(([x, y, col]) => { shape(c, blobs([[x, y, 9]]), col, 1.8); flat(c, blobs([[x - 3, y - 1, 1.6], [x + 3, y - 1, 1.6]]), INK); });
+    shape(c, P([[2, 12], [17, 0], [32, 12]]), '#6bbf4a');
+  }];
+  ART.houseStone = [96, 92, (c) => {
+    shape(c, (c) => rrect(c, 10, 34, 76, 54, 4), '#a3a1b5');
+    [[14, 40, 20], [36, 40, 24], [62, 40, 20], [20, 56, 24], [48, 56, 30], [14, 72, 26], [44, 72, 22], [68, 72, 16]].forEach(([x, y, w]) => line(c, [[x, y + 12], [x + w, y + 12]], '#8a8fa3', 1.4));
+    shape(c, P([[2, 38], [48, 6], [94, 38]]), '#c97b4a');
+    shape(c, (c) => rrect(c, 40, 60, 16, 28, 3), '#5a3f2e');
+    shape(c, (c) => rrect(c, 64, 48, 12, 12, 2), '#ffe08f', 1.6);
+  }];
+  ART.forge = [96, 84, (c) => {
+    shape(c, (c) => rrect(c, 8, 30, 80, 50, 6), '#8a8fa3');
+    shape(c, (c) => rrect(c, 62, 4, 16, 30, 3), '#6b6f82');
+    shape(c, (c) => { c.moveTo(30, 80); c.arc(48, 62, 18, Math.PI, 0); c.lineTo(66, 80); c.closePath(); }, '#3b2f4f');
+    flat(c, blobs([[48, 70, 9]]), '#ff7a2a'); flat(c, blobs([[48, 72, 5]]), '#ffd23f');
+    shape(c, (c) => rrect(c, 14, 54, 14, 10, 3), '#5a5e70', 1.6);
+  }];
+  ART.tower = [60, 130, (c) => {
+    shape(c, P([[14, 126], [20, 30], [40, 30], [46, 126]]), '#e8dcc0');
+    [50, 72, 94].forEach((y) => line(c, [[18, y], [42, y]], '#c9bba0', 1.6));
+    shape(c, (c) => rrect(c, 12, 16, 36, 18, 4), '#4f7fd9');
+    flat(c, (c) => rrect(c, 20, 20, 20, 10, 3), '#ffe08f');
+    shape(c, P([[8, 18], [30, 0], [52, 18]]), '#3b2f4f');
+    shape(c, (c) => rrect(c, 24, 104, 12, 22, 5), '#5a3f2e');
+  }];
+  ART.houseCity = [92, 100, (c) => {
+    shape(c, (c) => rrect(c, 10, 26, 72, 70, 4), '#f4d6a0');
+    [[18, 36], [42, 36], [64, 36], [18, 60], [64, 60]].forEach(([x, y]) => { shape(c, (c) => rrect(c, x, y, 12, 14, 2), '#ffe08f', 1.6); });
+    shape(c, P([[4, 30], [46, 2], [88, 30]]), '#4f7fd9');
+    shape(c, (c) => rrect(c, 38, 66, 16, 30, 7), '#5a3f2e');
+    flat(c, (c) => rrect(c, 10, 26, 72, 5, 2), '#e0b870');
+  }];
+  ART.market = [110, 84, (c) => {
+    shape(c, (c) => rrect(c, 10, 40, 90, 40, 4), '#c98f4a');
+    shape(c, P([[4, 42], [20, 14], [90, 14], [106, 42]]), '#ff4d6d');
+    [20, 44, 68, 92].forEach((x) => flat(c, P([[x - 6, 16], [x + 6, 16], [x + 10, 42], [x - 2, 42]]), '#ffffff'));
+    [[28, 52, '#ff4d6d'], [48, 50, '#ffd23f'], [68, 52, '#6bbf4a'], [86, 50, '#4fb3e8']].forEach(([x, y, col]) => shape(c, blobs([[x, y, 6]]), col, 1.4));
+  }];
+  ART.igloo = [96, 64, (c) => {
+    shape(c, (c) => { c.moveTo(4, 60); c.arc(48, 60, 44, Math.PI, 0); c.closePath(); }, '#eef6ff');
+    [[20, 46], [48, 30], [74, 46], [34, 22], [62, 22]].forEach(([x, y]) => line(c, [[x - 10, y], [x + 10, y]], '#b8c6e8', 1.6));
+    shape(c, (c) => { c.moveTo(34, 60); c.arc(48, 60, 14, Math.PI, 0); c.closePath(); }, '#3b2f4f');
+  }];
+  ART.hearth = [70, 70, (c) => {
+    shape(c, (c) => { c.moveTo(6, 66); c.lineTo(10, 36); c.lineTo(60, 36); c.lineTo(64, 66); c.closePath(); }, '#8a8fa3');
+    flat(c, blobs([[35, 30, 14]]), '#ff7a2a'); flat(c, blobs([[35, 28, 8]]), '#ffd23f');
+    shape(c, P([[22, 34], [35, 4], [48, 34]]), '#ff7a2a', 1.6);
+  }];
+  ART.pagoda = [100, 120, (c) => {
+    shape(c, (c) => rrect(c, 26, 70, 48, 46, 3), '#f4d6a0');
+    shape(c, P([[6, 74], [50, 52], [94, 74]]), '#d9534f');
+    shape(c, (c) => rrect(c, 32, 34, 36, 24, 3), '#f4d6a0');
+    shape(c, P([[14, 40], [50, 18], [86, 40]]), '#d9534f');
+    shape(c, P([[40, 20], [50, 0], [60, 20]]), '#ffd23f');
+    shape(c, (c) => rrect(c, 42, 90, 16, 26, 7), '#5a3f2e');
+  }];
+  ART.shrine = [64, 70, (c) => {
+    shape(c, (c) => { rrect(c, 8, 18, 8, 50, 2); rrect(c, 48, 18, 8, 50, 2); }, '#d9534f');
+    shape(c, (c) => { rrect(c, 2, 10, 60, 8, 3); rrect(c, 8, 26, 48, 6, 2); }, '#d9534f');
+    shape(c, (c) => { c.moveTo(24, 66); c.lineTo(28, 40); c.lineTo(36, 40); c.lineTo(40, 66); c.closePath(); }, '#2b2340');
+  }];
+
+  function mountainArt(rock, light, cap, door) {
+    return (c) => {
+      shape(c, P([[2, 150], [52, 46], [84, 70], [120, 8], [168, 64], [196, 150]]), rock);
+      flat(c, P([[52, 46], [64, 64], [44, 74]]), light);
+      flat(c, P([[120, 8], [136, 34], [112, 40], [100, 30]]), light);
+      shape(c, P([[100, 30], [120, 8], [142, 38], [130, 34], [120, 44], [110, 34]]), cap, 1.8);
+      // the cave door: a dark arch with timber posts
+      shape(c, (c) => { c.moveTo(76, 150); c.lineTo(76, 112); c.arc(100, 112, 24, Math.PI, 0); c.lineTo(124, 150); c.closePath(); }, '#16121f');
+      shape(c, (c) => { rrect(c, 70, 104, 8, 46, 2); rrect(c, 122, 104, 8, 46, 2); rrect(c, 68, 98, 64, 8, 3); }, '#9a6a3f', 1.8);
+      flat(c, blobs([[100, 128, 5]]), door);
+      [[40, 120], [160, 118], [150, 96], [56, 100]].forEach(([x, y]) => line(c, [[x - 8, y], [x + 8, y]], 'rgba(59,47,79,0.35)', 2));
+    };
+  }
+  ART.caveMount0 = [198, 152, mountainArt('#6b8f4e', '#8fb36a', '#a6d17a', '#ffd23f')];
+  ART.caveMount1 = [198, 152, mountainArt('#8a8fa3', '#a9adbd', '#d9dbe6', '#ff4d6d')];
+  ART.caveMount2 = [198, 152, mountainArt('#4f7f8f', '#6fa0ae', '#9fd6e0', '#8fe8f6')];
+  ART.caveMount3 = [198, 152, mountainArt('#7f93b8', '#a3b4d4', '#ffffff', '#c8f0ff')];
+  ART.caveMount4 = [198, 152, mountainArt('#3e3352', '#5b4f78', '#2b2340', '#ff3b5c')];
+
+  function batArt(f) {
+    return (c) => {
+      const up = f ? -8 : 6;
+      shape(c, (c) => { polyPath(c, [[20, 16], [2, 10 + up], [8, 20], [14, 18]]); polyPath(c, [[24, 16], [42, 10 + up], [36, 20], [30, 18]]); }, '#5b4f78', 1.8);
+      shape(c, blobs([[22, 18, 8]]), '#3e3352');
+      shape(c, P([[16, 12], [18, 4], [21, 11]]), '#3e3352', 1.4); shape(c, P([[23, 11], [26, 4], [28, 12]]), '#3e3352', 1.4);
+      flat(c, blobs([[19, 17, 2], [25, 17, 2]]), '#ffd23f');
+    };
+  }
+  ART.bat0 = [44, 30, batArt(0)]; ART.bat1 = [44, 30, batArt(1)];
+  function grubArt(f) {
+    return (c) => {
+      const sq = f ? 2 : 0;
+      shape(c, blobs([[10, 18 + sq * 0.3, 8], [20, 16 - sq * 0.3, 9], [31, 17, 9.5 - sq * 0.3]]), '#c98fd9');
+      [[10, 18], [20, 16]].forEach(([x, y]) => line(c, [[x + 4, y - 7], [x + 4, y + 7]], '#a06fb5', 1.4));
+      flat(c, blobs([[34, 14, 2.2]]), INK); flat(c, blobs([[35, 13.4, 0.8]]), '#ffffff');
+      line(c, [[34, 8], [38, 2]], INK, 1.6); line(c, [[30, 8], [30, 1]], INK, 1.6);
+    };
+  }
+  ART.grub0 = [44, 28, grubArt(0)]; ART.grub1 = [44, 28, grubArt(1)];
+
+  function gemArt(col, light, dark, pts) {
+    return (c) => {
+      shape(c, P(pts), col);
+      flat(c, P([pts[0], pts[1], [14, 13]]), light);
+      flat(c, P([[14, 13], pts[pts.length - 2], pts[pts.length - 1]]), dark);
+    };
+  }
+  const GEM = [[14, 3], [24, 10], [20, 25], [8, 25], [4, 10]];
+  ART.itemRuby = [28, 28, gemArt('#ff3b5c', '#ff9aac', '#b5162f', GEM)];
+  ART.itemAmber = [28, 28, (c) => { shape(c, (c) => ell(c, 14, 15, 10, 11, 0.3), '#ffb13b'); flat(c, (c) => ell(c, 11, 11, 4, 3, 0.4), '#ffe08f'); flat(c, blobs([[16, 18, 2]]), '#9a5a1a'); }];
+  ART.itemOpal = [28, 28, (c) => { shape(c, (c) => ell(c, 14, 14, 10, 11), '#dfe8ff'); flat(c, blobs([[10, 11, 3.5]]), '#ffc9f0'); flat(c, blobs([[17, 17, 3]]), '#a6f0e6'); flat(c, blobs([[16, 9, 2]]), '#fff6b0'); }];
+  ART.itemStar = [28, 28, (c) => { shape(c, (c) => { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 5 : 12; c.lineTo(14 + Math.cos(a) * r, 15 + Math.sin(a) * r); } c.closePath(); }, '#fff27a'); flat(c, blobs([[12, 12, 2.5]]), '#ffffff'); }];
+  ART.itemShell = [28, 26, (c) => {
+    shape(c, (c) => { c.moveTo(3, 20); c.quadraticCurveTo(14, -6, 25, 20); c.lineTo(17, 24); c.lineTo(11, 24); c.closePath(); }, '#ffc9b5');
+    [[8, 20], [14, 21], [20, 20]].forEach(([x, y]) => line(c, [[14, 6], [x, y]], '#e08f7a', 1.4));
+  }];
+  ART.relicSun = [32, 32, (c) => {
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; line(c, [[16 + Math.cos(a) * 9, 16 + Math.sin(a) * 9], [16 + Math.cos(a) * 15, 16 + Math.sin(a) * 15]], '#ffb13b', 3); }
+    shape(c, blobs([[16, 16, 9]]), '#ffd23f'); flat(c, blobs([[13, 13, 3]]), '#fff6b0');
+  }];
+  ART.relicEcho = [30, 34, (c) => { shape(c, P([[15, 2], [26, 12], [22, 32], [8, 32], [4, 12]]), '#a78bfa'); flat(c, P([[15, 2], [26, 12], [15, 14]]), '#d6c8ff'); line(c, [[10, 18], [15, 24], [20, 18]], '#ffffff', 1.6); }];
+  ART.relicPearl = [30, 30, (c) => { shape(c, (c) => ell(c, 15, 22, 13, 6), '#4fb3e8'); shape(c, blobs([[15, 15, 8]]), '#f6fbff'); flat(c, blobs([[12, 12, 2.6]]), '#ffffff'); flat(c, blobs([[18, 18, 2]]), '#d6e8ff'); }];
+  ART.relicFrost = [30, 32, (c) => { shape(c, (c) => { c.moveTo(15, 30); c.bezierCurveTo(-2, 16, 4, 2, 15, 10); c.bezierCurveTo(26, 2, 32, 16, 15, 30); }, '#8fe8f6'); flat(c, blobs([[10, 12, 3]]), '#ffffff'); line(c, [[15, 14], [15, 24]], '#4fb3e8', 1.6); line(c, [[11, 19], [19, 19]], '#4fb3e8', 1.6); }];
+  ART.relicCrown = [36, 28, (c) => { shape(c, P([[3, 24], [3, 8], [11, 16], [18, 4], [25, 16], [33, 8], [33, 24]]), '#3e3352'); [[3, 8], [18, 4], [33, 8]].forEach(([x, y]) => shape(c, blobs([[x, y, 3]]), '#ff3b5c', 1.4)); flat(c, (c) => rrect(c, 6, 19, 24, 3, 1.5), '#a78bfa'); }];
+  function runeArt(col, glyph) {
+    return (c) => {
+      shape(c, (c) => rrect(c, 4, 3, 22, 24, 6), '#8a8fa3');
+      flat(c, (c) => rrect(c, 7, 6, 16, 4, 2), '#a9adbd');
+      line(c, glyph, INK, 4.2); line(c, glyph, col, 2.2);
+    };
+  }
+  ART.runeKeen = [30, 30, runeArt('#ff4d6d', [[10, 22], [20, 10], [16, 10], [20, 10], [20, 14]])];
+  ART.runeSwift = [30, 30, runeArt('#4fb3e8', [[9, 20], [14, 13], [16, 18], [21, 11]])];
+  ART.runeLucky = [30, 30, runeArt('#6bbf4a', [[15, 10], [15, 22], [10, 15], [20, 15]])];
+  ART.runeWard = [30, 30, runeArt('#ffd23f', [[10, 11], [15, 9], [20, 11], [19, 19], [15, 23], [11, 19], [10, 11]])];
+  ART.modFeather = [30, 30, (c) => { shape(c, (c) => { c.moveTo(6, 26); c.quadraticCurveTo(6, 6, 25, 3); c.quadraticCurveTo(22, 20, 6, 26); }, '#ffffff'); line(c, [[6, 26], [22, 6]], '#c9bba0', 1.6); }];
+  ART.modTar = [28, 30, (c) => { shape(c, (c) => { rrect(c, 4, 10, 20, 18, 6); rrect(c, 8, 6, 12, 6, 2); }, '#5a3f2e'); flat(c, (c) => ell(c, 14, 10, 6, 2.2), '#2b2340'); flat(c, (c) => ell(c, 10, 16, 2, 4), '#7a5a40'); }];
+  ART.modPepper = [30, 30, (c) => { shape(c, (c) => { c.moveTo(9, 9); c.quadraticCurveTo(28, 10, 22, 28); c.quadraticCurveTo(8, 22, 9, 9); }, '#ff3b2a'); shape(c, (c) => rrect(c, 5, 4, 8, 7, 3), '#4fa64a', 1.6); flat(c, (c) => ell(c, 15, 14, 2, 4, -0.5), '#ff9a8a'); }];
+  ART.toolCloak = [30, 30, (c) => { shape(c, P([[8, 6], [22, 6], [27, 27], [3, 27]]), '#b8c6e8'); shape(c, (c) => rrect(c, 6, 3, 18, 7, 3), '#ffffff', 1.6); flat(c, blobs([[15, 12, 2]]), '#ffd23f'); }];
+  ART.greatBook = [36, 30, (c) => { shape(c, (c) => rrect(c, 3, 4, 30, 23, 3), '#8a63e8'); flat(c, (c) => rrect(c, 3, 22, 30, 4, 2), '#fff8e6'); shape(c, (c) => { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 3 : 7; c.lineTo(18 + Math.cos(a) * r, 13 + Math.sin(a) * r); } c.closePath(); }, '#ffd23f', 1.4); }];
+
   SW.sprites = {};
-  const FLIP = ['player0', 'player1', 'scribble0', 'scribble1', 'puff0', 'puff1', 'thornback0', 'thornback1', 'snapjaw0', 'snapjaw1', 'gloop0', 'gloop1', 'pebblor0', 'pebblor1'];
+  const FLIP = ['bat0', 'bat1', 'grub0', 'grub1', 'player0', 'player1', 'scribble0', 'scribble1', 'puff0', 'puff1', 'thornback0', 'thornback1', 'snapjaw0', 'snapjaw1', 'gloop0', 'gloop1', 'pebblor0', 'pebblor1'];
   const ALIAS = { itemCampfire: 'campfire', itemWall: 'wall', itemAxe: 'toolAxe', itemPick: 'toolPick', itemSword: 'toolSword', itemGemSword: 'toolGemSword', itemMushroom: 'mushroom' };
   const border = (name) => (name.startsWith('item') || name.startsWith('ui') ? 3 : 3.6);
   // World stickers are rendered at the exact on-screen scale so most of them

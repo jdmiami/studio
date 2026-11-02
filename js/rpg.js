@@ -176,6 +176,7 @@
         const x = ctx.x + Math.cos(a) * d, y = ctx.y + Math.sin(a) * d;
         const rx = Math.floor(x / R), ry = Math.floor(y / R);
         const cx = (rx + 0.5) * R, cy = (ry + 0.5) * R;
+        if (ctx.maxZone !== undefined && SW.zoneAt(world, cx, cy) > ctx.maxZone) continue;
         if (!world.isWater(cx, cy) && Math.hypot(cx, cy) < SW.ISLAND_R * 0.95) best = { rx, ry, x: cx, y: cy };
       }
       if (!best) return SW.makeQuest(world, n + 1000, ctx);
@@ -216,7 +217,8 @@
   // Six pages, each further out than the last, placed from the seed.
   SW.makeAdventure = (world) => {
     const r = SW.rng((world.seed * 31 + 7) >>> 0);
-    const dists = [2400, 4300, 6400, 9000, 12000, 15500];
+    // one page in each ring, the last two out on the Ink Rim
+    const dists = [3000, 9600, 14800, 20000, 23800, 25800];
     const pages = [];
     for (const d of dists) {
       let spot = null;
@@ -234,6 +236,7 @@
   SW.makeTreasure = (world, x, y, rand) => {
     for (let tries = 0; tries < 20; tries++) {
       const a = rand() * Math.PI * 2, d = 1400 + rand() * 2600;
+      if (SW.zoneAt(world, x + Math.cos(a) * d, y + Math.sin(a) * d) > SW.zoneAt(world, x, y)) continue;
       const spot = world.landNear(x + Math.cos(a) * d, y + Math.sin(a) * d, 600);
       if (spot) return { x: Math.round(spot.x), y: Math.round(spot.y), dug: false };
     }
