@@ -8,7 +8,19 @@ The first time you open the game, an animated action-manga intro tells the story
 
 ## Ene and Star
 
-The characters come from the original hand-drawn character sheets. The drawings themselves are used for close-ups: the pop-up portraits, the intro and the moon. Ene and Star in the world are vector stickers redrawn from those sheets, so they stay crisp at any zoom and can animate. Ene follows the sheet: a tall egg-shaped face, long wavy black hair with a rainbow streak on one side and a blue-violet one on the other, a long neck, a crumpled yellow tube dress, one hand to her chest, and big bare feet. The cut-out drawings are in `art/`, inlined into `js/assets.js`.
+The characters come from the original hand-drawn character sheets. The drawings themselves are used for close-ups: the pop-up portraits, the intro and the moon. Star in the world is a vector sticker redrawn from its sheet: a floating star with a face, no legs. The cut-out drawings are in `art/`, inlined into `js/assets.js`.
+
+**Ene is a puppet made from her own drawing**, everywhere she appears: the 2.5D and third-person views, the parallax view, the caves, the intro panels and the HUD icon. Her head, hair, streaks and dress are cut straight from the four views of the character sheet (front, three-quarter, side, back). The joy and rainbow-cry faces are transplanted from the close-ups onto the front view. The drawn arms and legs were removed and the gaps filled from the surrounding drawing. Jointed arms and legs are drawn back on in the same pink and ink: shoulder, elbow, wrist and four curling fingers with a thumb; hip, knee, ankle and big bare feet with toes. Every frame she is posed from what she is doing:
+
+- **Which way she faces** comes from where she is heading on screen. Walking across, she is side-on (mirrored for the other way). Coming toward you at an angle, she is three-quarter; straight toward you, front; going away, you see her back. She turns to face you when she stops, and side-on when she swings or fishes.
+- **Walking and running**: thighs swing, knees bend as each foot lifts, feet roll off the toes, the lowest foot stays planted on the ground (so she bobs naturally), and the arms swing against the legs, into fists when she runs. Her hair and the lower dress trail behind her and swing back when she stops.
+- **Standing**: her right hand pressed to her chest, as on the sheet. The other hand hangs, fingers curling and uncurling. Her weight shifts from foot to foot, she breathes, and she blinks.
+- **Swinging**: the tool is in her near hand. The arm winds back over the shoulder, then slashes forward and down.
+- **Hurt** ("AY!!"): one hand clutches her chest, the other flies out with fingers spread, and her knees buckle.
+- **Joy**: arms up in a V, and a hop. **Rainbow cry**: fists clenched, a little tremble.
+- **Fishing**: both fists on the rod. **Gliding**: arms up, holding the leaf by its stems, legs dangling. **Climbing ladders** in caves: hand over hand. Jumping, sliding and sailing have their own poses.
+
+The rig data and the cut-out body pieces are in `js/ene-rig.js`, and the skeleton, poses and drawing are in `js/ene.js`.
 
 The rest of the world is drawn in the same cartoon style: near-black, slightly uneven pen ink, puffy cloud-shaped trees with pen curls and bark lines, lumpy boulders, toadstools, sunflowers, daisies and a worried little rock. Every creature has a cartoon face with big eyes, brows and a mouth that shows its mood: Thornbacks and Pebblors scowl, Gloops grin, Puffs smile, grubs worry and Scribbles glare.
 
@@ -70,7 +82,7 @@ Press **V** or tap the eye button to switch between four cameras. Zoom works in 
 
 The first three use the same sticker world and planet projection; the lower cameras flatten the ground more and push the horizon further out. Parallax has its own renderer. Caves are always 2D side view.
 
-Ene bobs, rocks from foot to foot and squashes a little on each step. Tools are drawn behind Ene, so they never cover the face: carried on the back, with the blade over the shoulder, and moved to the front hand to swing or fish.
+Ene's walk is fully animated, with knees, feet and arms (see above). Tools are carried on her back, with the blade over the shoulder, and move into her hand to swing or fish.
 
 ## The HUD
 
@@ -238,6 +250,8 @@ Pick a **World density** on the title screen: Sparse, Normal or Lush. It sets ho
 | --- | --- |
 | `js/util.js` | Seeded hash, PRNG, value noise, fBm, storage helpers |
 | `js/assets.js` | The original drawings of Ene, Star and the moon, cut out of their backgrounds and inlined |
+| `js/ene-rig.js` | Ene's body pieces cut from the four views of her character sheet, with the measured skeleton |
+| `js/ene.js` | Ene's puppet rig: the jointed arms and legs, every pose, which way she faces, and the sticker drawing |
 | `js/sprites.js` | All art (canvas paths) and the sticker builder (border, shadow, gloss, white back for peel flips) |
 | `js/world.js` | Island shape, biomes, temperature, regions and danger, object placement and density, chunk textures |
 | `js/rpg.js` | Items, gear, recipes, creatures, fish, XP curve, quest generator, region names, chest loot, Lost Pages and treasure maps |

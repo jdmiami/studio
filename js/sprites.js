@@ -451,14 +451,28 @@
   ART.playerCry = [40, 108, eneArt(0, 'cry')];
   ART.playerBack0 = [40, 108, eneBackArt(0)];
   ART.playerBack1 = [40, 108, eneBackArt(1)];
+  // Ene from her character sheet: the puppet rig (js/ene.js) posed once for each sticker,
+  // so the HUD icon, the story intro and the peel effect show her real drawing. Until
+  // her drawing has loaded, the vector stand-ins above are used.
+  function eneRigArt(st, fallback) {
+    return (c) => {
+      if (!SW.ene || !SW.ene.ready()) return fallback(c);
+      const m = c.getTransform(), S = Math.hypot(m.a, m.b);
+      SW.ene.draw(c, 20, 107, 106 / SW.ene.height, SW.ene.pose(Object.assign({ t: 1 }, st)), { dpr: S, raw: true });
+    };
+  }
+  for (const [n, st] of [
+    ['player0', { view: 'front' }], ['player1', { view: 'front', speed: 0.8, phase: 0.25 }],
+    ['playerAy', { view: 'front', face: 'ay', faceT: 1, action: 'hurt', actionT: 0.22 }],
+    ['playerJoy', { view: 'front', face: 'joy', faceT: 1, action: 'joy', actionT: 0.45 }],
+    ['playerCry', { view: 'front', face: 'cry', faceT: 1, action: 'cry', actionT: 0 }],
+    ['playerBack0', { view: 'back' }], ['playerBack1', { view: 'back', speed: 0.8, phase: 0.25 }],
+  ]) ART[n] = [40, 108, eneRigArt(st, ART[n][2])];
 
   // Star, Ene's companion: a yellow star with stubby legs and a lot of feelings
   function starArt(mood, frame) {
     return (c) => {
       const k = frame ? 3 : 0;
-      // legs, kicking a little as Star floats along
-      line(c, [[15, 34], [13 - k, 42]], INK, 4.4); line(c, [[15, 34], [13 - k, 42]], '#ffd83a', 2.4);
-      line(c, [[25, 34], [27 + k, 42 - k * 0.5]], INK, 4.4); line(c, [[25, 34], [27 + k, 42 - k * 0.5]], '#ffd83a', 2.4);
       const pts = [];
       for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 8.5 : 18; pts.push([20 + Math.cos(a) * r, 21 + Math.sin(a) * r]); }
       shape(c, (c) => polyPath(c, pts), '#ffd83a', 1.9);
@@ -1062,6 +1076,17 @@
   };
   // HUD icons get their own crisp 2x stickers, made once.
   const urls = {};
+  // when Ene's drawing finishes loading, remake every sticker of her
+  SW.refreshEne = function () {
+    for (const k in bigCache) if (k.startsWith('player')) delete bigCache[k];
+    for (const k in urls) if (k.startsWith('player')) delete urls[k];
+    if (SW.SPR) for (const name in ART) if (name.startsWith('player')) {
+      const [w, h, fn] = ART[name];
+      SW.sprites[name] = makeSticker(w, h, fn, { border: border(name), S: SW.SPR });
+      if (FLIP.includes(name)) SW.sprites[name + 'L'] = makeSticker(w, h, fn, { flip: true, S: SW.SPR });
+    }
+    document.querySelectorAll('img[data-icon^="player"]').forEach((img) => { img.src = SW.spriteURL(img.dataset.icon); });
+  };
   SW.spriteURL = function (name) {
     if (urls[name]) return urls[name];
     const art = ART[ALIAS[name] || name];

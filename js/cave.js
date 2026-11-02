@@ -484,21 +484,32 @@
     function drawHero(g, ox, oy, k) {
       const h = C.hero;
       const moving = Math.abs(h.vx) > 20 && h.ground;
-      const fr = moving ? Math.floor(h.walkT * 9) % 2 : h.ladder ? Math.floor(C.t * 6 * (Math.abs(h.vy) > 10 ? 1 : 0)) % 2 : 0;
       const x = ox + h.x * k, y = oy + h.y * k;
       const flick = h.iframes > 0 && Math.floor(h.iframes * 20) % 2 === 0;
       const tool = api.toolSprite();
-      if (h.swingT > 0 && tool) {
-        const t = 1 - h.swingT / 0.24, a = (-1.9 + 3.2 * Math.sin(t * Math.PI / 2)) * h.face;
-        const spr = SW.sprites[tool];
-        if (spr) { g.save(); g.translate(x + h.face * 14 * k, y - 22 * k); g.rotate(a); const sc = 26 * k / spr.h; g.drawImage(spr.img, -spr.ax * sc, -spr.ay * sc, spr.w * sc, spr.h * sc); g.restore(); }
-      }
-      // walking: a hop, a rock from foot to foot, and a squash as each foot lands
-      const step = moving ? Math.sin(h.walkT * 9 * Math.PI / 2) : 0;
-      const land = moving ? Math.pow(1 - Math.abs(step), 3) : 0;
-      const face = api.heroFace ? api.heroFace() : null;
+      // side-on as she walks, her back to you on a ladder, turned to you when she stops
+      if (moving) h.face = h.vx > 0 ? 1 : -1;
+      SW.ene.look(h, moving ? h.vx : 0, 0, moving, !!h.ladder, C.t, h.swingT > 0 && !h.ladder ? h.face : 0);
+      if (!moving && !h.ladder && h.eneView === 'side') h.eneFlip = h.face > 0;
+      const P = SW.ene.pose(SW.ene.state(h, api.eneReact ? api.eneReact() : null, C.t, {
+        climb: !!h.ladder, climbMove: Math.abs(h.vy) > 10, air: !h.ground && !h.ladder, slide: !!h.slide,
+      }));
+      const s = 66 * k / SW.ene.height, dpr = g.getTransform().a || 1;
       if (api.crying && api.crying()) drawCaveRainbows(g, x, y, k);
-      drawSpr(g, face || 'player' + fr, x + step * 1.2 * k, y - Math.abs(step) * 3 * k, 66 * k, h.face, flick ? 0.5 : 1, step * 0.08, 1 - 0.08 * land);
+      const m = g.getTransform();
+      g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+      // in device pixels from here, so the sticker is sharp
+      const X = m.a * x + m.e, Y = m.d * y + m.f;
+      if (h.swingT > 0 && tool && SW.sprites[tool]) {
+        const q = SW.ene.locate(X, Y, s * dpr, P), f = P.view === 'side' ? (P.flip ? 1 : -1) : (h.face || 1);
+        const spr = SW.sprites[tool];
+        g.translate(q.hand[0], q.hand[1]); g.rotate(q.ang - f * 0.55 + Math.PI / 2);
+        const sc = 26 * k * dpr / spr.h; g.scale(sc * f, sc);
+        g.drawImage(spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
+        g.setTransform(1, 0, 0, 1, 0, 0);
+      }
+      SW.ene.draw(g, X, Y, s * dpr, P, { flash: flick || h.hurtT > 0 ? 0.6 : 0, border: 2.4 * k * dpr * 0.6 });
+      g.restore();
       if (h.slide) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(x - h.slide * 18 * k, y - 4 * k, 12 * k, 4 * k, 0, 0, TAU); g.fill(); }
     }
     function drawCaveStar(g, ox, oy, k) {

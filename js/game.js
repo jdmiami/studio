@@ -991,6 +991,7 @@
     caveDone: (def) => { G.stats.caves = (G.stats.caves || 0) + 1; questDirty = true; eneReact('joy'); },
     heroFace: () => { const e = G.ene; return !e ? null : e.cryT > 0 ? 'playerCry' : e.faceT > 0 && e.face ? 'player' + e.face : null; },
     crying: () => !!(G.ene && G.ene.cryT > 0),
+    eneReact: () => G.ene,
     charge: (n) => chargeCry(n),
     starMood: () => (G.star ? G.star.mood : 'happy'),
     starFeel: (m, t) => starFeel(m, t),
@@ -1424,20 +1425,26 @@
     if (e.k === 3) {
       const e2 = G.ene || {};
       const moving = p.moving && !p.flying && !p.boat;
-      const frame = moving ? Math.floor(p.walkT * 9) % 2 : 0;
-      const away = moving && Math.abs(p.vy) > Math.abs(p.vx) * 1.2 && p.vy < 0;
-      const name = e2.cryT > 0 ? 'playerCry' : away ? 'playerBack' + frame : e2.faceT > 0 && e2.face ? 'player' + e2.face + (p.face < 0 ? 'L' : '') : 'player' + frame + (p.face < 0 ? 'L' : '');
-      const step = moving ? Math.sin(p.walkT * 9 * Math.PI / 2) : 0;
-      const bob = Math.abs(step) * 3 * sc + p.alt * sc;
+      // across the hill: side-on; up it: her back; down it: toward you
+      eneLook(p, p.vx, p.vy, moving || (p.moving && p.boat), false);
+      const bob = p.alt * sc + (p.boat ? Math.sin(G.time * 3) * 2 * sc : 0);
       sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
       sctx.fillStyle = 'rgba(46,34,82,0.22)'; sctx.beginPath(); sctx.ellipse(sx, sy, 15 * sc, 5 * sc, 0, 0, TAU); sctx.fill();
       if (p.boat) pxSprite('raft', sx, sy + 6 * sc, sc);
       if (e2.cryT > 0) drawRainbows(sx, sy - bob, sctx, sc, SDPR);
+      const fishing = !!G.fishing;
+      const toolName = fishing ? 'rod' : p.swingT > 0 ? p.swingTool : bestWeapon() || (G.tools.axe ? 'axe' : G.tools.pick ? 'pick' : null);
+      const toolSpr = eneToolSpr(toolName);
+      const P = SW.ene.pose(eneState(p, { fish: fishing, glide: p.flying || p.alt > 4, boat: p.boat }));
+      const s = ENE_UNITS * sc / SW.ene.height, f = eneFacing(P, p);
+      const inHand = (p.swingT > 0 || fishing) && toolSpr;
+      if (toolSpr && !inHand && !p.flying) pxSprite(toolSpr, sx - f * 9 * sc, sy - bob - 50 * sc, sc, -f * 0.55, 0.8 * -f, 0.8);
+      sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+      if (inHand) { const q2 = SW.ene.locate(sx, sy - bob, s, P); drawEneTool(sctx, toolSpr, q2.hand, q2.ang, f, fishing ? 1.25 : 0.55, sc, SDPR); sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0); }
       const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
-      const spr = pxSprite(name, sx + step * 1.2 * sc, sy - bob, sc, step * 0.075, 1, 1);
-      if (p.hurtT > 0 || flick) { sctx.globalAlpha = 0.7; pxSprite(name, sx + step * 1.2 * sc, sy - bob, sc, step * 0.075, 1, 1, 'flash'); sctx.globalAlpha = 1; }
-      if (p.flying || p.alt > 4) pxSprite('glider', sx, sy - bob - 108 * sc, sc * 0.9);
-      if (spr) px.list.push({ k: 3, x0: sx - 20 * sc, y0: sy - 100 * sc, x1: sx + 20 * sc, y1: sy });
+      const info = SW.ene.draw(sctx, sx, sy - bob, s, P, { dpr: SDPR, flash: p.hurtT > 0 || flick ? 0.7 : 0, border: 2.4 * sc });
+      if (p.flying || p.alt > 4) { if (info) eneLeafStems(sctx, info.hands, sx, sy - bob - 100 * sc, sc, SDPR); pxSprite('glider', sx, sy - bob - 100 * sc, sc * 0.9); }
+      if (info) px.list.push({ k: 3, x0: sx - 20 * sc, y0: sy - 100 * sc, x1: sx + 20 * sc, y1: sy });
       return;
     }
     if (e.k === 8) {
@@ -2710,6 +2717,41 @@
   }
   function roundRect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, Math.max(0, w), h, r); else ctx.rect(x, y, w, h); }
 
+  // ---------------- Ene, the puppet ----------------
+  // Her head, hair and dress are the character sheet's own drawing; arms and
+  // legs are jointed and posed every frame (js/ene.js). Here the game decides
+  // what she is doing and which way she is seen from: side-on walking across
+  // the screen, three-quarter or front coming toward you, her back going away,
+  // and turned to the camera when she stands still.
+  const ENE_UNITS = 108;                 // her height in sticker units, like every other sticker
+  // swinging or fishing she turns side-on, so the stroke and the rod read clearly
+  const eneLook = (p, sdx, sdy, moving, forceBack) => SW.ene.look(p, sdx, sdy, moving, forceBack, G.time, p.swingT > 0 || G.fishing ? (p.face || 1) : 0);
+  const eneState = (p, extra) => SW.ene.state(p, G.ene, G.time, extra);
+  const eneToolSpr = (n) => n ? { axe: 'toolAxe', pick: 'toolPick', sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade', rod: 'toolRod' }[n] : null;
+  // her tool in her hand, under her fingers: drawn first, so the puppet's hand closes over it
+  // `ang` is her forearm's direction on screen, `f` the way she faces (1 right, -1 left),
+  // `off` how far the tool tips forward of the forearm (0: straight on, PI/2: square to it)
+  function drawEneTool(g, toolSpr, hand, ang, f, off, sc, dpr) {
+    const spr = SW.sprites[toolSpr];
+    if (!spr || !hand) return;
+    g.save(); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.translate(hand[0], hand[1]);
+    g.rotate(ang - f * off + Math.PI / 2);   // the tool art points up from its handle end
+    g.scale(sc * 0.9 * f, sc * 0.9);
+    g.drawImage(spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
+    g.restore();
+  }
+  // two thin stems from her fists up to the leaf
+  function eneLeafStems(g, hands, lx, ly, sc, dpr) {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.lineCap = 'round';
+    for (const [w, col] of [[4.2, '#141016'], [2, '#6fae3c']]) {
+      g.lineWidth = w * sc; g.strokeStyle = col;
+      for (const h of hands) { g.beginPath(); g.moveTo(h[0], h[1]); g.quadraticCurveTo((h[0] + lx) / 2, ly + 6 * sc, lx + (h[0] - lx) * 0.25, ly + 4 * sc); g.stroke(); }
+    }
+  }
+  // which way she faces on screen, from the pose
+  const eneFacing = (P, p) => P.view === 'side' || P.view === 'threeQ' ? (P.flip ? 1 : -1) : P.view === 'front' ? 1 : (p.face || 1);
+
   function drawPlayer() {
     const p = G.player;
     const pt = proj(p.x, p.y, p.lvlOff);
@@ -2717,46 +2759,46 @@
     const sx = gx, sy = gy - p.alt * Z;
     if (!VIEWS[view].hero) return;                     // first person: you are the camera
     const ground = !p.flying && !p.boat;
-    const frame = p.moving && ground ? Math.floor(p.walkT * 9) % 2 : 0;
     const back = view === 'third';
     const e = G.ene || {};
-    // her face: crying rainbows, "AY!!", joy, or the walk frames
-    const name = e.cryT > 0 ? 'playerCry' : back ? 'playerBack' + frame : e.faceT > 0 && e.face ? 'player' + e.face + (p.face < 0 ? 'L' : '') : 'player' + frame + (p.face < 0 ? 'L' : '');
-    // every step: a hop, a little side-to-side rock, and a squash as the foot lands
-    const step = p.moving && ground ? Math.sin(p.walkT * 9 * Math.PI / 2) : 0;
-    const bob = p.moving && ground ? Math.abs(step) * 3 * Z : p.boat ? Math.sin(G.time * 3) * 2 * Z : 0;
-    const land = p.moving && ground ? Math.pow(1 - Math.abs(step), 3) : 0;
-    const ky = (p.moving ? 1 + Math.sin(p.walkT * 18) * 0.03 : 1 + Math.sin(G.time * 3) * 0.025) * (1 - 0.08 * land);
-    const kx = (2 - ky) * (1 + 0.04 * land);
-    const rock = step * (p.running ? 0.11 : 0.075);
-    const rot = p.flying ? p.face * 0.18 + Math.sin(G.time * 2) * 0.05 : p.moving ? (back ? 0 : p.face * (p.running ? 0.12 : 0.06)) + rock : 0;
-    const sway = step * 1.2 * Z;
+    // which way she is seen, from where she is heading on screen
+    const sdx = screenDX(p.vx, p.vy), sdy = -p.vx * sinA + p.vy * cosA;
+    eneLook(p, sdx, sdy, p.moving && (ground || p.boat), back);
     // a soggy raft sags and curls up at the edges
+    const bob = p.boat ? Math.sin(G.time * 3) * 2 * Z : 0;
     if (p.boat) drawFolded('raft', gx, gy + 6 * Z + bob, Math.sin(G.time * 2) * 0.03, 1 - p.raftWet * 0.12, 1 - p.raftWet * 0.2, 0.55, p.raftWet * 1.1);
     const fishing = !!G.fishing;
     const toolName = fishing ? 'rod' : p.swingT > 0 ? p.swingTool : bestWeapon() || (G.tools.axe ? 'axe' : G.tools.pick ? 'pick' : null);
-    const toolSpr = toolName ? { axe: 'toolAxe', pick: 'toolPick', sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade', rod: 'toolRod' }[toolName] : 'toolHand';
-    let tRot;
-    if (fishing) tRot = G.fishing.phase === 'cast' ? lerp(-1.2, 0.5, Math.min(1, G.fishing.t / 0.3)) : G.fishing.phase === 'bite' ? 0.2 + Math.sin(G.time * 30) * 0.15 : 0.35;
-    else if (p.swingT > 0) { const k = 1 - p.swingT / 0.24; tRot = lerp(-1.9, 1.3, Math.sin(k * Math.PI / 2)); }
-    else tRot = toolSpr === 'toolHand' ? 0.2 : -0.6;
-    // idle: carried on the back, blade showing over the shoulder; swinging or fishing: in the front hand.
-    // Either way it is drawn behind Ene, so it never covers the face.
-    const inHand = p.swingT > 0 || fishing;
-    const hx = sx + sway + (back ? 11 : inHand ? p.face * 11 : -p.face * 9) * Z, hy = sy - (inHand ? 40 : 48) * Z - bob;
-    // the tool is always drawn behind Ene, so it never covers their face
-    if (!p.flying && !(toolSpr === 'toolHand' && p.swingT <= 0)) {
-      const hand = toolSpr === 'toolHand', f = back ? 1 : p.face;
-      drawSprite(toolSpr, hx, hy + (hand ? 4 : 8) * Z, tRot * f + rock * 0.5, hand ? 1 : 0.85 * f, hand ? 1 : 0.85);
+    const toolSpr = eneToolSpr(toolName);
+    const P = SW.ene.pose(eneState(p, {
+      fish: fishing, glide: p.flying || p.alt > 4, air: !p.flying && p.alt > 2 && p.alt <= 4, boat: p.boat,
+    }));
+    const s = ENE_UNITS * Z / SW.ene.height;
+    const inHand = (p.swingT > 0 || fishing) && toolSpr;
+    const f = eneFacing(P, p);
+    // idle, the tool rides on her back, the blade showing over a shoulder; drawn behind her
+    if (toolSpr && !inHand && !p.flying) {
+      drawSprite(toolSpr, sx + (back ? 10 : -f * 9) * Z, sy - 50 * Z - bob, (back ? 0.5 : -f * 0.55), 0.8 * (back ? 1 : -f), 0.8);
     }
     const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
     drawRainbows(sx, sy);                       // behind her, so they pour out past her face
-    drawSprite(name, sx + sway, sy - bob, rot, kx, ky);
-    if (p.hurtT > 0 || flick) { ctx.globalAlpha = 0.75; drawSprite(name, sx + sway, sy - bob, rot, kx, ky, 'flash'); ctx.globalAlpha = 1; }
-    // the leaf banks with the wind and droops as it gets wet
+    // draw her once off-screen to find her hand, put the tool there, then draw her over it
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (inHand) {
+      const probe = SW.ene.locate(sx, sy - bob, s, P);
+      {
+        const off = fishing ? 1.25 : 0.55;
+        drawEneTool(ctx, toolSpr, probe.hand, probe.ang, f, off, Z, DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+    }
+    const info = SW.ene.draw(ctx, sx, sy - bob, s, P, { dpr: DPR, flash: p.hurtT > 0 || flick ? 0.75 : 0, border: 2.4 * Z });
+    G.eneHand = info ? info.hand : null;
+    // the leaf banks with the wind and droops as it gets wet; she holds it up by its stem
     if (p.flying || p.alt > 4) {
+      if (info) eneLeafStems(ctx, info.hands, sx, sy - 100 * Z, Z, DPR);
       const bank = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.here.gust * 0.22;
-      drawFolded('glider', sx, sy - 108 * Z, rot * 0.6 + bank + Math.sin(G.time * 3) * 0.04, 0.9, 0.9 * (1 - p.leafWet * 0.15), 0.5, p.leafWet * 1.2);
+      drawFolded('glider', sx, sy - 100 * Z, (p.face || 1) * 0.1 + Math.sin(G.time * 2) * 0.03 + bank + Math.sin(G.time * 3) * 0.04, 0.9, 0.9 * (1 - p.leafWet * 0.15), 0.5, p.leafWet * 1.2);
     }
     if (fishing && G.fishing.phase === 'bite') { const s = 1 + Math.sin(G.time * 20) * 0.12; drawSprite('uiBang', sx, sy - 120 * Z, 0, s, s); }
   }
