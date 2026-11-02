@@ -18,19 +18,25 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const ease = (t) => t * t * (3 - 2 * t);
 
+  const SHOULDERS = { front: [[82, 283], [130, 291]], threeQ: [[62, 276], [109, 283]], side: [[62.5, 281], [57, 280]], back: [[75, 281], [111, 285]] };
   // per-view skeleton, measured from the drawings
   function build() {
     const R = SW.ENE_RIG, out = {};
     const mid = (r) => (r[0] + r[1]) / 2;
     for (const v of ['front', 'threeQ', 'side', 'back']) {
       const d = R[v];
-      const hipY = d.hem - 24;
-      const legs = d.legsTop.length >= 2 ? [mid(d.legsTop[0]), mid(d.legsTop[1])] : [mid(d.legsTop[0]) - 3, mid(d.legsTop[0]) + 3];
-      const legLen = d.ground - 12 - hipY;
+      // hips, knees and ankles where the drawing has them (traced with the limbs)
+      const T = SW.ENE_LIMBS && SW.ENE_LIMBS.views[v];
+      const hipY = T ? T.hipY : d.hem - 24;
+      const legs = T ? (T.legs.length > 1 ? [T.legs[0].top, T.legs[1].top] : [T.legs[0].top - 1.5, T.legs[0].top + 1.5])
+        : d.legsTop.length >= 2 ? [mid(d.legsTop[0]), mid(d.legsTop[1])] : [mid(d.legsTop[0]) - 3, mid(d.legsTop[0]) + 3];
+      const ankleY = T ? T.ankleY : d.ground - 11;
+      const legLen = ankleY - hipY, kneeK = T ? (T.kneeY - hipY) / legLen : 0.53;
       out[v] = {
         w: d.w, h: d.h, ground: d.ground, hem: d.hem,
-        hips: legs.map((x) => [x, hipY]), thigh: legLen * 0.53, shin: legLen * 0.47,
-        shoulders: v === 'back' ? [[66, 293], [113, 294]] : v === 'threeQ' ? [[63, 283], [112, 286]] : d.shoulders, upper: 50, fore: 44,
+        hips: legs.map((x) => [x, hipY]), thigh: legLen * kneeK, shin: legLen * (1 - kneeK), footH: d.ground - ankleY,
+        // her shoulders: at the edges of her chest where the drawing is widest, just above the dress
+        shoulders: SHOULDERS[v], upper: 53, fore: 58,
         skin: `rgb(${d.skin.join(',')})`, shade: `rgb(${d.shade.join(',')})`, eyes: d.eyes,
         anchor: (legs[0] + legs[1]) / 2,
         // which way the drawing faces: the side and 3/4 views look to the viewer's left
@@ -90,7 +96,7 @@
     // arm 0 is the viewer's left in front/back views and the near arm in the side view
     for (let i = 0; i < 2; i++) {
       const p2 = ph + (i ? 0 : Math.PI);           // opposite to the leg on the same side
-      let sh = 0.12, el = 0.25, out = i ? 0.16 : -0.16, fingers = 0.35 + 0.2 * Math.sin(t * 1.7 + i), fist = false, target = null;
+      let sh = 0.12, el = 0.25, out = i ? 0.16 : -0.16, fingers = 0.35 + 0.2 * Math.sin(t * 1.7 + i), fist = false, target = null, handAbs = null;
       if (view === 'threeQ' && i === 1) out = 0.42;
       if (walk > 0.02) {
         const A = lerp(0.42, 0.95, run) * walk;
@@ -99,7 +105,7 @@
         fist = run > 0.4;
       } else if (isFront && i === 0 && !st.fish) {
         // the sheet's pose: her right hand pressed to her chest
-        target = [V.anchor + 2 + Math.sin(t * 1.4) * 1.5, V.shoulders[0][1] + 16, -1]; fingers = 0.15;
+        target = [V.anchor - 16 + Math.sin(t * 1.4) * 1.5, V.shoulders[0][1] + 26, 1]; fingers = 0.15; handAbs = -0.25 + Math.sin(t * 1.4) * 0.05;
       } else if (isFront && i === 1) {
         // the other hand hangs, fingers curling and uncurling a little
         sh = 0.05 + 0.04 * Math.sin(t * 0.9); el = 0.45; out = 0.3; fingers = 0.55 + 0.3 * Math.sin(t * 2.3);
@@ -113,19 +119,20 @@
       if (act === 'hurt') {
         // AY!! one hand clutches her chest, the other flies out, fingers spread
         const k = Math.sin(clamp(aT / 0.5, 0, 1) * Math.PI);
-        if (i === 0 && !isSide) { target = [V.anchor + 4, V.shoulders[0][1] + 14, -1]; fingers = 0.2; }
+        if (i === 0 && !isSide) { target = [V.anchor - 14, V.shoulders[0][1] + 24, 1]; fingers = 0.2; handAbs = -0.4; }
         else { sh = lerp(sh, -1.9, k); el = lerp(el, 1.3, k); out = (i ? 1.1 : -1.1) * k + out * (1 - k); fingers = 0.05; }
       }
+      if (act === 'joy' || act === 'cry' || (act === 'swing' && i === toolArm)) { target = null; handAbs = null; }
       if (act === 'joy') { const k = Math.sin(clamp(aT / 1.2, 0, 1) * Math.PI * 0.5 + 0.25) ; sh = lerp(sh, -2.75, k); el = lerp(el, 0.35, k); out = (i ? 1.15 : -1.15) * k + out * (1 - k); fingers = 1; fist = false; }
       if (act === 'cry') { sh = 0.08 + Math.sin(t * 40 + i) * 0.025; el = 0.12; out = i ? 0.32 : -0.32; fist = true; }
       const sy0 = V.shoulders[0][1];
       if (st.fish) { target = isSide ? [V.anchor + V.face * (62 + i * 6), sy0 + 26 + i * 4, 1] : [V.anchor + (i ? 10 : -6), sy0 + 34, i ? 1 : -1]; fist = true; }
-      if (st.glide) { target = [V.anchor + (i ? 58 : -58) * (isSide ? 0.35 : 1) + (isSide ? V.face * 20 : 0), sy0 - 84 + Math.sin(t * 2 + i) * 3, i ? 1 : -1]; fist = true; }
+      if (st.glide) { target = [V.anchor + (i ? 84 : -84) * (isSide ? 0.3 : 1) + (isSide ? V.face * 20 : 0), sy0 - 78 + Math.sin(t * 2 + i) * 3, i ? 1 : -1]; fist = true; }
       if (st.climb) { const c = Math.sin(t * 7 + i * Math.PI) * (st.climbMove ? 1 : 0.15); target = [V.anchor + (i ? 22 : -22), sy0 - 70 - 34 * c, i ? 1 : -1]; fist = true; }
       if (st.air && act !== 'swing') { sh = -1.9; el = 0.7; out = i ? 0.7 : -0.7; fingers = 1; }
       if (st.slide) { sh = -2.2; el = 0.4; out = i ? 0.9 : -0.9; fingers = 1; }
       if (st.boat && walk < 0.05) { sh = 0.35 + 0.1 * Math.sin(t * 2 + i * 2); el = 0.4; out = (i ? 0.75 : -0.75) + 0.1 * Math.sin(t * 2); }
-      P.arms.push({ sh, el, out, i, target });
+      P.arms.push({ sh, el, out, i, target, handAbs: fist ? null : handAbs });
       P.fingers[i] = clamp(fingers, 0, 1); P.fist[i] = fist;
     }
     // ---- body ----
@@ -138,6 +145,7 @@
     P.sway = st.sway || 0;
     P.face = st.face && st.faceT > 0 ? st.face : null;
     P.blink = !!st.blink;
+    P.climb = !!st.climb;
     // ---- solve the joints ----
     solve(P, st);
     return P;
@@ -161,7 +169,7 @@
       return { hip: h, knee, ankle, foot: g.foot, lift: g.lift, i };
     });
     // keep the lowest foot on the ground: the body bobs naturally as she walks
-    const groundAnkle = V.ground - 11;
+    const groundAnkle = V.ground - V.footH;
     const dy = st.air || st.glide || st.climb || st.slide ? 0 : groundAnkle - lowest;
     P.body.y += dy;
     for (const l of P.L) { l.hip = [l.hip[0], l.hip[1] + dy]; l.knee[1] += dy; l.ankle[1] += dy; }
@@ -178,7 +186,7 @@
         const bend = (a.target[2] || 1) * Math.acos(cosA);
         const elbow = [sh[0] + Math.cos(a0 + bend) * V.upper, sh[1] + Math.sin(a0 + bend) * V.upper];
         const wrist = [sh[0] + dx, sh[1] + dy];
-        return { shoulder: sh, elbow, wrist, ang: Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]), i };
+        return { shoulder: sh, elbow, wrist, ang: Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]), i, handAbs: a.handAbs };
       }
       // sideways reach (out) and swing (sh), foreshortened in front/back views
       const ox = Math.sin(a.out) * 1, side = isSide ? 1 : depth;
@@ -249,7 +257,102 @@
     g.restore();
   }
 
+  // ---- the traced pieces ----
+  const PIECES = () => SW.ENE_LIMBS && SW.ENE_LIMBS.pieces;
+  function pieceImg(k, behind) {
+    const im = SW.ENE_LIMB_IMG && SW.ENE_LIMB_IMG[k];
+    if (!im || !im.complete || !im.naturalWidth) return null;
+    if (!behind) return im;
+    // the limb on the far side of her body, a shade darker
+    const key = k + '|far';
+    if (!tintCache[key]) {
+      const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+      x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(70,20,80,0.2)'; x.fillRect(0, 0, c.width, c.height);
+      tintCache[key] = c;
+    }
+    return tintCache[key];
+  }
+  const tintCache = {};
+  // lay piece k on the bone p -> q: its joint a on p, joint b on q (stretched along the bone only)
+  function bone(g, k, p, q, behind, mirror) {
+    const m = PIECES()[k], im = pieceImg(k, behind);
+    if (!m || !im) return false;
+    const L = Math.hypot(q[0] - p[0], q[1] - p[1]), L0 = m.b[1] - m.a[1];
+    g.save(); g.translate(p[0], p[1]); g.rotate(Math.atan2(q[1] - p[1], q[0] - p[0]) - Math.PI / 2);
+    if (mirror) g.scale(-1, 1);
+    g.scale(1, Math.max(0.3, L / L0));
+    g.drawImage(im, -m.a[0], -m.a[1], m.w, m.h);
+    g.restore();
+    return true;
+  }
+  // a hand or foot: joint a on p, its length pointing along `ang`
+  function part(g, k, p, ang, behind, mirror, sx = 1) {
+    const m = PIECES()[k], im = pieceImg(k, behind);
+    if (!m || !im) return false;
+    g.save(); g.translate(p[0], p[1]); g.rotate(ang - Math.PI / 2);
+    g.scale((mirror ? -1 : 1) * sx, 1);
+    g.drawImage(im, -m.a[0], -m.a[1], m.w, m.h);
+    g.restore();
+    return true;
+  }
+  // a rounded joint under the pieces, so a bent elbow or knee shows a smooth corner
+  // in the drawing's pen line; `out` limits the ink to the outer side (shoulders)
+  function cap(g, p, r, skin, out) {
+    g.beginPath(); g.arc(p[0], p[1], r + 1.6, 0, TAU); g.fillStyle = INK; g.fill();
+    g.beginPath(); g.arc(p[0], p[1], r, 0, TAU); g.fillStyle = skin; g.fill();
+  }
+  // her shoulders: round and bare above the tube dress. Drawn behind the body, so the
+  // drawing's own chest and neck cover the inside and the pen line shows only around
+  // the outside, running on into the arm.
+  function drawShoulders(g, P) {
+    const M = PIECES();
+    if (!M || !pieceImg('upperArm') || P.view === 'side') return;
+    const V = P.V, r = M.upperArm.ra + 1.2;
+    for (const a of P.A) {
+      const s = a.shoulder, dx = s[0] < V.anchor ? -1 : 1;
+      // a deltoid: the round cap, joined back toward the neck
+      g.beginPath();
+      g.moveTo(V.anchor + dx * 8, s[1] - r * 1.9);
+      g.quadraticCurveTo(s[0] - dx * 1, s[1] - r * 1.5, s[0] + dx * r * 0.55, s[1] - r * 0.3);
+      g.arc(s[0], s[1], r, dx > 0 ? -0.4 : Math.PI + 0.4, dx > 0 ? 1.4 : Math.PI - 1.4, dx < 0);
+      g.lineTo(V.anchor, s[1] + 4); g.closePath();
+      g.lineJoin = 'round'; g.lineWidth = 3.2; g.strokeStyle = INK; g.stroke();
+      g.fillStyle = V.skin; g.fill();
+    }
+  }
+  function drawLegTraced(g, l, P, behind) {
+    const V = P.V, view = P.view, i = view === 'side' ? 0 : l.i, M = PIECES();
+    const th = `thigh_${view}_${i}`, sh = `shin_${view}_${i}`, ft = `foot_${view}_${i}`;
+    if (!M || !M[th] || !pieceImg(th)) return false;
+    const skin = behind ? mixRGB(V.skin, '#7a3a80', 0.18) : V.skin;
+    cap(g, l.knee, Math.min(M[th].rb, M[sh].ra) - 2.4, skin);
+    bone(g, th, l.hip, l.knee, behind);
+    bone(g, sh, l.knee, l.ankle, behind);
+    // the foot rolls with the step; side-on it pitches, from the front it barely turns
+    const roll = l.foot * (view === 'side' ? 1 : 0.25) * (V.face < 0 ? -1 : 1);
+    part(g, ft, l.ankle, Math.PI / 2 + roll, behind, false);
+    return true;
+  }
+  function drawArmTraced(g, a, P, behind) {
+    const V = P.V, M = PIECES();
+    if (!M || !pieceImg('upperArm')) return false;
+    const skin = behind ? mixRGB(V.skin, '#7a3a80', 0.18) : V.skin;
+    cap(g, a.elbow, Math.min(M.upperArm.rb, M.foreArm.ra) - 2.4, skin);
+    // mirror the left and right arms in the front and back views, so both thumbs sit the same way
+    const mir = P.view !== 'side' && a.i === 1;
+    bone(g, 'upperArm', a.shoulder, a.elbow, behind, mir);
+    bone(g, 'foreArm', a.elbow, a.wrist, behind, mir);
+    // the drawn hand, open and relaxed, or the drawn fist; it bends a little at the wrist
+    const fist = P.fist[a.i];
+    const bend = (fist ? 0.25 : -0.12 + 0.25 * (P.fingers[a.i] - 0.4)) * (mir ? -1 : 1) * (P.view === 'side' ? (V.face < 0 ? 1 : -1) : 1);
+    // a hand laid flat (on her chest) is placed by its own angle; otherwise it follows the forearm
+    part(g, fist ? 'fist' : 'hand', a.wrist, a.handAbs != null ? a.handAbs : a.ang + bend, behind, a.handAbs != null ? true : mir);
+    return true;
+  }
+
   function drawLeg(g, l, P, behind) {
+    if (drawLegTraced(g, l, P, behind)) return;
     const V = P.V, view = P.view;
     const skin = behind ? mixRGB(V.skin, '#7a3a80', 0.18) : V.skin;
     const W = 9.5;
@@ -261,6 +364,7 @@
     footShape(g, l.ankle, dir, l.foot * (view === 'side' ? 1 : 0.3) + splay * (dir || 0), V, l.knee, view === 'back', view === 'threeQ' && l.i ? 0.6 : view === 'front' ? 0.82 : 1);
   }
   function drawArm(g, a, P, behind) {
+    if (drawArmTraced(g, a, P, behind)) return;
     const V = P.V;
     const skin = behind ? mixRGB(V.skin, '#7a3a80', 0.18) : V.skin;
     limb(g, [a.shoulder, a.elbow, a.wrist], 8, skin, V.shade);
@@ -351,15 +455,20 @@
     if (P.view === 'side') {
       drawLeg(cg, P.L[1], P, true); drawArm(cg, P.A[1], P, true);
       drawLeg(cg, P.L[0], P, false);
+      drawShoulders(cg, P);
       ok = drawBody(cg, P);
       drawArm(cg, P.A[0], P, false);
     } else if (P.view === 'back') {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
-      drawArm(cg, P.A[0], P, false); drawArm(cg, P.A[1], P, false);
+      // on a ladder her hands reach up in front of her hair
+      if (!P.climb) { drawArm(cg, P.A[0], P, false); drawArm(cg, P.A[1], P, false); }
+      drawShoulders(cg, P);
       ok = drawBody(cg, P);
+      if (P.climb) { drawArm(cg, P.A[0], P, false); drawArm(cg, P.A[1], P, false); }
     } else {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
       drawArm(cg, P.A[1], P, false);
+      drawShoulders(cg, P);
       ok = drawBody(cg, P);
       drawArm(cg, P.A[0], P, false);
     }
@@ -391,7 +500,8 @@
     const V = P.V;
     const T = (p) => { const px = P.flip ? V.anchor * 2 - p[0] : p[0]; return [x + (px - V.anchor) * s0, y + (p[1] - V.ground) * s0]; };
     const ta = P.A[P.toolArm];
-    return { hands: [T(P.A[0].wrist), T(P.A[1].wrist)], hand: T(ta.wrist), elbow: T(ta.elbow), head: T([V.anchor, 60 + P.body.y]), eyes: T([V.anchor, 150 + P.body.y]), top: y + (20 + P.body.y - V.ground) * s0, ang: P.flip ? Math.PI - ta.ang : ta.ang };
+    const grip = (w) => [w.wrist[0] + Math.cos(w.ang) * 12, w.wrist[1] + Math.sin(w.ang) * 12];
+    return { grip: T(grip(ta)), hands: [T(P.A[0].wrist), T(P.A[1].wrist)], hand: T(ta.wrist), elbow: T(ta.elbow), head: T([V.anchor, 60 + P.body.y]), eyes: T([V.anchor, 150 + P.body.y]), top: y + (20 + P.body.y - V.ground) * s0, ang: P.flip ? Math.PI - ta.ang : ta.ang };
   }
 
   // ---------------- what she is doing, from a game's state ----------------
@@ -446,10 +556,10 @@
   // the whole height of the character in sheet pixels (feet to hair top)
   SW.ene = {
     pose, draw, locate, look, state,
-    ready: () => !!SW.ENE_BODY && Object.values(SW.ENE_BODY).every((im) => im.complete && im.naturalWidth > 0),
+    ready: () => !!SW.ENE_BODY && [...Object.values(SW.ENE_BODY), ...Object.values(SW.ENE_LIMB_IMG || {})].every((im) => im.complete && im.naturalWidth > 0),
     get height() { if (!RIG) RIG = build(); return RIG.front.ground - 8; },
   };
   // tell the sprite sheet when her drawing has loaded, so it can remake her stickers
-  if (SW.ENE_BODY) Promise.all(Object.values(SW.ENE_BODY).map((im) => (im.decode ? im.decode().catch(() => {}) : Promise.resolve())))
+  if (SW.ENE_BODY) Promise.all([...Object.values(SW.ENE_BODY), ...Object.values(SW.ENE_LIMB_IMG || {})].map((im) => (im.decode ? im.decode().catch(() => {}) : Promise.resolve())))
     .then(() => { if (SW.refreshEne) SW.refreshEne(); });
 })();

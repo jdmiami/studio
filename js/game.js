@@ -1440,7 +1440,7 @@
       const inHand = (p.swingT > 0 || fishing) && toolSpr;
       if (toolSpr && !inHand && !p.flying) pxSprite(toolSpr, sx - f * 9 * sc, sy - bob - 50 * sc, sc, -f * 0.55, 0.8 * -f, 0.8);
       sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
-      if (inHand) { const q2 = SW.ene.locate(sx, sy - bob, s, P); drawEneTool(sctx, toolSpr, q2.hand, q2.ang, f, fishing ? 1.25 : 0.55, sc, SDPR); sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0); }
+      if (inHand) { const q2 = SW.ene.locate(sx, sy - bob, s, P); drawEneTool(sctx, toolSpr, q2.grip, q2.ang, f, fishing ? 1.25 : 0.55, sc, SDPR); sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0); }
       const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
       const info = SW.ene.draw(sctx, sx, sy - bob, s, P, { dpr: SDPR, flash: p.hurtT > 0 || flick ? 0.7 : 0, border: 2.4 * sc });
       if (p.flying || p.alt > 4) { if (info) eneLeafStems(sctx, info.hands, sx, sy - bob - 100 * sc, sc, SDPR); pxSprite('glider', sx, sy - bob - 100 * sc, sc * 0.9); }
@@ -2788,7 +2788,7 @@
       const probe = SW.ene.locate(sx, sy - bob, s, P);
       {
         const off = fishing ? 1.25 : 0.55;
-        drawEneTool(ctx, toolSpr, probe.hand, probe.ang, f, off, Z, DPR);
+        drawEneTool(ctx, toolSpr, probe.grip, probe.ang, f, off, Z, DPR);
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       }
     }

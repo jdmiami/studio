@@ -503,7 +503,7 @@
       if (h.swingT > 0 && tool && SW.sprites[tool]) {
         const q = SW.ene.locate(X, Y, s * dpr, P), f = P.view === 'side' ? (P.flip ? 1 : -1) : (h.face || 1);
         const spr = SW.sprites[tool];
-        g.translate(q.hand[0], q.hand[1]); g.rotate(q.ang - f * 0.55 + Math.PI / 2);
+        g.translate(q.grip[0], q.grip[1]); g.rotate(q.ang - f * 0.55 + Math.PI / 2);
         const sc = 26 * k * dpr / spr.h; g.scale(sc * f, sc);
         g.drawImage(spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
         g.setTransform(1, 0, 0, 1, 0, 0);
