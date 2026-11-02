@@ -2,7 +2,21 @@
 
 A procedural survival RPG on one huge island where everything is a sticker. Every tree, rock, creature and campfire is flat vector art with a die-cut white border and a drop shadow. The ground is built from stacked cardboard layers (sea, land, highlands), and the whole world is bent onto a rolling drum. Ground in the distance curves away to a hazy horizon under the sky, and ground near the camera swells toward you, so the 2.5D depth is there on every screen.
 
-The first time you open the game, an animated action-manga intro tells the story: ink panels, speed lines, halftone screentone, impact frames and katakana sound effects. The world starts in colour. When the Ink spills the pages turn to ink and tone, and only Pip keeps their colour. Watch it again from **Watch the story** on the title screen. Tap to turn pages, or press Skip.
+You play **Ene in Pink**, with her companion **Star**.
+
+The first time you open the game, an animated action-manga intro tells the story: ink panels, speed lines, halftone screentone, impact frames and katakana sound effects. The world starts in colour. When the Ink spills, the pages turn to ink and tone, and only Ene and Star keep their colour. Ene's rainbow cry peels her free from the page, and Star tumbles after her to Stickerwild. Watch it again from **Watch the story** on the title screen. Tap to turn pages, or press Skip.
+
+## Ene and Star
+
+The characters come from the original hand-drawn character sheets. The drawings themselves are used for close-ups: the pop-up portraits, the intro and the moon. Ene and Star in the world are vector stickers redrawn from those sheets, so they stay crisp at any zoom and can animate. The cut-out drawings are in `art/`, inlined into `js/assets.js`.
+
+- **Ene's faces.** "AY!!" pops up, with a close-up of her shocked face, when she gets hurt or surprised. Her joy face shows on level-ups, finished quests, Lost Pages and cave treasure.
+- **Rainbow cry** (R, the rainbow bar under XP, or the Rainbow button on phones). The bar fills as you fight, a little as you get hurt, and slowly over time. When it's full, two rainbows pour from Ene's eyes for about two seconds. They knock back and hurt everything around her and wash Scribbles away completely. It works in caves too.
+- **Star** floats beside Ene and wears its feelings on its face: happy, surprised, worried when Ene is badly hurt, cross when enemies are near, laughing when things go well.
+  - **Guide:** Star flies ahead toward your next goal (the next settlement, cave, side-quest person or Lost Page), so it replaces the old arrows.
+  - **Light:** Star glows, lighting up nights and dark caves even without a lantern.
+  - **Helper:** every few seconds it zaps a nearby enemy with starlight, which also stuns it briefly.
+- **The moon** is the cartoon moon from the drawings. At full moon it looks straight at you, and it turns away as it wanes: three-quarter for gibbous, profile at the quarters, and the cratered back for crescents and the new moon. Waning phases face the other way. On the Ink Moon and in thunderstorms it's the crying moon instead.
 
 ## Play
 
@@ -28,9 +42,10 @@ For a single shareable file, run `node tools/bundle.mjs`. It writes `dist/sticke
 | Q / E, right-drag, two-finger twist | Turn the view to any angle |
 | ↺ ↻ buttons | Tap to turn 45°, hold to spin |
 | N, compass button | Turn back to north |
-| V, eye button | Switch view: 2.5D, third person, first person |
+| V, eye button | Switch view: 2.5D, third person, first person, parallax |
 | G, Glide button | Take off or land with the Glider |
 | F, Eat button | Eat the best food you have |
+| R, rainbow bar, Rainbow button | Rainbow cry, once the rainbow bar is full |
 | C | Crafting |
 | M | Island map (click a campfire on it to fast-travel there) |
 | L | Show or hide quests |
@@ -43,15 +58,17 @@ If you stand still and something attacks you, your character fights back on its 
 
 ## Views
 
-Press **V** or tap the eye button to switch between three cameras. Zoom works in all of them, and your choice is remembered.
+Press **V** or tap the eye button to switch between four cameras. Zoom works in all of them, and your choice is remembered.
 
-- **2.5D** (the default): the camera looks down at Pip on the curved planet, and you can turn it to any angle.
-- **Third person**: the camera drops low behind Pip and follows them, so you see Pip's back and the world stretching out ahead. Left and right turn Pip, up and down walk forward and back, and clicking or tapping still walks you there.
-- **First person**: the camera is at Pip's eyes, with your tool or weapon held low in view. It bobs as you walk and swings when you act. Same controls as third person.
+- **2.5D** (the default): the camera looks down at Ene on the curved planet, and you can turn it to any angle.
+- **Third person**: the camera drops low behind Ene and follows them, so you see Ene's back and the world stretching out ahead. Left and right turn Ene, up and down walk forward and back, and clicking or tapping still walks you there.
+- **First person**: the camera is at Ene's eyes, with your tool or weapon held low in view. It bobs as you walk and swings when you act. Same controls as third person.
 
-All three use the same sticker world and planet projection. The lower cameras just flatten the ground more and push the horizon further out. Caves are always 2D side view.
+- **Parallax**: the island seen side-on as rows of rolling hills, like a cartoon backdrop, with snow-capped mountains on the horizon. The world is cut into rows 300 units deep. The row you stand in is the stage: A/D walk along it and W/S walk up and down its hill. Walk over the crest and the camera glides forward into the next row, whose trees, rocks, crystals and creatures pop up as you arrive. Back rows are smaller and hazier and lie flat until you get there. Each row shows only a few things (a tree or two, a rock, some crystals, a bush or chest), chosen from the seed so the same ones always appear. Click or tap something to walk to it and use it, or tap the hill to walk there.
 
-Pip bobs, rocks from foot to foot and squashes a little on each step. Tools are drawn behind Pip, so they never cover the face: carried on the back, with the blade over the shoulder, and moved to the front hand to swing or fish.
+The first three use the same sticker world and planet projection; the lower cameras flatten the ground more and push the horizon further out. Parallax has its own renderer. Caves are always 2D side view.
+
+Ene bobs, rocks from foot to foot and squashes a little on each step. Tools are drawn behind Ene, so they never cover the face: carried on the back, with the blade over the shoulder, and moved to the front hand to swing or fish.
 
 ## The HUD
 
@@ -218,6 +235,7 @@ Pick a **World density** on the title screen: Sparse, Normal or Lush. It sets ho
 | File | Contents |
 | --- | --- |
 | `js/util.js` | Seeded hash, PRNG, value noise, fBm, storage helpers |
+| `js/assets.js` | The original drawings of Ene, Star and the moon, cut out of their backgrounds and inlined |
 | `js/sprites.js` | All art (canvas paths) and the sticker builder (border, shadow, gloss, white back for peel flips) |
 | `js/world.js` | Island shape, biomes, temperature, regions and danger, object placement and density, chunk textures |
 | `js/rpg.js` | Items, gear, recipes, creatures, fish, XP curve, quest generator, region names, chest loot, Lost Pages and treasure maps |

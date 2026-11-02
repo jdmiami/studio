@@ -205,21 +205,37 @@
     const ink = index === 0 && day >= 8;          // the Ink Moon: a new moon after the first week
     return { index, phase, bright, ink, name: ink ? 'Ink Moon' : MOON_NAMES[index] };
   };
-  // draw the moon as a sticker with its phase shadow
+  // The cartoon moon, from the original drawings. It turns its face away as it
+  // wanes: full moon looks straight at you, gibbous is three-quarter, the
+  // quarters are in profile, and crescents and the new moon show the cratered
+  // back. Waning phases are mirrored so the face looks the other way. The
+  // crying set comes out on the Ink Moon and in storms. A soft phase shadow
+  // is laid on top so the cycle still reads.
+  const MOON_VIEW = [4, 3, 2, 1, 0, 1, 2, 3];   // phase index -> drawing (0 front .. 4 back)
   SW.drawMoon = function (g, x, y, r, phase, ink) {
-    const light = ink ? '#d08bff' : '#fdf6d8', dark = 'rgba(28,30,72,0.92)';
+    const idx = ((Math.round(phase * 8) % 8) + 8) % 8;
+    const sad = ink || (W.kind === 'storm' && W.mix > 0.5) || (W.next === 'storm' && W.mix > 0.5);
+    const key = (sad ? 'moonSad' : 'moonHappy') + MOON_VIEW[idx];
+    const im = SW.ART_IMG && SW.ART_IMG[key];
     g.save();
-    if (ink) { g.beginPath(); g.arc(x, y, r * 1.9, 0, TAU); g.fillStyle = 'rgba(196,107,255,0.18)'; g.fill(); }
-    g.beginPath(); g.arc(x, y, r + 3, 0, TAU); g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
-    g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip();
-    g.fillStyle = dark; g.fillRect(x - r, y - r, r * 2, r * 2);
-    const waxing = phase < 0.5, k = Math.cos(phase * TAU); // 1 new .. -1 full
-    g.fillStyle = light;
-    g.beginPath(); if (waxing) g.arc(x, y, r, -Math.PI / 2, Math.PI / 2); else g.arc(x, y, r, Math.PI / 2, Math.PI * 1.5); g.closePath(); g.fill();
-    g.fillStyle = k > 0 ? dark : light;
-    g.beginPath(); g.ellipse(x, y, Math.max(0.01, r * Math.abs(k)), r, 0, 0, TAU); g.fill();
+    if (ink) { g.beginPath(); g.arc(x, y, r * 1.9, 0, TAU); g.fillStyle = 'rgba(196,107,255,0.22)'; g.fill(); }
+    g.beginPath(); g.arc(x, y, r + 3, 0, TAU); g.fillStyle = 'rgba(255,255,255,0.95)'; g.fill();
+    if (im && im.complete && im.naturalWidth) {
+      g.translate(x, y);
+      if (idx > 4) g.scale(-1, 1);           // waning: face looks the other way
+      const s = (r * 2.06) / Math.max(im.naturalWidth, im.naturalHeight);
+      g.drawImage(im, -im.naturalWidth * s / 2, -im.naturalHeight * s / 2, im.naturalWidth * s, im.naturalHeight * s);
+      g.restore(); g.save();
+    } else { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fillStyle = '#6fa8dc'; g.fill(); }
+    // the phase shadow, soft so the face still shows through
+    if (idx !== 4) {
+      g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip();
+      const waxing = phase < 0.5, k = Math.cos(phase * TAU);
+      g.fillStyle = 'rgba(28,30,72,0.42)';
+      g.beginPath(); if (waxing) g.arc(x, y, r, Math.PI / 2, Math.PI * 1.5); else g.arc(x, y, r, -Math.PI / 2, Math.PI / 2); g.closePath(); g.fill();
+      if (k > 0) { g.beginPath(); g.ellipse(x, y, Math.max(0.01, r * Math.abs(k)), r, 0, 0, TAU); g.fill(); }
+    }
     g.restore();
-    g.beginPath(); g.arc(x, y, r, 0, TAU); g.lineWidth = 2; g.strokeStyle = '#3b2f4f'; g.stroke();
   };
 
   // ---------- particles (drawn into the flat world buffer) ----------

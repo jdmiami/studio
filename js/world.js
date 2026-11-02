@@ -58,6 +58,8 @@
     deadBush: { hp: 1, r: 0, drops: { fiber: 1, wood: 1 }, regrow: 160, sound: 'rustle', sway: 1.1, plant: true },
     crystal: { hp: 6, r: 11, tool: 'pick', needs: 'pick', drops: { gem: 2 }, sound: 'mine', rock: true, glow: '#c9b8ff' },
     flowerPink: { hp: 1, r: 0, drops: { petal: 1 }, regrow: 110, sound: 'rustle', sway: 1.4, plant: true },
+    sunflower: { hp: 2, r: 5, drops: { petal: 2, berry: 1 }, regrow: 160, sound: 'rustle', sway: 0.9, plant: true },
+    daisy: { hp: 1, r: 0, drops: { petal: 1 }, regrow: 100, sound: 'rustle', sway: 1.5, plant: true },
     flowerGold: { hp: 1, r: 0, drops: { petal: 1 }, regrow: 110, sound: 'rustle', sway: 1.4, plant: true },
     flowerLilac: { hp: 1, r: 0, drops: { petal: 1 }, regrow: 110, sound: 'rustle', sway: 1.4, plant: true },
     driftwood: { hp: 1, r: 0, drops: { wood: 2 }, regrow: 220, sound: 'chop' },
@@ -69,7 +71,7 @@
   SW.OBJ_NAME = {
     treeRound: 'Oak', treeBlossom: 'Blossom Tree', treePine: 'Pine', treePineSnow: 'Snowy Pine', treeAutumn: 'Maple', treeAutumnRed: 'Red Maple',
     swampTree: 'Willow', giantMushroom: 'Giant Mushroom', cactus: 'Cactus', rock: 'Boulder', rock2: 'Rock', snowRock: 'Frosty Rock',
-    bush: 'Berry Bush', deadBush: 'Dry Bush', crystal: 'Crystal', flowerPink: 'Flower', flowerGold: 'Flower', flowerLilac: 'Flower',
+    bush: 'Berry Bush', deadBush: 'Dry Bush', crystal: 'Crystal', sunflower: 'Sunflower', daisy: 'Daisy', flowerPink: 'Flower', flowerGold: 'Flower', flowerLilac: 'Flower',
     driftwood: 'Driftwood', tuft: 'Grass', reeds: 'Reeds', mushroom: 'Mushroom', chest: 'Treasure Chest',
   };
   SW.objVerb = (type) => { const d = SW.OBJ[type]; return d.chest ? 'Open' : d.tool === 'axe' ? 'Chop' : d.tool === 'pick' ? 'Mine' : d.tree ? 'Cut' : 'Pick'; };
@@ -212,6 +214,8 @@
               if (p < 0.025 * k) type = 'treeBlossom';
               else if (p < 0.055 * k) type = 'bush';
               else if (p < 0.065 * k) type = 'rock2';
+              else if (p < 0.085 * k) type = 'sunflower';
+              else if (p < 0.12 * k) type = 'daisy';
               else if (p < 0.21 * k) type = flower;
               else if (p < 0.32 * k) type = 'tuft';
               break;

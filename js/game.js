@@ -25,17 +25,18 @@
   let zoomMul = clamp(SW.store.get('zoom', 1), 0.55, 1.6);
   const curve = { yA: 0, yTop: 0, R: 1, K: 0.75, a: 0, TH: 1.3, Rs: 1e9, Dk: 0.42, globe: false, bands: [] };
   // ---------------- views ----------------
-  // Three cameras over the same sticker world. 2.5D looks down at Pip from
-  // above. Third person drops the camera low behind Pip and turns with them.
-  // First person puts it at Pip's eyes, with your tool held in view. The
+  // Four cameras over the same sticker world (parallax is its own renderer below). 2.5D looks down at Ene from
+  // above. Third person drops the camera low behind Ene and turns with them.
+  // First person puts it at Ene's eyes, with your tool held in view. The
   // lower the camera, the flatter the ground (tilt) and the further the
   // horizon; zoom still works in all three.
   const VIEWS = {
     classic: { name: '2.5D view', tilt: 0.625, yA: 0.6, yTop: 0.11, th: 0, follow: false, hero: true, zoom: 1 },
     third: { name: 'Third-person view', tilt: 0.42, yA: 0.78, yTop: 0.14, th: 0.12, follow: true, hero: true, zoom: 1.3 },
     first: { name: 'First-person view', tilt: 0.3, yA: 1.05, yTop: 0.18, th: 0.18, follow: true, hero: false, zoom: 1.1 },
+    parallax: { name: 'Parallax view', tilt: 0.625, yA: 0.6, yTop: 0.11, th: 0, follow: false, hero: true, zoom: 1, parallax: true },
   };
-  const VIEW_ORDER = ['classic', 'third', 'first'];
+  const VIEW_ORDER = ['classic', 'third', 'first', 'parallax'];
   let view = VIEWS[SW.store.get('view', 'classic')] ? SW.store.get('view', 'classic') : 'classic';
   let TILT = VIEWS[view].tilt;
   const globe = SW.makeGlobe ? SW.makeGlobe() : null;   // WebGL planet; null means draw strips instead
@@ -193,6 +194,8 @@
       order: null, fishing: null, hover: null, marker: null,
       drift: Math.random() * TAU, worldMap: null, adv: null, climateT: 0, climate: 'temperate',
       realm: null, known: STARTER_KNOWN(), mods: {}, caves: {}, tq: {}, zonesSeen: [0], inCave: null, talking: false, won: false,
+      ene: { face: null, faceT: 0, cry: 0.35, cryT: 0, cryHitT: 0 },
+      star: { x: sp.x + 30, y: sp.y, z: 70, vx: 0, vy: 0, t: 0, mood: 'happy', moodT: 0, zapT: 2, zap: null, guiding: false },
     };
     setupRealm(); lastZone = 0;
     for (const ch of nearChunks(sp.x, sp.y, 1)) ch.objs = ch.objs.filter((o) => !(OBJ[o.type].r && dist(o.x, o.y, sp.x, sp.y) < 64));
@@ -303,6 +306,7 @@
       p.level++;
       p.maxHp += 10; p.hp = p.maxHp;
       banner('Level ' + p.level, '+10 max health. You hit harder.', '#8a63e8');
+      eneReact('joy');
       SW.audio.play('craft');
       spawnPoof(p.x, p.y, p.lvlOff + 20, '#a78bfa');
       craftDirty = true;
@@ -351,6 +355,7 @@
     page.found = true; adv.next = i + 1; G.stats.pages = adv.next;
     const lore = SW.LOST_PAGE_LORE[i];
     banner('Lost Page ' + (i + 1) + '/6', lore.replace(/^Page \d+: /, ''), '#e0a400');
+    eneReact('joy');
     toast(lore, 7000);
     SW.audio.play('sting'); setTimeout(() => SW.audio.play('dawn'), 600);
     spawnPoof(page.x, page.y, G.world.levelAt(page.x, page.y) * LH + 20, '#ffd23f');
@@ -556,7 +561,7 @@
     dropItems(drops, m.x, m.y, m.lvlOff / LH);
     gainXP(Math.round(SW.xpForKill(m) * (m.small ? 0.4 : 1)), m.x, m.y, m.lvlOff);
     if (!def.passive) {
-      G.stats.kills++; questEvent('hunt', m.type, 1);
+      G.stats.kills++; questEvent('hunt', m.type, 1); chargeCry(0.09);
       for (const t of SW.TRIBES) for (const q of t.quests) {
         const st = G.tq[q.id];
         if (q.kind === 'hunt' && q.key === m.type && st && st.state === 'active' && (st.have || 0) < q.need) {
@@ -587,6 +592,7 @@
     spawnText(p.x, p.y, p.lvlOff + 60, '-' + dmg, '#ff3b5c');
     SW.audio.play('hurt'); buzz(40);
     G.fishing = null;
+    eneReact('ay'); chargeCry(0.04);
     $('hud').classList.remove('ouch'); void $('hud').offsetWidth; $('hud').classList.add('ouch');
     if (p.hp <= 0) die();
   }
@@ -891,6 +897,7 @@
     SW.audio.play('sting');
     spawnPoof(G.player.x, G.player.y, G.player.lvlOff + 30, '#ffd23f');
     questDirty = craftDirty = true;
+    eneReact('joy');
   }
   function talkAction(a) {
     if (!talk) return;
@@ -973,6 +980,7 @@
       const n = Math.max(1, Math.round(dmg * (1 - armorDef())));
       p.hp -= n; p.hurtT = 0.35;
       SW.audio.play('hurt'); buzz(40);
+      eneReact('ay'); chargeCry(0.04);
       $('hud').classList.remove('ouch'); void $('hud').offsetWidth; $('hud').classList.add('ouch');
       return n;
     },
@@ -980,7 +988,12 @@
     toolSprite: () => { const w = bestWeapon(); return w ? { sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade' }[w] : G.tools.pick ? 'toolPick' : G.tools.axe ? 'toolAxe' : 'toolHand'; },
     exitCave: () => exitCave(),
     died: () => { const c = G.inCave; exitCave(true); die(); return c; },
-    caveDone: (def) => { G.stats.caves = (G.stats.caves || 0) + 1; questDirty = true; },
+    caveDone: (def) => { G.stats.caves = (G.stats.caves || 0) + 1; questDirty = true; eneReact('joy'); },
+    heroFace: () => { const e = G.ene; return !e ? null : e.cryT > 0 ? 'playerCry' : e.faceT > 0 && e.face ? 'player' + e.face : null; },
+    crying: () => !!(G.ene && G.ene.cryT > 0),
+    charge: (n) => chargeCry(n),
+    starMood: () => (G.star ? G.star.mood : 'happy'),
+    starFeel: (m, t) => starFeel(m, t),
   });
   function enterCave(c) {
     G.inCave = c.id; G.order = null; G.fishing = null; G.player.flying = false; G.player.alt = 0; G.player.boat = false;
@@ -997,7 +1010,7 @@
     caves.leave();
     G.inCave = null;
     document.body.classList.remove('in-cave');
-    if (globe && curve.globe) globe.canvas.hidden = fxCv.hidden = false;
+    if (globe && curve.globe && !VIEWS[view].parallax) globe.canvas.hidden = fxCv.hidden = false;
     if (c) { G.player.x = c.x; G.player.y = c.y + 70; G.player.vx = G.player.vy = 0; G.cam.x = G.player.x; G.cam.y = G.player.y; }
     if (!silent) { SW.audio.play('whoosh'); toast('Back outside.'); }
     hud.region = '';
@@ -1020,6 +1033,8 @@
 
   function caveSurvival(dt) {
     const p = G.player;
+    updateEne(dt);
+    if (G.star) { G.star.t += dt; G.star.moodT -= dt; if (G.star.moodT <= 0) G.star.mood = p.hp < p.maxHp * 0.3 ? 'sad' : 'happy'; }
     p.hurtT -= dt;
     p.hunger = Math.max(0, p.hunger - dt * 0.4);
     if (p.hunger <= 0) p.hp -= dt * 1.6;
@@ -1041,6 +1056,513 @@
     SW.audio.play('craft');
     toast(`${ITEMS[id].name} fitted to your ${SW.MOD_SLOTS[slot]}.`);
     craftDirty = true; renderToolbelt();
+  }
+
+  // ---------------- Ene and Star ----------------
+  // Ene reacts with her faces: "AY!!" when she's hurt, joy when something good
+  // happens. Close-ups use the original drawings (SW.ART_IMG). Her rainbow cry
+  // is a special move: it charges as she fights, then two rainbows pour from
+  // her eyes, knocking back everything around her and washing the ink out of
+  // Scribbles. Star floats beside her, flies ahead to show the way, lights up
+  // the dark, zaps enemies now and then, and wears its feelings on its face.
+  const CRY_TIME = 1.9, CRY_R = 175;
+  function eneReact(kind) {
+    const e = G.ene;
+    if (!e) return;
+    if (kind === 'ay') {
+      e.face = 'Ay'; e.faceT = 0.9;
+      G.parts.push({ k: 'ay', x: G.player.x, y: G.player.y, lvl: G.player.lvlOff + 112, t: 0, life: 0.9 });
+      portrait('eneFront', 'AY!!');
+      starFeel('surprised', 1.2);
+    } else if (kind === 'joy') {
+      e.face = 'Joy'; e.faceT = 1.6;
+      portrait('eneJoy');
+      starFeel('laugh', 2);
+    }
+  }
+  let portraitT = 0;
+  function portrait(art, word) {
+    const el = $('enePop');
+    if (!el || !SW.artURL) return;
+    $('enePopImg').src = SW.artURL(art);
+    $('enePopWord').textContent = word || '';
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    clearTimeout(portraitT); portraitT = setTimeout(() => el.classList.remove('show'), word ? 1300 : 1900);
+  }
+  function chargeCry(n) {
+    const e = G.ene;
+    if (!e || e.cryT > 0) return;
+    const was = e.cry;
+    e.cry = Math.min(1, e.cry + n);
+    if (was < 1 && e.cry >= 1) { tipOnce('cry', touchMode() ? 'Rainbow cry is ready! Tap the rainbow button.' : 'Rainbow cry is ready! Press R.'); SW.audio.play('sting'); }
+  }
+  function rainbowCry() {
+    const e = G.ene, p = G.player;
+    if (!e || G.mode !== 'play' || e.cryT > 0) return;
+    if (e.cry < 1) { toast('The rainbow cry is still charging. Fight to fill the rainbow bar.'); SW.audio.play('deny'); return; }
+    e.cry = 0; e.cryT = CRY_TIME; e.cryHitT = 0;
+    p.flying = false; G.order = null; G.fishing = null;
+    portrait('eneCry');
+    starFeel('surprised', 1.4);
+    SW.audio.play('boom'); buzz(60);
+    G.cam.shake = 8;
+  }
+  function updateEne(dt) {
+    const e = G.ene, p = G.player;
+    if (!e) return;
+    e.faceT -= dt;
+    if (e.cryT > 0) {
+      e.cryT -= dt; e.cryHitT -= dt;
+      p.vx *= 0.8; p.vy *= 0.8;
+      if (e.cryHitT <= 0 && !G.inCave) {
+        e.cryHitT = 0.32;
+        for (const m of G.mobs) {
+          if (m.dying || ENEMIES[m.type].passive) continue;
+          const d = dist(m.x, m.y, p.x, p.y);
+          if (d > CRY_R) continue;
+          if (m.type === 'scribble') { m.hp = 0; spawnPoof(m.x, m.y, m.lvlOff, '#a78bfa'); killMob(m); continue; }
+          hitMob(m, Math.max(2, attackPower() * 2));
+          m.kx = ((m.x - p.x) / Math.max(1, d)) * 520; m.ky = ((m.y - p.y) / Math.max(1, d)) * 520;
+        }
+        for (let i = 0; i < 6; i++) {
+          const a = Math.random() * TAU, r = CRY_R * (0.5 + Math.random() * 0.5);
+          spawnChips(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, p.lvlOff, ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a', '#3a3ad0', '#7a35c8'][i], 3);
+        }
+      }
+      if (e.cryT <= 0) { e.face = 'Joy'; e.faceT = 1; }
+    } else e.cry = Math.min(1, e.cry + dt * 0.004);
+  }
+
+  function starFeel(mood, t) { const s = G.star; if (s) { s.mood = mood; s.moodT = t; } }
+  function starGoal() {
+    const goal = realmGoal();
+    if (goal) return goal;
+    const page = G.adv && G.adv.pages[G.adv.next];
+    if (page) return page;
+    const q = G.quests.find((q) => q.kind === 'explore' && !q.done);
+    return q ? { x: q.tx, y: q.ty } : null;
+  }
+  function updateStar(dt) {
+    const s = G.star, p = G.player;
+    if (!s) return;
+    s.t += dt; s.moodT -= dt; s.zapT -= dt;
+    if (s.zap) { s.zap.t += dt; if (s.zap.t > 0.3) s.zap = null; }
+    // the nearest foe that is after Ene
+    let foe = null, fd = 260;
+    for (const m of G.mobs) {
+      if (m.dying || ENEMIES[m.type].passive || m.state === 'idle') continue;
+      const d = dist(m.x, m.y, p.x, p.y);
+      if (d < fd) { fd = d; foe = m; }
+    }
+    let tx, ty;
+    const goal = !foe && G.mode === 'play' ? starGoal() : null;
+    s.guiding = !!(goal && dist(goal.x, goal.y, p.x, p.y) > 320);
+    if (foe) { const d = Math.max(1, fd), [rx, ry] = worldDir(1, 0); tx = p.x + ((foe.x - p.x) / d) * 30 - rx * 52; ty = p.y + ((foe.y - p.y) / d) * 30 - ry * 52; }
+    else if (s.guiding) {
+      // fly out ahead toward the goal, and loop back now and then so Ene follows
+      const d = dist(goal.x, goal.y, p.x, p.y), ux = (goal.x - p.x) / d, uy = (goal.y - p.y) / d;
+      const lead = 95 + Math.sin(s.t * 1.3) * 25;
+      tx = p.x + ux * lead - uy * Math.sin(s.t * 2.1) * 18; ty = p.y + uy * lead + ux * Math.sin(s.t * 2.1) * 18;
+      if (s.moodT <= 0 && Math.random() < dt * 0.15) starFeel('happy', 1);
+    } else {
+      // beside Ene, on the camera's right, bobbing
+      const [rx, ry] = worldDir(1, 0);
+      tx = p.x + rx * 50 - p.fx * 10; ty = p.y + ry * 50 - p.fy * 10;
+    }
+    const k = Math.min(1, dt * 5);
+    s.vx += ((tx - s.x) * 9 - s.vx * 4.2) * dt; s.vy += ((ty - s.y) * 9 - s.vy * 4.2) * dt;
+    s.x += s.vx * dt; s.y += s.vy * dt;
+    if (dist(s.x, s.y, p.x, p.y) > 600) { s.x = p.x; s.y = p.y; s.vx = s.vy = 0; }
+    s.z += ((p.lvlOff + p.alt + 62 + Math.sin(s.t * 3) * 7 + (s.guiding ? 12 : 0)) - s.z) * k;
+    // a zap now and then
+    if (foe && s.zapT <= 0 && G.mode === 'play') {
+      s.zapT = 3.2;
+      s.zap = { x: foe.x, y: foe.y, lv: foe.lvlOff + 20, t: 0 };
+      foe.stunT = 0.9;
+      starFeel('angry', 1.2);
+      hitMob(foe, 1 + Math.floor(p.level / 2));
+    }
+    // default feelings: worried when Ene is hurt badly, cross when Scribbles are about
+    if (s.moodT <= 0) {
+      if (p.hp < p.maxHp * 0.3) s.mood = 'sad';
+      else if (foe) s.mood = 'angry';
+      else s.mood = 'happy';
+    }
+  }
+  function drawStar(d) {
+    const s = G.star;
+    const pt = proj(s.x, s.y, s.z);
+    d.sx = pt.x; d.sy = pt.y;
+    const fr = Math.floor(s.t * 5) % 2;
+    const glowA = Math.max(darkness(phaseOf(G.time)), 0.25);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const g = ctx.createRadialGradient(pt.x, pt.y - 20 * Z, 0, pt.x, pt.y - 20 * Z, 46 * Z);
+    g.addColorStop(0, `rgba(255,230,120,${0.45 * glowA})`); g.addColorStop(1, 'rgba(255,230,120,0)');
+    ctx.fillStyle = g; ctx.fillRect(pt.x - 50 * Z, pt.y - 70 * Z, 100 * Z, 100 * Z);
+    drawSprite('star_' + s.mood + fr, pt.x, pt.y, Math.sin(s.t * 2.4) * 0.12 + (s.guiding ? 0.15 : 0), 1, 1);
+    if (s.zap) {
+      // a zigzag of starlight to whatever Star zapped
+      const a = proj(s.zap.x, s.zap.y, s.zap.lv), b = { x: pt.x, y: pt.y - 22 * Z };
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.globalAlpha = 1 - s.zap.t / 0.3;
+      for (const [w, col] of [[7, '#ffffff'], [3.5, '#ffd23f']]) {
+        ctx.lineWidth = w * Z; ctx.strokeStyle = col; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(b.x, b.y);
+        for (let i = 1; i <= 5; i++) { const t = i / 5; ctx.lineTo(lerp(b.x, a.x, t) + (i < 5 ? (Math.random() - 0.5) * 14 * Z : 0), lerp(b.y, a.y, t) + (i < 5 ? (Math.random() - 0.5) * 14 * Z : 0)); }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  // two rainbows from Ene's eyes, arcing out to either side and splashing down
+  function drawRainbows(sx, sy, g = ctx, zz = Z, dpr = DPR) {
+    const e = G.ene;
+    if (!e || e.cryT <= 0) return;
+    const k = Math.min(1, (CRY_TIME - e.cryT) / 0.35) * Math.min(1, e.cryT / 0.3);
+    const bands = ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a', '#3a3ad0', '#7a35c8', '#b03ec2'];
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.lineCap = 'round';
+    const eyeY = sy - 84 * zz;
+    for (const side of [-1, 1]) {
+      const x0 = sx + side * 5 * zz, x1 = sx + side * 120 * zz * k, y1 = sy + 6 * zz;
+      const cx = sx + side * 70 * zz * k, cy = eyeY - 50 * zz * k;
+      g.lineWidth = 34 * zz * k; g.strokeStyle = '#ffffff';
+      g.beginPath(); g.moveTo(x0, eyeY); g.quadraticCurveTo(cx, cy, x1, y1); g.stroke();
+      bands.forEach((col, i) => {
+        const o = (i - 3) * 4 * zz * k * side;
+        g.lineWidth = 4.6 * zz * k; g.strokeStyle = col;
+        g.beginPath(); g.moveTo(x0, eyeY); g.quadraticCurveTo(cx + o, cy + o * 0.6, x1 + o, y1); g.stroke();
+      });
+      // splash where it lands
+      g.fillStyle = bands[(Math.floor(G.time * 12) + (side > 0 ? 3 : 0)) % bands.length];
+      for (let i = 0; i < 4; i++) { const a = -Math.PI * (0.15 + i * 0.22); g.beginPath(); g.ellipse(x1 + Math.cos(a) * 16 * zz * side, y1 + Math.sin(a) * 9 * zz, 5 * zz * k, 3.4 * zz * k, a, 0, TAU); g.fill(); }
+    }
+  }
+
+  // ---------------- parallax view ----------------
+  // The island seen side-on as rows of rolling hills, like a cartoon
+  // backdrop. The world is cut into bands BAND units deep running east-west.
+  // The band you stand in is the stage: A/D walk along it, W/S walk up and
+  // down its hill. Walk over the crest and the camera dollies forward into
+  // the next band, whose trees, rocks and creatures pop up as you arrive.
+  // Hills further back are smaller, hazier and lie flat until you get there.
+  const BAND = 300, PX_D0 = 0.9, PX_TC = 0.8, PX_BACK = 6;
+  const px = { cb: null, list: [], hz: 0, camh: 0, hh: 0, k: 1 };
+  function pxSetup() {
+    px.hz = H * 0.3;
+    px.camh = (0.9 * H - px.hz) * PX_D0;                     // camera height: the stage's foot sits near the bottom
+    px.hh = px.camh - (0.5 * H - px.hz) * (PX_D0 + PX_TC);   // hill height: its crest a little above the middle
+    px.k = 0.0022 * H * zoomMul;                            // px per world unit at depth 1: Ene stands about a fifth of the screen tall
+  }
+  const pxU = (y) => -y / BAND;
+  // Each hill holds a few things, not a forest: a tree or two, a rock, some crystals, a bush.
+  function pxKeep(def) { return def.chest ? 0.45 : def.tree ? 0.1 : def.rock || def.needs ? 0.16 : def.glow ? 0.14 : def.decor ? 0.05 : 0.08; }                               // world y -> band coordinate (forward = north)
+  function pxHill(i, t, wx) {
+    const r = SW.hash(i, 7, G.seed);
+    const mul = 0.72 + r * 0.45 + 0.22 * Math.sin(wx / 610 + i * 1.7) + 0.12 * Math.sin(wx / 233 + i * 3.1);
+    const f = t < PX_TC ? Math.pow(Math.sin((Math.PI / 2) * (t / PX_TC)), 1.4) : Math.cos((Math.PI / 2) * ((t - PX_TC) / (1 - PX_TC)));
+    return px.hh * mul * Math.max(0, f);
+  }
+  // a world point on the hills -> screen; returns null if it is behind the camera
+  const PXP = { x: 0, y: 0, s: 1, z: 1 };
+  function pxProj(wx, u, lift = 0) {
+    const i = Math.floor(u), t = u - i;
+    let z = u - px.cb + PX_D0;
+    if (z < 0.25) return null;
+    const flat = clamp((z - 0.45) / 0.5, 0, 1);              // hills slide down out of view as they pass the camera
+    const h = pxHill(i, t, wx) * flat + lift;
+    PXP.s = px.k / z; PXP.z = z;
+    PXP.x = W / 2 + (wx - G.cam.x) * PXP.s;
+    PXP.y = px.hz + (px.camh - h) / z;
+    return PXP;
+  }
+  function pxColor(i, z) {
+    const b = G.world.biomeAt(G.cam.x, -(i + 0.5) * BAND);
+    let c = hexRGB(SW.MAP_COLOR[b] || '#7cc34f');
+    if (b <= 2) c = hexRGB('#6fb3e0');
+    else if (b !== 10 && b !== 11 && b !== 3) c = mixRGB(c, [86, 170, 70], 0.45);  // cartoon green hills
+    if (i % 2) c = mixRGB(c, [40, 70, 60], 0.12);           // alternate rows a shade darker, like the drawings
+    const d = darkness(phaseOf(G.time));
+    const haze = mixRGB(mixRGB(SKY.dayLow, [120, 170, 170], 0.45), SKY.nightLow, d);
+    return mixRGB(c, haze, clamp((z - PX_D0) / 6.5, 0, 0.78));
+  }
+  // pop-up for the parallax rows: the stage stands up, the row behind it half way, the rest lie flat
+  function pxPop(id, rel, dt) {
+    const target = rel < 0.6 ? 0 : rel < 1.6 ? 0.6 : POP_FLAT;
+    let st = popState.get(id);
+    if (!st) { st = { a: target, v: 0, seen: 0 }; popState.set(id, st); }
+    st.seen = popFrame;
+    const h = Math.min(dt, 1 / 30);
+    st.v += ((target - st.a) * 120 - st.v * 10.5) * h;
+    st.a = clamp(st.a + st.v * h, -0.4, 1.5);
+    return st.a;
+  }
+  function pxSprite(name, x, y, sc, rot = 0, kx = 1, ky = 1, which = 'img') {
+    const spr = SW.sprites[name];
+    if (!spr) return null;
+    const img = which === 'glow' ? tintOf(spr, 'glow', '#ffd23f') : spr[which];
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    sctx.translate(x, y); if (rot) sctx.rotate(rot); sctx.scale(kx * sc, ky * sc);
+    sctx.drawImage(img, -spr.ax, -spr.ay, spr.w, spr.h);
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    return spr;
+  }
+  function renderParallax(dt) {
+    const p = G.player, world = G.world, t = G.time;
+    pxSetup();
+    updatePopZone();
+    // the camera frames the band you are in; past the crest it moves on to the next
+    const u = pxU(p.y), target = Math.floor(u + (1 - PX_TC));
+    if (px.cb === null || Math.abs(px.cb - target) > 3) px.cb = target;
+    px.cb += (target - px.cb) * Math.min(1, dt * 3.2);
+    const skyLow = paintSky(px.hz * 0.8, px.hz + H * 0.08, -0.75);
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    // far snow-capped mountains on the horizon, drifting slowly as you walk
+    pxMountains();
+    // haze at the horizon
+    const hz = sctx.createLinearGradient(0, px.hz - 30, 0, px.hz + 40);
+    hz.addColorStop(0, rgba(skyLow, 0)); hz.addColorStop(1, rgba(skyLow, 1));
+    sctx.fillStyle = hz; sctx.fillRect(0, px.hz - 30, W, H);
+    // gather what lives in each visible row
+    const i0 = Math.floor(px.cb) - 1, i1 = Math.floor(px.cb) + PX_BACK;
+    const rows = new Map();
+    for (let i = i0; i <= i1; i++) rows.set(i, []);
+    const halfFar = (W / 2) * (i1 - px.cb + PX_D0 + 1) / px.k + 200;
+    const yMin = -(i1 + 1) * BAND, yMax = -i0 * BAND;
+    const cx0 = Math.floor((G.cam.x - halfFar) / CHUNK), cx1 = Math.floor((G.cam.x + halfFar) / CHUNK);
+    const cy0 = Math.floor(yMin / CHUNK), cy1 = Math.floor(yMax / CHUNK);
+    const add = (e, x, y) => {
+      const uu = pxU(y), i = Math.floor(uu);
+      const row = rows.get(i);
+      if (!row) return;
+      const zz = uu - px.cb + PX_D0, half = (W / 2) * zz / px.k + 80;
+      if (Math.abs(x - G.cam.x) > half) return;
+      e.x = x; e.y = y; e.u = uu; e.t = uu - i; row.push(e);
+    };
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+      const ch = world.getChunk(cx, cy);
+      for (const o of ch.objs) {
+        const def = OBJ[o.type];
+        if (SW.hash(Math.round(o.x), Math.round(o.y), 911) > pxKeep(def)) continue;
+        const st = world.objState(o, t);
+        if (st === 'gone') continue;
+        const uu = pxU(o.y), rel = Math.floor(uu) - px.cb;
+        if (def.decor && rel > 0.6) continue;                 // grass and flowers only on the stage
+        if (!def.r && !def.decor && rel > 1.6 && !def.tree) continue;
+        add({ k: 0, o, spr: st === 'after' ? def.after : o.type }, o.x, o.y);
+      }
+    }
+    for (const s of world.structures) add({ k: 1, s, spr: s.type === 'campfire' ? (s.fuel > 0 ? 'campfire' : 'campfireOut') : 'wall' }, s.x, s.y);
+    for (const m of G.mobs) add({ k: 2, m, spr: mobSprite(m), sc: m.scale }, m.x, m.y);
+    if (G.realm) {
+      for (const tr of G.realm.tribes) { for (const sp of tr.spots) add({ k: 6, spr: sp.spr }, sp.x, sp.y); for (const n of tr.npcs) add({ k: 7, npc: n, spr: n.spr }, n.x, n.y); }
+      for (const c of G.realm.caves) add({ k: 6, cave: c, spr: c.spr }, c.x, c.y);
+    }
+    if (G.adv) { const pg = G.adv.pages[G.adv.next]; if (pg) add({ k: 4, spr: 'lostPage' }, pg.x, pg.y); }
+    add({ k: 3 }, p.x, p.y);
+    if (G.star) add({ k: 8 }, G.star.x, G.star.y);
+    px.list.length = 0;
+    // draw from the back row to the front
+    for (let i = i1; i >= i0; i--) {
+      const z0 = i - px.cb + PX_D0;
+      if (z0 + 1 < 0.3) continue;
+      const row = rows.get(i).sort((a, b) => b.t - a.t);
+      const behind = row.filter((e) => e.t > PX_TC), front = row.filter((e) => e.t <= PX_TC);
+      for (const e of behind) pxDrawEntity(e, i, dt);
+      // the hill: a crest line across the screen, filled down to the bottom
+      const zc = i + PX_TC - px.cb + PX_D0;
+      if (zc > 0.25) {
+        const col = pxColor(i, zc);
+        sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+        sctx.beginPath(); sctx.moveTo(-10, H + 10);
+        for (let sx = -10; sx <= W + 10; sx += 8) {
+          const wx = G.cam.x + (sx - W / 2) * zc / px.k;
+          const q = pxProj(wx, i + PX_TC);
+          sctx.lineTo(sx, q ? q.y : H + 10);
+        }
+        sctx.lineTo(W + 10, H + 10); sctx.closePath();
+        const gr = sctx.createLinearGradient(0, px.hz, 0, H);
+        gr.addColorStop(0, rgba(mixRGB(col, [255, 255, 255], 0.12))); gr.addColorStop(1, rgba(mixRGB(col, [20, 40, 30], 0.25)));
+        sctx.fillStyle = gr; sctx.fill();
+        // sticker rim and an inked crest line
+        const near = clamp(1.6 - (zc - PX_D0) * 0.35, 0.35, 1.4);
+        sctx.lineJoin = 'round';
+        sctx.lineWidth = 5 * near; sctx.strokeStyle = 'rgba(255,255,255,0.85)'; sctx.stroke();
+        sctx.lineWidth = 2.2 * near; sctx.strokeStyle = `rgba(22,18,28,${0.75 * near})`; sctx.stroke();
+        // zigzag grass on the near rows
+        if (zc < PX_D0 + 2.2) {
+          sctx.lineWidth = 1.4 * near; sctx.strokeStyle = rgba(mixRGB(col, [20, 60, 30], 0.35), 0.7);
+          for (let n = 0; n < 26; n++) {
+            const r1 = SW.hash(i, n, 31), r2 = SW.hash(n, i, 37);
+            const tt = 0.12 + r2 * (PX_TC - 0.2);
+            const wx = G.cam.x + (r1 - 0.5) * W * (i - px.cb + tt + PX_D0) / px.k * 1.1;
+            const q = pxProj(wx, i + tt);
+            if (!q) continue;
+            const w = 9 * q.s;
+            sctx.beginPath(); sctx.moveTo(q.x - w, q.y); sctx.lineTo(q.x - w / 2, q.y - w * 0.6); sctx.lineTo(q.x, q.y); sctx.lineTo(q.x + w / 2, q.y - w * 0.6); sctx.lineTo(q.x + w, q.y); sctx.stroke();
+          }
+        }
+      }
+      for (const e of front) pxDrawEntity(e, i, dt);
+    }
+    // weather in front of everything
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    const windX = Math.cos(WX.windAngle);
+    const toW = (fx, fy) => { FW[0] = G.cam.x + (fx - W / 2) / px.k; FW[1] = p.y; return FW; };
+    WX.draw(sctx, W, H, 1, Math.min(dt, 0.05), 0, 0, windX, toW);
+    pxLighting();
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    WX.overlay(sctx, W, H);
+    if (grain) { sctx.fillStyle = grain; sctx.fillRect(0, 0, W, H); }
+  }
+  function pxDrawEntity(e, i, dt) {
+    const p = G.player;
+    const rel = i - px.cb;
+    const q = pxProj(e.x, e.u);
+    if (!q) return;
+    const sx = q.x, sy = q.y, sc = q.s;
+    if (sx < -200 || sx > W + 200) return;
+    if (e.k === 3) {
+      const e2 = G.ene || {};
+      const moving = p.moving && !p.flying && !p.boat;
+      const frame = moving ? Math.floor(p.walkT * 9) % 2 : 0;
+      const away = moving && Math.abs(p.vy) > Math.abs(p.vx) * 1.2 && p.vy < 0;
+      const name = e2.cryT > 0 ? 'playerCry' : away ? 'playerBack' + frame : e2.faceT > 0 && e2.face ? 'player' + e2.face + (p.face < 0 ? 'L' : '') : 'player' + frame + (p.face < 0 ? 'L' : '');
+      const step = moving ? Math.sin(p.walkT * 9 * Math.PI / 2) : 0;
+      const bob = Math.abs(step) * 3 * sc + p.alt * sc;
+      sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+      sctx.fillStyle = 'rgba(46,34,82,0.22)'; sctx.beginPath(); sctx.ellipse(sx, sy, 15 * sc, 5 * sc, 0, 0, TAU); sctx.fill();
+      if (p.boat) pxSprite('raft', sx, sy + 6 * sc, sc);
+      if (e2.cryT > 0) drawRainbows(sx, sy - bob, sctx, sc, SDPR);
+      const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
+      const spr = pxSprite(name, sx + step * 1.2 * sc, sy - bob, sc, step * 0.075, 1, 1);
+      if (p.hurtT > 0 || flick) { sctx.globalAlpha = 0.7; pxSprite(name, sx + step * 1.2 * sc, sy - bob, sc, step * 0.075, 1, 1, 'flash'); sctx.globalAlpha = 1; }
+      if (p.flying || p.alt > 4) pxSprite('glider', sx, sy - bob - 108 * sc, sc * 0.9);
+      if (spr) px.list.push({ k: 3, x0: sx - 20 * sc, y0: sy - 100 * sc, x1: sx + 20 * sc, y1: sy });
+      return;
+    }
+    if (e.k === 8) {
+      const s = G.star, fr = Math.floor(s.t * 5) % 2;
+      const z = s.z - (G.player.lvlOff || 0);
+      const yy = sy - z * sc;
+      sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+      const g = sctx.createRadialGradient(sx, yy - 20 * sc, 0, sx, yy - 20 * sc, 46 * sc);
+      g.addColorStop(0, `rgba(255,230,120,${0.45 * Math.max(0.25, darkness(phaseOf(G.time)))})`); g.addColorStop(1, 'rgba(255,230,120,0)');
+      sctx.fillStyle = g; sctx.fillRect(sx - 50 * sc, yy - 70 * sc, 100 * sc, 100 * sc);
+      pxSprite('star_' + s.mood + fr, sx, yy, sc, Math.sin(s.t * 2.4) * 0.12);
+      if (s.zap) {
+        const a = pxProj(s.zap.x, pxU(s.zap.y));
+        if (a) {
+          sctx.globalAlpha = 1 - s.zap.t / 0.3; sctx.lineJoin = 'round';
+          for (const [w, col] of [[7, '#ffffff'], [3.5, '#ffd23f']]) {
+            sctx.lineWidth = w * sc; sctx.strokeStyle = col; sctx.beginPath(); sctx.moveTo(sx, yy - 22 * sc);
+            const ax = a.x, ay = a.y - 20 * a.s;
+            for (let n = 1; n <= 5; n++) { const tt = n / 5; sctx.lineTo(lerp(sx, ax, tt) + (n < 5 ? (Math.random() - 0.5) * 14 * sc : 0), lerp(yy - 22 * sc, ay, tt) + (n < 5 ? (Math.random() - 0.5) * 14 * sc : 0)); }
+            sctx.stroke();
+          }
+          sctx.globalAlpha = 1;
+        }
+      }
+      return;
+    }
+    const id = e.k === 0 ? e.o.id : e.k === 2 ? 'm' + (e.m.id || (e.m.id = Math.random())) : e.k + ':' + e.x + ',' + e.y;
+    const pop = e.k === 2 ? (rel < 1.6 ? 0 : POP_FLAT) : pxPop('px' + id, rel, dt);
+    const ky = popScale(pop);
+    if (ky < 0.2 && rel > 1.6) {
+      // far rows: just a flat dab of colour where the sticker will stand
+      return;
+    }
+    let rot = 0, kx = 1, ox = 0;
+    if (e.k === 0) {
+      const def = OBJ[e.o.type];
+      if (def.sway) rot = WX.sway(G.time, e.o.seed, Math.cos(WX.windAngle), WX.gustAt(e.o.x, e.o.y)) * def.sway * ky;
+      const ht = G.hitT.get(e.o.id);
+      if (ht !== undefined && G.time - ht < 0.25) { const k2 = 1 - (G.time - ht) / 0.25; kx = 1 + 0.1 * k2; ox = Math.sin((G.time - ht) * 60) * 3 * k2 * sc; }
+    }
+    const sca = sc * (e.sc || 1);
+    // haze the far rows into the hills
+    const zf = clamp((rel - 0.6) / 4, 0, 0.7);
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    if (rel < 1) { sctx.fillStyle = 'rgba(46,34,82,0.2)'; sctx.beginPath(); sctx.ellipse(sx, sy, 16 * sca * ky, 5 * sca, 0, 0, TAU); sctx.fill(); }
+    const hov = G.hover && ((e.k === 0 && G.hover.o === e.o) || (e.k === 2 && G.hover.m === e.m) || (e.k === 7 && G.hover.npc === e.npc));
+    if (hov) pxSprite(e.spr, sx + ox, sy + 3 * sca, sca, rot, kx * 1.08, ky * 1.06, 'glow');
+    sctx.globalAlpha = 1 - zf * 0.6;
+    const spr = pxSprite(e.spr, sx + ox, sy, sca, rot, kx, ky);
+    sctx.globalAlpha = 1;
+    if (e.k === 2 && e.m.hurtT > 0) { sctx.globalAlpha = 0.6; pxSprite(e.spr, sx, sy, sca, 0, 1, ky, 'flash'); sctx.globalAlpha = 1; }
+    if (spr && rel < 1.6) px.list.push({ k: e.k, o: e.o, m: e.m, s: e.s, npc: e.npc, cave: e.cave, x0: sx - (spr.ax - 4) * sca, x1: sx + (spr.w - spr.ax - 4) * sca, y0: sy - (spr.ay - 4) * sca * ky, y1: sy + 4 });
+    if (e.k === 2 && (e.m.hp < e.m.maxHp || e.m.elite) && rel < 1) {
+      const w = 30 * sca, yy = sy - (spr ? spr.ay : 30) * sca - 8;
+      sctx.fillStyle = '#3b2f4f'; sctx.fillRect(sx - w / 2, yy, w, 5); sctx.fillStyle = '#ff4d6d'; sctx.fillRect(sx - w / 2, yy, w * clamp(e.m.hp / e.m.maxHp, 0, 1), 5);
+    }
+  }
+  function pxMountains() {
+    const d = darkness(phaseOf(G.time));
+    const rock = rgba(mixRGB([178, 160, 196], [60, 58, 110], d)), shade = rgba(mixRGB([150, 132, 176], [44, 42, 90], d));
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    sctx.lineJoin = 'round';
+    for (let n = 0; n < 4; n++) {
+      const r = SW.hash(n, 3, G.seed), w = W * (0.28 + r * 0.22), h = H * (0.1 + SW.hash(n, 9, G.seed) * 0.09);
+      const span = W * 1.6;
+      const x = ((n * span / 4 + r * 200 - G.cam.x * 0.04) % span + span) % span - W * 0.3;
+      const base = px.hz + 6, top = base - h;
+      sctx.beginPath(); sctx.moveTo(x - w / 2, base); sctx.lineTo(x - w * 0.08, top + h * 0.06); sctx.quadraticCurveTo(x, top - 4, x + w * 0.08, top + h * 0.08); sctx.lineTo(x + w / 2, base); sctx.closePath();
+      sctx.fillStyle = rock; sctx.fill();
+      sctx.lineWidth = 2; sctx.strokeStyle = 'rgba(40,30,60,0.45)'; sctx.stroke();
+      // shaded side and ridge lines
+      sctx.beginPath(); sctx.moveTo(x + w * 0.04, top + h * 0.1); sctx.lineTo(x + w / 2, base); sctx.lineTo(x + w * 0.1, base); sctx.closePath(); sctx.fillStyle = shade; sctx.fill();
+      // snow cap with a wavy hem
+      sctx.beginPath(); sctx.moveTo(x - w * 0.1, top + h * 0.1); sctx.quadraticCurveTo(x, top - 4, x + w * 0.1, top + h * 0.1);
+      for (let k = 0; k <= 4; k++) { const fx = x + w * 0.13 - k * (w * 0.065); sctx.quadraticCurveTo(fx + w * 0.02, top + h * (0.36 + (k % 2) * 0.1), fx - w * 0.012, top + h * 0.28); }
+      sctx.closePath(); sctx.fillStyle = '#ffffff'; sctx.fill(); sctx.stroke();
+    }
+  }
+  // night: darkness with pools of light around Ene, Star and fires
+  let pxLight = null;
+  function pxLighting() {
+    const d = darkness(phaseOf(G.time));
+    if (d <= 0.01) return;
+    if (!pxLight) pxLight = document.createElement('canvas');
+    const lw = Math.ceil(W / 2), lh = Math.ceil(H / 2);
+    if (pxLight.width !== lw || pxLight.height !== lh) { pxLight.width = lw; pxLight.height = lh; }
+    const g = pxLight.getContext('2d'), moon = moonNow();
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, lw, lh);
+    g.fillStyle = `rgba(16,18,54,${0.8 * d * (1 - 0.3 * moon.bright)})`; g.fillRect(0, 0, lw, lh);
+    g.globalCompositeOperation = 'destination-out';
+    const hole = (x, y, r) => { const q = g.createRadialGradient(x, y, 0, x, y, r); q.addColorStop(0, 'rgba(0,0,0,0.95)'); q.addColorStop(0.6, 'rgba(0,0,0,0.6)'); q.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = q; g.fillRect(x - r, y - r, r * 2, r * 2); };
+    const p = G.player, a = pxProj(p.x, pxU(p.y));
+    if (a) hole(a.x / 2, (a.y - 50 * a.s) / 2, (G.tools.lantern ? 220 : 150) * a.s / 2);
+    if (G.star) { const b = pxProj(G.star.x, pxU(G.star.y)); if (b) hole(b.x / 2, (b.y - 70 * b.s) / 2, 140 * b.s / 2); }
+    for (const s of burningFires()) { const c = pxProj(s.x, pxU(s.y)); if (c) hole(c.x / 2, (c.y - 14 * c.s) / 2, fireRadius(s) * c.s / 2); }
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    sctx.drawImage(pxLight, 0, 0, W, H);
+  }
+  // a click or tap in the parallax view: on something, or on the stage's hill
+  function pxPick(sx, sy) {
+    for (let n = px.list.length - 1; n >= 0; n--) {
+      const d = px.list[n];
+      if (d.k === 3) continue;
+      if (sx < d.x0 || sx > d.x1 || sy < d.y0 || sy > d.y1) continue;
+      if (d.k === 0 && (OBJ[d.o.type].decor)) continue;
+      if (d.k === 7) return { kind: 'talk', npc: d.npc };
+      if (d.k === 6 && d.cave) return { kind: 'cave', cave: d.cave };
+      if (d.k === 2 && !d.m.dying) return { kind: 'attack', m: d.m };
+      if (d.k === 1) return { kind: 'use', s: d.s };
+      if (d.k === 0) return { kind: 'gather', o: d.o };
+    }
+    // the ground: find the spot on the stage row under the pointer
+    const i = Math.round(px.cb);
+    let best = null, bd = 1e9;
+    for (let tt = 0; tt <= PX_TC; tt += 0.02) {
+      const z = i + tt - px.cb + PX_D0;
+      const wx = G.cam.x + (sx - W / 2) * z / px.k;
+      const q = pxProj(wx, i + tt);
+      if (!q) continue;
+      const dd = Math.abs(q.y - sy);
+      if (dd < bd) { bd = dd; best = { x: wx, y: -(i + tt) * BAND }; }
+    }
+    if (!best) return null;
+    if (G.world.isWater(best.x, best.y)) return canSail() ? { kind: 'move', x: best.x, y: best.y } : G.tools.rod ? { kind: 'fish', x: best.x, y: best.y } : { kind: 'move', x: best.x, y: best.y };
+    return { kind: 'move', x: best.x, y: best.y };
   }
 
   // ---------------- orders (click / tap to act) ----------------
@@ -1177,6 +1699,14 @@
   }
   function pointerOrder(sx, sy) {
     if (G.mode !== 'play') return null;
+    if (VIEWS[view].parallax) {
+      if (G.fishing) { reel(); return null; }
+      const o = pxPick(sx, sy);
+      if (!o) return null;
+      setOrder(o);
+      if (o.kind === 'move' || o.kind === 'fish') G.marker = { x: o.x, y: o.y, t: 0, lvl: G.world.levelAt(o.x, o.y) };
+      return o;
+    }
     const f = screenToFlat(sx, sy);
     if (!f) return null;
     const mx = f.x, my = f.y;
@@ -1222,11 +1752,12 @@
       if (camGoal !== null) { p.hd = camGoal - Math.PI / 2; p.fx = Math.cos(p.hd); p.fy = Math.sin(p.hd); camGoal = null; }
       const want = Math.atan2(p.fx, -p.fy);
       const dA = ((want - camA + Math.PI * 3) % TAU) - Math.PI;
-      // settle once it's behind Pip, so the ground cache stays valid while walking straight
+      // settle once it's behind Ene, so the ground cache stays valid while walking straight
       if (Math.abs(dA) > 0.004) setAngle(camA + dA * Math.min(1, dt * (view === 'first' ? 9 : 5)));
       else if (dA !== 0 && Math.abs(dA) > 1e-6) setAngle(want);
       spin = 0;
     }
+    if (VIEWS[view].parallax) { spin = 0; camGoal = null; if (camA !== 0) setAngle(0); }
     if (spin) { setAngle(camA + spin * 1.7 * dt); camGoal = null; saveAngle(); }
     if (camGoal !== null) {
       const dA = ((camGoal - camA + Math.PI * 3) % TAU) - Math.PI;
@@ -1254,7 +1785,7 @@
       if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
       if (keys.has('KeyW') || keys.has('ArrowUp')) iy -= 1;
       if (keys.has('KeyS') || keys.has('ArrowDown')) iy += 1;
-      // third and first person: left/right turn Pip, up/down walk forward and back
+      // third and first person: left/right turn Ene, up/down walk forward and back
       const follow = VIEWS[view].follow;
       let tank = false;
       if (follow) {
@@ -1269,6 +1800,9 @@
         G.order = null; G.fishing = null; G.marker = null;
         [mx, my] = tank ? [p.fx * -iy, p.fy * -iy] : worldDir(ix, iy);
         if (Math.abs(ix) > 0.2) p.face = ix > 0 ? 1 : -1;
+      } else if (input.holdMove && input.mouseX >= 0 && VIEWS[view].parallax) {
+        const o = pxPick(input.mouseX, input.mouseY);
+        if (o && o.kind === 'move') { if (!G.order || G.order.kind !== 'move') setOrder(o); else { G.order.x = o.x; G.order.y = o.y; } }
       } else if (input.holdMove && input.mouseX >= 0 && screenToFlat(input.mouseX, input.mouseY)) {
         const f = screenToFlat(input.mouseX, input.mouseY);
         const w = screenToWorld(f.x, f.y);
@@ -1305,10 +1839,13 @@
           else G.parts.push({ k: 'dust', x: p.x - p.fx * 8, y: p.y + 2, lvl: p.lvlOff, t: 0, life: 0.45 });
         }
       } else p.running = false;
+      if (G.ene && G.ene.cryT > 0) { p.vx = p.vy = 0; }
       const bx = p.x, by = p.y;
       moveBody(p, PR, dt, { water: p.flying || canSail(), ghost: p.flying });
       checkBarrier(bx, by);
       zoneWatch();
+      updateEne(dt);
+      updateStar(dt);
       if (!world.isWater(p.x, p.y) && !p.flying) { p.lastLand.x = p.x; p.lastLand.y = p.y; }
 
       // gliding: launch hop, then a steady sink; gusts give lift, more when you ride the wind
@@ -1429,7 +1966,7 @@
     const p = G.player, world = G.world;
     const night = isNight(phase), moon = moonNow();
     let scribbles = 0, hostiles = 0, puffs = 0;
-    for (const m of G.mobs) { if (m.dying) continue; if (m.type === 'scribble') scribbles++; else if (m.type === 'puff') puffs++; else hostiles++; }
+    for (const m of G.mobs) { if (m.dying) continue; if (m.type === 'scribble') scribbles++; else if (ENEMIES[m.type].passive) puffs++; else hostiles++; }
     const danger = world.dangerAt(p.x, p.y);
     const ring = () => { const a = Math.random() * TAU, d = 480 + Math.random() * 240; return [p.x + Math.cos(a) * d, p.y + Math.sin(a) * d]; };
     // the moon and the Lost Pages change how many Scribbles come out
@@ -1454,9 +1991,9 @@
         const list = SW.biomeEnemies(world.biomeAt(x, y));
         if (!list.length) continue;
         const type = list[Math.floor(Math.random() * list.length)];
-        if (type === 'puff' ? puffs >= 3 || !puffOK : hostiles >= hcap) continue;
+        if (ENEMIES[type].passive ? puffs >= 3 || !puffOK : hostiles >= hcap) continue;
         const lvl = world.dangerAt(x, y);
-        const m = SW.makeEnemy(type, x, y, lvl, type !== 'puff' && lvl >= 2 && Math.random() < 0.06);
+        const m = SW.makeEnemy(type, x, y, lvl, !ENEMIES[type].passive && lvl >= 2 && Math.random() < 0.06);
         m.lvlOff = world.levelAt(x, y) * LH;
         G.mobs.push(m);
         break;
@@ -1475,6 +2012,7 @@
       const m = G.mobs[i];
       const def = ENEMIES[m.type];
       m.t += dt; m.hurtT -= dt; m.atkCd -= dt; m.stateT -= dt;
+      if (m.stunT > 0) { m.stunT -= dt; m.atkCd = Math.max(m.atkCd, 0.3); m.vx *= 0.6; m.vy *= 0.6; }
       const dp = dist(m.x, m.y, p.x, p.y);
       if (m.dying) { m.dying += dt; if (m.dying > 0.6) G.mobs.splice(i, 1); continue; }
       if (dp > 1500) { G.mobs.splice(i, 1); continue; }
@@ -1870,6 +2408,7 @@
       for (const tr of G.adv.treasures) if (!tr.dug) drawList.push({ d: depthOf(tr.x - G.cam.x, tr.y - G.cam.y) - 30, k: 5, x: tr.x, y: tr.y, spr: 'digX' });
     }
     if (G.mode === 'play') drawList.push({ d: depthOf(p.x - G.cam.x, p.y - G.cam.y) + (p.flying || p.alt > 10 ? 400 : 0), k: 3 });
+    if (G.mode === 'play' && G.star) drawList.push({ d: depthOf(G.star.x - G.cam.x, G.star.y - G.cam.y) + 380, k: 8 });
     drawList.sort((a, b) => a.d - b.d);
 
     // contact shadows
@@ -1890,7 +2429,7 @@
 
     // the player's on-screen box: anything drawn in front of it turns see-through
     const pp = proj(p.x, p.y, p.lvlOff + p.alt);
-    const pbox = [pp.x - 18 * Z, pp.y - 52 * Z, pp.x + 18 * Z, pp.y + 2 * Z];
+    const pbox = [pp.x - 18 * Z, pp.y - 100 * Z, pp.x + 18 * Z, pp.y + 2 * Z];
     let pastPlayer = false;
     const hov = G.hover;
     for (const d of drawList) {
@@ -1902,6 +2441,7 @@
       else if (d.k === 1) drawStructure(d);
       else if (d.k === 2) drawMob(d);
       else if (d.k === 6 || d.k === 7) drawLandmark(d);
+      else if (d.k === 8) drawStar(d);
       else drawMarker(d);
     }
 
@@ -1951,9 +2491,8 @@
     if (page) arrows.push([page.x, page.y, 0.9]);
     const q = G.quests.find((q) => q.kind === 'explore' && !q.done);
     if (q) arrows.push([q.tx, q.ty, 0.7]);
-    const goal = realmGoal();
-    if (goal) arrows.push([goal.x, goal.y, 1]);
     drawBarrier();
+    if (G.star) arrows.length = 0;          // Star shows the way now
     const base = proj(p.x, p.y, p.lvlOff);
     const bx = base.x, by = base.y;
     for (const [tx, ty, s] of arrows) {
@@ -2108,6 +2647,7 @@
     let f = 0;
     if (m.type === 'scribble') f = Math.floor(m.t * 7) % 2;
     else if (m.type === 'puff' || m.type === 'gloop') f = m.hop > 0.15 && m.hop < 0.85 ? 1 : 0;
+    else if (m.type === 'snail') f = Math.floor(m.t * 2) % 2;
     else if (m.type === 'pebblor') f = m.atkCd > 1.2 ? 1 : Math.floor(m.t * 2.5) % 2;
     else f = Math.hypot(m.vx, m.vy) > 20 ? Math.floor(m.t * 8) % 2 : 0;
     return m.type + f + (m.face < 0 ? 'L' : '');
@@ -2179,7 +2719,9 @@
     const ground = !p.flying && !p.boat;
     const frame = p.moving && ground ? Math.floor(p.walkT * 9) % 2 : 0;
     const back = view === 'third';
-    const name = back ? 'playerBack' + frame : 'player' + frame + (p.face < 0 ? 'L' : '');
+    const e = G.ene || {};
+    // her face: crying rainbows, "AY!!", joy, or the walk frames
+    const name = e.cryT > 0 ? 'playerCry' : back ? 'playerBack' + frame : e.faceT > 0 && e.face ? 'player' + e.face + (p.face < 0 ? 'L' : '') : 'player' + frame + (p.face < 0 ? 'L' : '');
     // every step: a hop, a little side-to-side rock, and a squash as the foot lands
     const step = p.moving && ground ? Math.sin(p.walkT * 9 * Math.PI / 2) : 0;
     const bob = p.moving && ground ? Math.abs(step) * 3 * Z : p.boat ? Math.sin(G.time * 3) * 2 * Z : 0;
@@ -2199,23 +2741,24 @@
     else if (p.swingT > 0) { const k = 1 - p.swingT / 0.24; tRot = lerp(-1.9, 1.3, Math.sin(k * Math.PI / 2)); }
     else tRot = toolSpr === 'toolHand' ? 0.2 : -0.6;
     // idle: carried on the back, blade showing over the shoulder; swinging or fishing: in the front hand.
-    // Either way it is drawn behind Pip, so it never covers the face.
+    // Either way it is drawn behind Ene, so it never covers the face.
     const inHand = p.swingT > 0 || fishing;
-    const hx = sx + sway + (back ? 15 : inHand ? p.face * 15 : -p.face * 12) * Z, hy = sy - (inHand ? 16 : 13) * Z - bob;
-    // the tool is always drawn behind Pip, so it never covers their face
+    const hx = sx + sway + (back ? 11 : inHand ? p.face * 11 : -p.face * 9) * Z, hy = sy - (inHand ? 40 : 48) * Z - bob;
+    // the tool is always drawn behind Ene, so it never covers their face
     if (!p.flying && !(toolSpr === 'toolHand' && p.swingT <= 0)) {
       const hand = toolSpr === 'toolHand', f = back ? 1 : p.face;
       drawSprite(toolSpr, hx, hy + (hand ? 4 : 8) * Z, tRot * f + rock * 0.5, hand ? 1 : 0.85 * f, hand ? 1 : 0.85);
     }
     const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
+    drawRainbows(sx, sy);                       // behind her, so they pour out past her face
     drawSprite(name, sx + sway, sy - bob, rot, kx, ky);
     if (p.hurtT > 0 || flick) { ctx.globalAlpha = 0.75; drawSprite(name, sx + sway, sy - bob, rot, kx, ky, 'flash'); ctx.globalAlpha = 1; }
     // the leaf banks with the wind and droops as it gets wet
     if (p.flying || p.alt > 4) {
       const bank = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.here.gust * 0.22;
-      drawFolded('glider', sx, sy - 40 * Z, rot * 0.6 + bank + Math.sin(G.time * 3) * 0.04, 0.9, 0.9 * (1 - p.leafWet * 0.15), 0.5, p.leafWet * 1.2);
+      drawFolded('glider', sx, sy - 108 * Z, rot * 0.6 + bank + Math.sin(G.time * 3) * 0.04, 0.9, 0.9 * (1 - p.leafWet * 0.15), 0.5, p.leafWet * 1.2);
     }
-    if (fishing && G.fishing.phase === 'bite') { const s = 1 + Math.sin(G.time * 20) * 0.12; drawSprite('uiBang', sx, sy - 62 * Z, 0, s, s); }
+    if (fishing && G.fishing.phase === 'bite') { const s = 1 + Math.sin(G.time * 20) * 0.12; drawSprite('uiBang', sx, sy - 120 * Z, 0, s, s); }
   }
 
   function drawFishing() {
@@ -2238,6 +2781,19 @@
   function drawParticles() {
     for (const q of G.parts) {
       const k = q.t / q.life;
+      if (q.k === 'ay') {
+        const pt = proj(q.x, q.y, q.lvl);
+        const sc = (k < 0.2 ? 0.6 + k * 2.6 : 1.12 - (k - 0.2) * 0.15) * Z;
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.save(); ctx.translate(pt.x - 30 * Z, pt.y); ctx.rotate(-0.18); ctx.scale(sc, sc);
+        ctx.globalAlpha = k > 0.8 ? 1 - (k - 0.8) / 0.2 : 1;
+        ctx.font = '30px "Bagel Fat One", "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round'; ctx.lineWidth = 9; ctx.strokeStyle = '#ffffff'; ctx.strokeText('AY!!', 0, 0);
+        ctx.lineWidth = 5; ctx.strokeStyle = '#16121c'; ctx.strokeText('AY!!', 0, 0);
+        ctx.fillStyle = '#ffe23a'; ctx.fillText('AY!!', 0, 0);
+        ctx.restore(); ctx.globalAlpha = 1;
+        continue;
+      }
       if (q.k === 'peel') {
         const pt = proj(q.x, q.y, q.lvl * LH);
         const sx = pt.x + q.dir * k * 40 * Z, sy = pt.y - (Math.sin(k * Math.PI * 0.8) * 60 + k * 30) * Z;
@@ -2325,6 +2881,7 @@
     };
     const pr = ((G.tools.lantern ? 200 : 115) * Z) / 2;
     if (G.mode !== 'title') { const pt = proj(p.x, p.y, p.lvlOff + p.alt); hole(pt.x / 2, (pt.y - 20 * Z) / 2, pr, G.tools.lantern ? 0.95 : 0.8); }
+    if (G.mode !== 'title' && G.star) { const pt = proj(G.star.x, G.star.y, G.star.z); hole(pt.x / 2, (pt.y - 20 * Z) / 2, (150 * Z) / 2, 0.85); }
     const fires = burningFires();
     for (const s of fires) { const pt = proj(s.x, s.y, s.lvl * LH); hole(pt.x / 2, (pt.y - 14 * Z) / 2, ((fireRadius(s) * Z) / 2) * Math.min(1, s.fuel / 20 + 0.3), 1); }
     // glowing mushrooms and crystals make little pools of light
@@ -2359,28 +2916,66 @@
   const mixRGB = (a, b, k) => a.map((v, i) => v * (1 - k) + b[i] * k);
   const rgba = (c, al = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${al})`;
   const SKY = { dayTop: hexRGB('#6fc0f2'), dayLow: hexRGB('#d6f1ff'), duskTop: hexRGB('#ff9a6a'), duskLow: hexRGB('#ffd2a0'), nightTop: hexRGB('#0d0f33'), nightLow: hexRGB('#2b2d70'), grey: hexRGB('#8c98a8'), inkTop: hexRGB('#2a0f3d') };
-  function presentCurved() {
-    const c = curve, d = darkness(phaseOf(G.time)), warm = Math.sin(clamp(d, 0, 1) * Math.PI), moon = moonNow();
+  // The sky: gradient by time of day and weather, the swirl pattern from the
+  // drawings, stars, the cartoon moon and clouds. Returns the horizon colour.
+  function paintSky(yTop, skyH, moonA) {
+    const d = darkness(phaseOf(G.time)), warm = Math.sin(clamp(d, 0, 1) * Math.PI), moon = moonNow();
     const overcast = Math.min(1, WX.rain() * 0.7 + WX.snowing() * 0.5 + WX.fogAmt * 0.6 + WX.sandAmt * 0.4);
     sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
     let skyTop = mixRGB(mixRGB(SKY.dayTop, SKY.duskTop, warm * 0.8), moon.ink ? SKY.inkTop : SKY.nightTop, d);
     let skyLow = mixRGB(mixRGB(SKY.dayLow, SKY.duskLow, warm), SKY.nightLow, d);
     skyTop = mixRGB(skyTop, SKY.grey, overcast * (1 - d * 0.7)); skyLow = mixRGB(skyLow, SKY.grey, overcast * 0.6 * (1 - d * 0.7));
-    const skyH = c.yTop + c.drop + H * 0.14;
     const sky = sctx.createLinearGradient(0, 0, 0, skyH - H * 0.02);
     sky.addColorStop(0, rgba(skyTop)); sky.addColorStop(1, rgba(skyLow));
     sctx.fillStyle = sky; sctx.fillRect(0, 0, W, skyH);
+    drawSwirls(skyH, d, overcast);
     if (d > 0.05) {
       sctx.fillStyle = '#ffffff';
-      for (const [x, y, r, ph] of stars) { sctx.globalAlpha = d * (1 - overcast) * (0.5 + 0.5 * Math.sin(G.time * 2 + ph)); sctx.fillRect(x * W, y * c.yTop * 1.1, r, r); }
+      for (const [x, y, r, ph] of stars) { sctx.globalAlpha = d * (1 - overcast) * (0.5 + 0.5 * Math.sin(G.time * 2 + ph)); sctx.fillRect(x * W, y * yTop * 1.1, r, r); }
+      // a few big sparkles, like the starry night drawing
+      for (let i = 0; i < 6; i++) { const [x, y, , ph] = stars[i * 7]; sparkle(sctx, x * W, y * yTop, 5 + (i % 3) * 2, d * (1 - overcast) * (0.55 + 0.45 * Math.sin(G.time * 1.6 + ph))); }
       sctx.globalAlpha = Math.min(1, d * 1.4) * (1 - overcast * 0.8);
-      const mr = clamp(c.yTop * 0.28, 9, 26);
-      // the moon hangs in the north; it slides along the horizon as you turn
-      const mx = W / 2 + Math.sin(-camA) * W * 0.4;
-      if (Math.cos(camA) > -0.3) SW.drawMoon(sctx, mx, c.yTop * 0.55, mr, moon.phase, moon.ink);
+      const mr = clamp(yTop * 0.4, 14, 40);
+      // the moon hangs in the north-west, clear of the night banner, and slides along the horizon as you turn
+      const ma = moonA, mx = W / 2 + Math.sin(ma) * W * 0.4;
+      if (Math.cos(ma) > -0.2) SW.drawMoon(sctx, mx, yTop * 0.55 + mr * 0.3, mr, moon.phase, moon.ink);
       sctx.globalAlpha = 1;
     }
-    drawClouds(c.yTop, d, overcast);
+    drawClouds(yTop, d, overcast);
+    return skyLow;
+  }
+  function sparkle(g, x, y, r, a) {
+    if (a < 0.03) return;
+    g.save(); g.globalAlpha = a; g.fillStyle = '#ffffff';
+    g.beginPath(); g.moveTo(x, y - r); g.quadraticCurveTo(x, y, x + r, y); g.quadraticCurveTo(x, y, x, y + r); g.quadraticCurveTo(x, y, x - r, y); g.quadraticCurveTo(x, y, x, y - r); g.fill();
+    g.globalAlpha = a * 0.35; g.beginPath(); g.arc(x, y, r * 0.9, 0, TAU); g.fill();
+    g.restore();
+  }
+  // the hand-drawn swirl pattern from the drawings, tiled faintly over the sky
+  let swirlPat = null;
+  function drawSwirls(skyH, d, overcast) {
+    if (!swirlPat) {
+      const c = document.createElement('canvas'); c.width = 120; c.height = 64;
+      const g = c.getContext('2d');
+      g.lineWidth = 2.4; g.lineCap = 'round'; g.strokeStyle = '#ffffff';
+      for (const [ox, oy] of [[10, 18], [70, 50]]) {
+        g.beginPath();
+        for (let t = 0; t < 4.2 * Math.PI; t += 0.15) { const r = 2 + t * 1.1; const x = ox + 22 + Math.cos(t) * r, y = oy + Math.sin(t) * r * 0.8; t === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+        g.lineTo(ox + 52, oy + 8); g.stroke();
+      }
+      swirlPat = sctx.createPattern(c, 'repeat');
+    }
+    sctx.save();
+    sctx.globalAlpha = (0.32 - d * 0.2) * (1 - overcast * 0.6);
+    sctx.fillStyle = swirlPat;
+    sctx.translate(-((G.time * 6) % 120), 0);
+    sctx.fillRect(0, 0, W + 120, skyH);
+    sctx.restore();
+  }
+  function presentCurved() {
+    const c = curve;
+    sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    const skyLow = paintSky(c.yTop, c.yTop + c.drop + H * 0.14, -camA - 0.75);
     let planet = null;
     if (c.globe) {
       planet = globe.draw(buf, { w: W, h: H, sdpr: SDPR, dpr: DPR, yA: c.yA, yTop: c.yTop, R: c.R, K: c.K, a: c.a, Rs: c.Rs, Dk: c.Dk, hazeH: H * 0.26, vcx: VCX, vcy: VCY, sky: skyLow });
@@ -2432,12 +3027,14 @@
     if (!VIEWS[v] || G.inCave) return;
     const was = view;
     view = v; TILT = VIEWS[v].tilt;
+    if (globe) globe.canvas.hidden = fxCv.hidden = !!VIEWS[v].parallax || !curve.globe;
+    if (VIEWS[v].parallax) { setAngle(0); px.cb = null; }
     SW.store.set('view', v);
     if (v === 'classic' && was !== 'classic') setAngle(SW.store.get('camA', 0));
     if (G && G.player) { const p = G.player; p.hd = Math.atan2(p.fy, p.fx); }
     Z = Zb * zoomMul * VIEWS[v].zoom;
     buildCurve(); rescale(); layoutHUD();
-    toast(VIEWS[v].name + (v === 'classic' ? '.' : '. Left and right turn, up and down walk. Press V to switch views.'), 3400);
+    toast(VIEWS[v].name + (v === 'classic' ? '.' : VIEWS[v].parallax ? '. Left and right walk along the hill, up and down climb it. Walk over the top to reach the next hill.' : '. Left and right turn, up and down walk. Press V to switch views.'), 4200);
   }
   const nextView = () => setView(VIEW_ORDER[(VIEW_ORDER.indexOf(view) + 1) % VIEW_ORDER.length]);
 
@@ -2477,14 +3074,14 @@
     else if (d.k === 6) label = 'Enter ' + d.cave.name;
     else if (d.k === 0) label = SW.objVerb(d.o.type) + ' ' + SW.OBJ_NAME[d.o.type];
     else if (d.k === 1) label = d.s.type === 'campfire' ? ((G.inv.wood || 0) > 0 && d.s.fuel < 150 ? 'Add wood to fire' : 'Campfire') : 'Stake Wall';
-    else if (ENEMIES[d.m.type].passive) label = 'Hunt Puff';
+    else if (ENEMIES[d.m.type].passive) label = (d.m.type === 'snail' ? 'Catch ' : 'Hunt ') + ENEMIES[d.m.type].name;
     G.hover = { o: d.o, s: d.s, m: d.m, npc: d.npc, cave: d.cave, label, lx: d.sx, ly: d.k >= 6 ? d.sy - (spr.ay - 4) * Z * (d.ky || 1) - 10 : top };
     canvas.style.cursor = 'pointer';
   }
 
   // ---------------- HUD ----------------
   let hotbarDirty = true, craftDirty = true, questDirty = true;
-  const hud = { hp: -1, food: -1, day: -1, xp: -1, region: '', weather: '', moon: '', energy: -1, raft: -1, windA: 999, windG: -1 };
+  const hud = { hp: -1, food: -1, day: -1, xp: -1, region: '', weather: '', moon: '', energy: -1, raft: -1, windA: 999, windG: -1, cry: -1 };
   let craftCat = 'all';
 
   function bump(item) {
@@ -2682,6 +3279,13 @@
       hud.energy = en; $('energyBar').style.width = (en % 1000) + '%';
       $('energyRow').classList.toggle('air', p.flying); $('energyRow').classList.toggle('soggy', !p.flying && p.leafWet > LEAF_SOGGY);
     }
+    const cr = G.ene ? Math.round(G.ene.cry * 100) : 0;
+    if (cr !== hud.cry) {
+      hud.cry = cr; $('cryBar').style.width = cr + '%';
+      const ready = cr >= 100;
+      $('cryRow').classList.toggle('ready', ready); $('tCry').classList.toggle('ready', ready);
+      $('tCry').hidden = !ready && !touchMode() ? true : !ready;
+    }
     const rw = Math.round((1 - p.raftWet) * 100);
     if (rw !== hud.raft) { hud.raft = rw; $('raftBar').style.width = rw + '%'; $('raftRow').classList.toggle('soggy', p.raftWet > 0.75 || (!p.boat && p.raftWet >= RAFT_SOGGY)); }
     // wind arrow: which way the air is going on screen, and how hard here
@@ -2734,7 +3338,7 @@
     const tl = $('hudTL'), tr = $('hudTR');
     if (!tl || !tr || $('hud').hidden) return;
     const a = tl.getBoundingClientRect(), b = tr.getBoundingClientRect();
-    const charTop = curve.yA - 74 * Z, charBottom = curve.yA + 12;
+    const charTop = curve.yA - 130 * Z, charBottom = curve.yA + 12;
     const gapL = a.right + 10, gapR = b.left - 10;
     const hot = $('hotbarWrap').getBoundingClientRect();
     let top, left, width, mode;
@@ -2899,6 +3503,7 @@
       quests: G.quests.filter((q) => !q.done), questSeq: G.questSeq, regionsSeen: [...G.regionsSeen],
       adv: G.adv, removed, damage: [...G.world.damage],
       structures: G.world.structures.map((s) => ({ ...s, fuel: Math.round(s.fuel) })), nextId: G.world.nextId,
+      eneCry: G.ene ? +G.ene.cry.toFixed(2) : 0,
       known: [...G.known], mods: G.mods, caves: G.caves, tq: G.tq, zonesSeen: G.zonesSeen, metTribes: G.metTribes || [], won: G.won,
     };
   }
@@ -2920,6 +3525,8 @@
     // v4: know-how, mods, caves, tribe quests. Older saves keep what they already made.
     G.known = new Set([...STARTER_KNOWN(), ...(s.known || [])]);
     if (!s.known) for (const r of RECIPES) if (r.tool && G.tools[r.tool]) { G.known.add(r.id); if (r.learn) G.known.add(r.learn); }
+    if (G.ene) G.ene.cry = s.eneCry ?? 0.35;
+    if (G.star) { G.star.x = G.player.x + 30; G.star.y = G.player.y; }
     G.mods = s.mods || {}; G.caves = s.caves || {}; G.tq = s.tq || {}; G.zonesSeen = s.zonesSeen || [0]; G.metTribes = s.metTribes || []; G.won = !!s.won;
     // a save made in a zone you can't reach yet (older, smaller islands) puts you back at the line
     if (zoneOf(G.player.x, G.player.y) > maxZone()) { const sp = G.world.spawn; G.player.x = sp.x; G.player.y = sp.y; }
@@ -2927,7 +3534,7 @@
     G.cam.x = G.player.x; G.cam.y = G.player.y;
     G.lastPhaseNight = isNight(phaseOf(G.time));
     hotbarDirty = craftDirty = questDirty = true;
-    hud.hp = hud.food = hud.day = hud.xp = hud.energy = hud.raft = hud.windG = -1; hud.region = '';
+    hud.hp = hud.food = hud.day = hud.xp = hud.energy = hud.raft = hud.windG = hud.cry = -1; hud.region = '';
     setAngle(SW.store.get('camA', 0));
     renderToolbelt();
     prebuild();
@@ -2949,7 +3556,7 @@
     setAngle(SW.store.get('camA', 0));
     renderToolbelt();
     showScreen(null);
-    hud.hp = hud.food = hud.day = hud.xp = hud.energy = hud.raft = hud.windG = -1; hud.region = '';
+    hud.hp = hud.food = hud.day = hud.xp = hud.energy = hud.raft = hud.windG = hud.cry = -1; hud.region = '';
     const touch = document.body.classList.contains('touch');
     toast(touch ? 'Tap to walk or act. Two fingers: twist to turn the view, pinch to zoom.' : 'Click to walk or act. Q/E or right-drag turns the view.', 5600);
     setTimeout(() => G && G.mode === 'play' && banner('Day 1', 'Find the six Lost Pages.'), 300);
@@ -3031,6 +3638,7 @@
         if (e.code === 'Space' || e.code === 'KeyK') input.jumpEdge = true;
         if (e.code === 'KeyE' || e.code === 'KeyJ' || e.code === 'Enter') input.useEdge = true;
         if (e.code === 'KeyF') eatBest();
+        if (e.code === 'KeyR') rainbowCry();
         if (e.code === 'KeyC' || e.code === 'Tab') toggleCraft();
         if (e.code === 'KeyL') toggleQuests();
         if (e.code === 'Escape' || e.code === 'KeyP') pause(true);
@@ -3045,6 +3653,7 @@
         else if (e.code === 'KeyG') toggleFly();
         else if (e.code === 'KeyN') camGoal = 0;
         else if (e.code === 'KeyV') nextView();
+        else if (e.code === 'KeyR') rainbowCry();
         else if (/^Digit[1-9]$/.test(e.code)) {
           const items = ORDER.filter((k) => G.inv[k] > 0);
           const it = items[+e.code.slice(5) - 1];
@@ -3207,6 +3816,8 @@
     };
     hold($('tAct'), () => { if (G.inCave) { input.useEdge = true; return; } if (G.fishing) reel(); else { input.act = true; input.actTouch = true; } }, () => { input.act = false; input.actTouch = false; });
     hold($('tEat'), () => G.mode === 'play' && eatBest());
+    hold($('tCry'), () => rainbowCry());
+    $('cryRow').addEventListener('click', () => rainbowCry());
     hold($('tFly'), () => { if (G.inCave) input.jumpEdge = true; else toggleFly(); });
     window.addEventListener('orientationchange', () => setTimeout(() => { resize(); rescale(); prebuild(); }, 250));
   }
@@ -3232,6 +3843,10 @@
     if (G.inCave) {
       if (G.mode === 'play' && !G.talking) { G.time += dt; caveSurvival(dt); if (G.inCave) caves.update(dt, caveInput()); }
       if (G.inCave) caves.render(sctx, W, H, SDPR);
+    } else if (VIEWS[view].parallax && G.mode !== 'title') {
+      if (G.mode !== 'paused' && !G.talking) update(dt);
+      G.hover = null;
+      renderParallax(dt);
     } else {
       if (G.mode !== 'paused' && !G.talking) update(dt);
       updateHover();

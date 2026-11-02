@@ -34,6 +34,9 @@
       <div class="vrow raftrow" id="raftRow" title="Raft dryness: it soaks up water while you sail and dries on land" hidden>
         <img data-icon="raft" alt="Raft"><div class="bar"><i id="raftBar"></i></div>
       </div>
+      <button class="vrow cryrow" id="cryRow" type="button" title="Rainbow cry: fills as you fight. Press R (or tap here) when it's full.">
+        <img data-icon="playerCry" alt="Rainbow cry"><span class="bar"><i id="cryBar"></i></span>
+      </button>
       <div id="toolbelt" aria-label="Tools and gear"></div>
     </div>
     <section class="questbox" id="questBox" aria-label="Quests">
@@ -85,6 +88,7 @@
 
   <!-- tips and banners: placed by the game so they never cover the character -->
   <div id="toast" role="status"><span></span></div>
+  <div id="enePop" aria-hidden="true"><img id="enePopImg" alt=""><b id="enePopWord"></b></div>
   <div id="banner"><span class="big"></span><span class="small"></span></div>
 
   <div class="hud-bottom" id="hotbarWrap">
@@ -96,6 +100,7 @@
     <div id="stick"><div id="knob"></div></div>
     <div class="tpad">
       <button id="tFly" class="tbtn" hidden><img data-icon="glider" alt=""><span id="tFlyLbl">Glide</span></button>
+      <button id="tCry" class="tbtn" hidden><img data-icon="playerCry" alt=""><span>Rainbow</span></button>
       <button id="tEat" class="tbtn"><img data-icon="itemBerry" alt=""><span>Eat</span></button>
       <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span id="tActLbl">Use</span></button>
     </div>
@@ -146,7 +151,7 @@
     <h1 class="logo" aria-label="Stickerwild">
       <span style="--r:-8deg;--c:var(--leaf)">S</span><span style="--r:5deg;--c:var(--sun)">t</span><span style="--r:-3deg;--c:var(--berry)">i</span><span style="--r:7deg;--c:var(--sea)">c</span><span style="--r:-6deg;--c:var(--leaf)">k</span><span style="--r:4deg;--c:var(--sun)">e</span><span style="--r:-4deg;--c:var(--berry)">r</span><span class="gap"></span><span style="--r:6deg;--c:var(--gem)">w</span><span style="--r:-7deg;--c:var(--leaf)">i</span><span style="--r:3deg;--c:var(--sea)">l</span><span style="--r:-5deg;--c:var(--berry)">d</span>
     </h1>
-    <p class="tagline">A survival RPG on a huge procedural island where every tree, rock and monster is a sticker. Chop, fish, fight, level up, and keep your fire lit until dawn.</p>
+    <p class="tagline">Ene in Pink and her friend Star wash up on a huge sticker island. Chop, fish, fight, cry a rainbow, find the Lost Pages and bring the colours back.</p>
 
     <label class="seed" for="seedInput">
       <span>Island seed</span>
@@ -181,6 +186,8 @@
       <li><kbd>C</kbd> craft</li>
       <li><kbd>M</kbd> map</li>
       <li><kbd>G</kbd> glide</li>
+      <li><kbd>R</kbd> rainbow cry</li>
+      <li><kbd>V</kbd> change view</li>
     </ul>
   </div>
 </section>
@@ -257,6 +264,7 @@
 
 <script src="js/util.js"></script>
 <script src="js/sprites.js"></script>
+<script src="js/assets.js"></script>
 <script src="js/world.js"></script>
 <script src="js/rpg.js"></script>
 <script src="js/realm.js"></script>

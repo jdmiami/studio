@@ -403,3 +403,22 @@ body.in-cave .rail #rotL, body.in-cave .rail #rotR, body.in-cave #compassBtn, bo
 @media (max-height: 500px) { .talk { bottom: calc(var(--sb) + 6px); max-height: calc(100vh - 20px); } }
 .legend .village { background: #6bbf4a; border-radius: 3px; }
 .legend .cave { background: #5a5e70; border-radius: 2px 2px 6px 6px; }
+
+/* ---------- Ene: rainbow meter and close-up pop-ups ---------- */
+.vrow.cryrow { all: unset; display: flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 8px; }
+.vrow.cryrow .bar { flex: 1; height: 8px; background: var(--ink); border-radius: 999px; overflow: hidden; min-width: 0; display: block; }
+.vrow.cryrow .bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #e8322a, #f5861f, #f8d81e, #4fb04a, #3a3ad0, #7a35c8); transition: width 0.3s; }
+.vrow.cryrow img { width: 20px; height: 20px; flex: none; }
+.vrow.cryrow.ready { animation: throb 0.8s ease-in-out infinite; }
+.vrow.cryrow:focus-visible { outline: 3px dashed var(--ink); outline-offset: 2px; }
+#enePop {
+  position: absolute; left: calc(var(--sl) + var(--edge)); bottom: calc(var(--sb) + var(--edge) + 70px);
+  width: clamp(110px, 16vw, 170px); pointer-events: none; opacity: 0; transform: translateY(20px) rotate(-6deg) scale(0.6);
+  transition: opacity 0.2s, transform 0.35s cubic-bezier(.3, 1.6, .5, 1); filter: drop-shadow(0 0 0 #fff) drop-shadow(2px 3px 0 var(--shade));
+}
+#enePop.show { opacity: 1; transform: rotate(-4deg) scale(1); }
+#enePop img { display: block; width: 100%; height: auto; max-height: 34vh; object-fit: contain; filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff); }
+#enePopWord { position: absolute; left: 62%; top: -6%; font-family: var(--display); font-weight: 400; font-size: clamp(26px, 4vw, 40px); color: #ffe23a; -webkit-text-stroke: 0.14em #16121c; paint-order: stroke fill; transform: rotate(-12deg); text-shadow: 0 0 0 #fff; }
+#enePopWord:empty { display: none; }
+.tbtn.ready { background: linear-gradient(135deg, #ffe3e0, #fff6c2, #dff5d8, #dfe4ff); animation: throb 0.7s ease-in-out infinite; }
+@media (max-height: 500px) { #enePop { width: 96px; bottom: calc(var(--sb) + var(--edge) + 54px); } }

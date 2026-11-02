@@ -69,13 +69,14 @@
     gloop: { name: 'Gloop', hp: 7, dmg: 6, spd: 66, r: 14, xp: 9, aggro: 200, split: true, drops: [['fiber', 1, 0.5], ['berry', 2, 0.4]] },
     pebblor: { name: 'Pebblor', hp: 15, dmg: 14, spd: 52, r: 19, xp: 16, aggro: 180, drops: [['stone', 3, 1], ['gem', 1, 0.35]] },
     puff: { name: 'Puff', hp: 2, dmg: 0, spd: 70, r: 12, xp: 2, passive: true, drops: [['meat', 1, 1], ['meat', 1, 0.5]] },
+    snail: { name: 'Snail', hp: 2, dmg: 0, spd: 22, r: 12, xp: 2, passive: true, drops: [['shell', 2, 1], ['shell', 2, 0.5]] },
   };
   const B = SW.BIOME;
   SW.biomeEnemies = (b) => {
     switch (b) {
       case B.SAND: return ['snapjaw'];
-      case B.MEADOW: return ['thornback', 'puff', 'puff'];
-      case B.GRASS: return ['thornback', 'puff'];
+      case B.MEADOW: return ['thornback', 'puff', 'puff', 'snail'];
+      case B.GRASS: return ['thornback', 'puff', 'snail'];
       case B.FOREST: return ['thornback', 'gloop', 'puff'];
       case B.SWAMP: return ['gloop', 'gloop', 'snapjaw'];
       case B.HIGH: return ['pebblor', 'thornback'];
@@ -212,7 +213,7 @@
     'Page 3: Unfinished things get hungry. They ate the colours first.',
     'Page 4: The Great Book was torn apart so the Ink could not spread.',
     'Page 5: Every page you bring back makes the nights a little safer.',
-    'Page 6: Pip, you were the last sticker on the last page. Welcome home.',
+    'Page 6: Ene, you were the last sticker on the last page, and Star the brightest. Welcome home.',
   ];
   // Six pages, each further out than the last, placed from the seed.
   SW.makeAdventure = (world) => {

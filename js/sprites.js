@@ -178,6 +178,36 @@
   ART.flowerPink = [22, 31, flowerArt('#ff7aa8')];
   ART.flowerGold = [22, 31, flowerArt('#ffb13b')];
   ART.flowerLilac = [22, 31, flowerArt('#b69cff')];
+  // the sunflower from the drawings: tall stem, two leaves, a big seeded face
+  ART.sunflower = [34, 64, (c) => {
+    line(c, [[17, 62], [17, 22]], INK, 5); line(c, [[17, 62], [17, 22]], '#4fa64a', 2.6);
+    shape(c, (c) => { ell(c, 24, 44, 7.5, 3, -0.5); ell(c, 10, 52, 7, 2.8, 0.55); }, '#5bb04f', 1.6);
+    shape(c, (c) => { for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; ell(c, 17 + Math.cos(a) * 9.5, 15 + Math.sin(a) * 9.5, 5.2, 2.6, a); } }, '#ffd83a', 1.5);
+    shape(c, blobs([[17, 15, 6.4]]), '#8a5a2e', 1.4);
+    for (let i = 0; i < 9; i++) flat(c, blobs([[14 + (i % 3) * 3, 12 + Math.floor(i / 3) * 3, 0.8]]), '#4a2e14');
+  }];
+  ART.daisy = [20, 26, (c) => {
+    line(c, [[10, 25], [10, 12]], INK, 4); line(c, [[10, 25], [10, 12]], '#4fa64a', 2);
+    shape(c, (c) => { for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; ell(c, 10 + Math.cos(a) * 4.8, 9 + Math.sin(a) * 4.8, 3.2, 1.6, a); } }, '#ffffff', 1.3);
+    shape(c, blobs([[10, 9, 2.4]]), '#ffd23f', 1.2);
+  }];
+  // the worried snail from the drawings
+  function snailArt(f) {
+    return (c) => {
+      const st = f ? 1.5 : 0;
+      shape(c, (c) => { c.moveTo(4, 30); c.quadraticCurveTo(20 + st, 34, 42, 30); c.quadraticCurveTo(46, 26, 40, 24); c.lineTo(8, 24); c.quadraticCurveTo(2, 26, 4, 30); c.closePath(); }, '#e8c08a', 1.8);
+      line(c, [[38, 24], [39, 10 - st]], INK, 3.2); line(c, [[38, 24], [39, 10 - st]], '#e8c08a', 1.6);
+      line(c, [[42, 24], [45, 11 - st]], INK, 3.2); line(c, [[42, 24], [45, 11 - st]], '#e8c08a', 1.6);
+      shape(c, (c) => { ell(c, 39, 9 - st, 3.6, 4.2); ell(c, 45.5, 10 - st, 3.6, 4.2); }, '#ffffff', 1.3);
+      flat(c, blobs([[39.6, 9.6 - st, 1.5], [46, 10.6 - st, 1.5]]), INK);
+      shape(c, (c) => ell(c, 43, 21, 2.4, 1.6), '#3b1a2a', 1);
+      shape(c, blobs([[20, 17, 13]]), '#b97a3e', 2);
+      c.beginPath(); for (let t = 0; t < 5.5 * Math.PI; t += 0.2) { const r = 1 + t * 0.62; const x = 20 + Math.cos(t) * r, y = 17 + Math.sin(t) * r; t === 0 ? c.moveTo(x, y) : c.lineTo(x, y); }
+      c.lineWidth = 1.8; c.strokeStyle = '#7a4a22'; c.stroke();
+    };
+  }
+  ART.snail0 = [48, 34, snailArt(0)];
+  ART.snail1 = [48, 34, snailArt(1)];
 
   ART.tuft = [26, 16, (c) => {
     shape(c, (c) => {
@@ -238,42 +268,135 @@
   }];
 
   // ---- characters ----
-  function playerArt(frame) {
+  // Ene in Pink: tall egg-shaped pink face, long black hair with a rainbow
+  // streak on one side and a violet one on the other, a yellow tube dress,
+  // thin pink limbs and bare feet. Redrawn from the original character sheet.
+  const ENE = { skin: '#f58cf2', shade: '#d450d6', hair: '#17131d', dress: '#f8d81e', dressShade: '#e3ac0c' };
+  const RAINBOW = ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a'];
+  const VIOLET = ['#3a3ad0', '#7a35c8', '#b03ec2'];
+  function limb(c, pts, w = 2.4) { line(c, pts, INK, w + 2.2); line(c, pts, ENE.skin, w); }
+  function eneBody(c, frame, back) {
+    const st = frame === 1 ? 3.5 : 0;
+    // legs and bare feet
+    limb(c, [[19 - st * 0.4, 58], [18 - st, 72]]);
+    limb(c, [[26 + st * 0.4, 58], [27 + st, 72]]);
+    shape(c, (c) => { ell(c, 16.5 - st, 73, 4.6, 2.4); ell(c, 28.5 + st, 73, 4.6, 2.4); }, ENE.skin, 1.6);
+    // arms: one hand to the chest, one hanging (like the "AY!!" pose); both down from behind
+    if (back) { limb(c, [[15, 39], [11, 52]], 2.2); limb(c, [[30, 39], [34, 52]], 2.2); }
+    else { limb(c, [[16, 39], [12, 47], [19, 43]], 2.2); limb(c, [[29, 40], [34, 51]], 2.2); }
+    // yellow tube dress, a little crumpled at the top
+    shape(c, (c) => { c.moveTo(15, 38); c.quadraticCurveTo(22.5, 35.5, 30, 38); c.lineTo(31, 60); c.quadraticCurveTo(22.5, 62, 14, 60); c.closePath(); }, ENE.dress, 2);
+    flat(c, (c) => { c.moveTo(27.5, 39); c.lineTo(30, 39); c.lineTo(31, 59.5); c.lineTo(28.5, 60); c.closePath(); }, ENE.dressShade);
+    if (!back) [[17, 40.5], [20.5, 41.5], [24, 40.5]].forEach(([x, y]) => line(c, [[x, y], [x + 3, y]], ENE.dressShade, 1.1));
+  }
+  function eneHairBack(c) {
+    shape(c, (c) => {
+      c.moveTo(6, 22); c.bezierCurveTo(3, 0, 42, -2, 39, 21);
+      // right lock, falling past the shoulder in waves
+      c.bezierCurveTo(42, 30, 37, 38, 39, 46); c.quadraticCurveTo(39.5, 52, 36, 56); c.quadraticCurveTo(34, 52, 31.5, 55); c.quadraticCurveTo(32, 46, 30.5, 40);
+      c.lineTo(14.5, 40);
+      // left lock
+      c.quadraticCurveTo(13.5, 48, 13.8, 56); c.quadraticCurveTo(11, 52, 8.5, 55); c.quadraticCurveTo(5, 50, 6.5, 44); c.bezierCurveTo(8, 38, 3, 30, 6, 22); c.closePath();
+    }, ENE.hair, 1.8);
+    RAINBOW.forEach((col, i) => line(c, [[10 + i * 1.2, 40], [10.6 + i * 1.2, 53]], col, 1.3));
+    VIOLET.forEach((col, i) => line(c, [[32.6 + i * 1.2, 40], [33 + i * 1.2, 53]], col, 1.3));
+  }
+  function eneFace(c, mood) {
+    // the egg-shaped face, turned a little to the right
+    shape(c, (c) => { c.moveTo(22, 4); c.bezierCurveTo(33, 4, 35, 17, 32, 26); c.bezierCurveTo(29.5, 33, 26, 36, 23, 36); c.bezierCurveTo(19, 36, 13.5, 31, 12.5, 24); c.bezierCurveTo(11, 13, 14, 4, 22, 4); c.closePath(); }, ENE.skin, 2);
+    flat(c, (c) => { c.moveTo(14, 12); c.bezierCurveTo(12, 20, 13.5, 29, 19, 34); c.bezierCurveTo(15, 31, 13.6, 24, 14.6, 16); c.closePath(); }, ENE.shade);
+    // hair fringe framing the face
+    shape(c, (c) => { c.moveTo(10, 16); c.bezierCurveTo(10, 3, 30, -1, 35, 10); c.bezierCurveTo(30, 6, 24, 6, 21, 8); c.bezierCurveTo(17, 7, 13, 10, 12, 18); c.closePath(); }, ENE.hair, 1.6);
+    // ear with piercings
+    shape(c, (c) => ell(c, 11.5, 20, 2.2, 3.2), ENE.skin, 1.4);
+    flat(c, blobs([[10.6, 18.4, 0.7], [10.4, 21.6, 0.7]]), '#c9c9d6');
+    if (mood === 'cry') {
+      // squeezed shut, with smudged lids
+      flat(c, (c) => { ell(c, 20, 16, 3.6, 2); ell(c, 28, 16, 3.4, 2); }, '#7a5a8a');
+      line(c, [[17, 15], [23, 17]], INK, 1.6); line(c, [[25, 17], [31, 15]], INK, 1.6);
+      line(c, [[18, 29], [21, 28], [24, 29.5], [27, 28.3], [29, 29]], INK, 1.6);
+      return;
+    }
+    const big = mood === 'ay' ? 1.35 : 1.12;
+    shape(c, (c) => { ell(c, 20, 16, 3.3 * big, 4.3 * big); ell(c, 28.3, 16, 3.1 * big, 4.2 * big); }, '#ffffff', 1.5);
+    if (mood === 'joy') { line(c, [[17.5, 15.5], [20, 13.5], [22.5, 15.5]], INK, 1.6); line(c, [[26, 15.5], [28.3, 13.5], [30.6, 15.5]], INK, 1.6); }
+    else { flat(c, blobs([[20.6, 16.8, 1.6 * big], [29, 16.8, 1.6 * big]]), INK); flat(c, blobs([[21.1, 16, 0.6], [29.5, 16, 0.6]]), '#ffffff'); }
+    line(c, mood === 'ay' ? [[16.5, 9], [21, 8]] : [[17, 10.5], [21.5, 10]], INK, 1.3);
+    line(c, mood === 'ay' ? [[26.5, 8], [31, 9]] : [[26.5, 10], [30.5, 10.5]], INK, 1.3);
+    line(c, [[25, 20], [26.2, 23], [24.6, 23.4]], INK, 1.1);
+    if (mood === 'ay') { shape(c, (c) => ell(c, 24.5, 30, 2.4, 4.4), '#3b1a2a', 1.4); flat(c, (c) => ell(c, 24.5, 32.4, 1.4, 1.4), '#ff5a6a'); }
+    else if (mood === 'joy') { shape(c, (c) => { c.moveTo(19.5, 27); c.quadraticCurveTo(24.5, 34, 30, 26.5); c.closePath(); }, '#3b1a2a', 1.4); flat(c, (c) => ell(c, 25, 30.6, 2.2, 1.3), '#ff5a6a'); }
+    else shape(c, (c) => ell(c, 24.5, 28.5, 1.7, 2.3), '#3b1a2a', 1.2);
+  }
+  // Proportions follow the character sheet: about a third head, a third dress,
+  // a quarter legs, and very slim.
+  const eneHairT = (c) => { c.translate(20, 0); c.scale(0.92, 1.14); c.translate(-22.5, 0); };
+  const eneBodyT = (c) => { c.translate(20, 44); c.scale(0.82, 1.55); c.translate(-22.5, -37); };
+  const eneFaceT = (c) => { c.translate(20, 2); c.scale(1.04, 1.24); c.translate(-22.5, -3); };
+  function eneArt(frame, mood) {
     return (c) => {
-      const st = frame === 1 ? 4 : 0;
-      shape(c, (c) => { ell(c, 13 - st, 45, 6, 3.6); ell(c, 27 + st, 45, 6, 3.6); }, '#5a3f2e', 1.8);
-      shape(c, (c) => rrect(c, 2, 19, 10, 19, 4), '#2fb3a1');
-      flat(c, (c) => rrect(c, 4, 21, 3, 15, 1.5), '#6fd6c6');
-      shape(c, blobs([[21, 29, 15]]), '#ffcf5a');
-      flat(c, (c) => ell(c, 24, 35, 8, 6), '#fff0bf');
-      flat(c, blobs([[15, 22, 4]]), '#ffe08f');
-      shape(c, (c) => { ell(c, 24, 25, 3.2, 4.2); ell(c, 31.5, 25, 3.2, 4.2); }, '#ffffff', 1.6);
-      flat(c, blobs([[25.2, 26, 1.8], [32.6, 26, 1.8]]), INK);
-      flat(c, blobs([[25.8, 25, 0.7], [33.2, 25, 0.7]]), '#ffffff');
-      flat(c, (c) => ell(c, 34.5, 31, 2.6, 1.6), '#ff9a8a');
-      line(c, [[27, 31], [29, 32.4], [31, 31]], INK, 1.5);
-      line(c, [[21, 14], [22, 7]], INK, 3.6); line(c, [[21, 14], [22, 7]], '#4fa64a', 1.6);
-      shape(c, (c) => ell(c, 27, 6, 6, 3, -0.45), '#6bbf4a', 1.6);
+      c.save(); eneHairT(c); eneHairBack(c); c.restore();
+      c.save(); eneBodyT(c); eneBody(c, frame, false); c.restore();
+      limb(c, [[20, 40], [20, 47]], 2.1);
+      c.save(); eneFaceT(c); eneFace(c, mood || 'calm'); c.restore();
     };
   }
-  // Pip from behind, for the third-person view: backpack front and centre
-  function playerBackArt(frame) {
+  function eneBackArt(frame) {
     return (c) => {
-      const st = frame === 1 ? 3 : 0;
-      shape(c, (c) => { ell(c, 14, 45 - st, 6, 3.6); ell(c, 28, 45 - (3 - st), 6, 3.6); }, '#5a3f2e', 1.8);
-      shape(c, blobs([[21, 29, 15]]), '#ffcf5a');
-      flat(c, blobs([[14, 22, 4.5]]), '#ffe08f');
-      shape(c, (c) => rrect(c, 11, 20, 20, 21, 6), '#2fb3a1');
-      flat(c, (c) => rrect(c, 14, 23, 14, 6, 3), '#6fd6c6');
-      shape(c, (c) => rrect(c, 15, 31, 12, 7, 3), '#249484', 1.4);
-      line(c, [[21, 14], [21, 7]], INK, 3.6); line(c, [[21, 14], [21, 7]], '#4fa64a', 1.6);
-      shape(c, (c) => ell(c, 26, 6, 6, 3, -0.45), '#6bbf4a', 1.6);
+      c.save(); eneBodyT(c); eneBody(c, frame, true); c.restore();
+      c.save(); eneHairT(c);
+      // all hair from behind, with the streaks showing at the ends
+      shape(c, (c) => { c.moveTo(7, 20); c.bezierCurveTo(5, 0, 39, 0, 38, 20); c.bezierCurveTo(40, 32, 38, 44, 35, 52); c.quadraticCurveTo(22.5, 55, 10, 52); c.bezierCurveTo(6, 44, 5, 32, 7, 20); c.closePath(); }, ENE.hair, 1.8);
+      line(c, [[14, 8], [12, 30]], '#ffffff', 1.2); line(c, [[30, 8], [32, 28]], '#ffffff', 1.2);
+      RAINBOW.forEach((col, i) => line(c, [[11 + i * 1.5, 38], [12 + i * 1.5, 52]], col, 1.6));
+      VIOLET.forEach((col, i) => line(c, [[29 + i * 1.5, 38], [28.5 + i * 1.5, 52]], col, 1.6));
+      c.restore();
     };
   }
-  ART.playerBack0 = [42, 49, playerBackArt(0)];
-  ART.playerBack1 = [42, 49, playerBackArt(1)];
-  ART.player0 = [42, 49, playerArt(0)];
-  ART.player1 = [42, 49, playerArt(1)];
+  ART.player0 = [40, 106, eneArt(0)];
+  ART.player1 = [40, 106, eneArt(1)];
+  ART.playerAy = [40, 106, eneArt(0, 'ay')];
+  ART.playerJoy = [40, 106, eneArt(0, 'joy')];
+  ART.playerCry = [40, 106, eneArt(0, 'cry')];
+  ART.playerBack0 = [40, 106, eneBackArt(0)];
+  ART.playerBack1 = [40, 106, eneBackArt(1)];
+
+  // Star, Ene's companion: a yellow star with stubby legs and a lot of feelings
+  function starArt(mood, frame) {
+    return (c) => {
+      const k = frame ? 3 : 0;
+      // legs, kicking a little as Star floats along
+      line(c, [[15, 34], [13 - k, 42]], INK, 4.4); line(c, [[15, 34], [13 - k, 42]], '#ffd83a', 2.4);
+      line(c, [[25, 34], [27 + k, 42 - k * 0.5]], INK, 4.4); line(c, [[25, 34], [27 + k, 42 - k * 0.5]], '#ffd83a', 2.4);
+      const pts = [];
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 8.5 : 18; pts.push([20 + Math.cos(a) * r, 21 + Math.sin(a) * r]); }
+      shape(c, (c) => polyPath(c, pts), '#ffd83a', 1.9);
+      flat(c, (c) => polyPath(c, [[20, 21], pts[3], pts[4], pts[5], pts[6]]), '#f0b52a');
+      flat(c, blobs([[14, 14, 2.4]]), '#fff3a8');
+      const eye = (x, y, s) => { shape(c, (c) => ell(c, x, y, 2.6 * s, 3.4 * s), '#ffffff', 1.2); flat(c, blobs([[x + 0.5, y + 0.6, 1.3 * s]]), INK); };
+      if (mood === 'laugh') {
+        line(c, [[14.5, 18], [16.8, 16.4], [19, 18]], INK, 1.5); line(c, [[21.5, 18], [23.8, 16.4], [26, 18]], INK, 1.5);
+        shape(c, (c) => { c.moveTo(15.5, 22); c.quadraticCurveTo(20.5, 30, 25.5, 22); c.closePath(); }, '#3b1a2a', 1.3);
+        flat(c, (c) => ell(c, 20.5, 25.6, 2.2, 1.2), '#ff5a6a');
+      } else if (mood === 'surprised') {
+        eye(16.5, 17, 1.25); eye(24, 17, 1.25);
+        shape(c, (c) => ell(c, 20.3, 25.5, 2.2, 2.8), '#3b1a2a', 1.2);
+      } else if (mood === 'sad') {
+        eye(16.5, 18, 1); eye(24, 18, 1);
+        line(c, [[14, 13.5], [18, 14.8]], INK, 1.3); line(c, [[22.5, 14.8], [26.5, 13.5]], INK, 1.3);
+        line(c, [[17.5, 25.5], [20.3, 23.8], [23, 25.5]], INK, 1.4);
+        flat(c, (c) => ell(c, 15, 22.5, 1, 1.6), '#8fe8f6');
+      } else if (mood === 'angry') {
+        eye(16.5, 18.5, 0.9); eye(24, 18.5, 0.9);
+        line(c, [[13.5, 13.5], [18.8, 16]], INK, 1.7); line(c, [[21.8, 16], [27, 13.5]], INK, 1.7);
+        shape(c, (c) => rrect(c, 16.5, 22.5, 7.6, 3.6, 1.2), '#ffffff', 1.2); line(c, [[16.8, 24.3], [23.8, 24.3]], INK, 0.8);
+      } else {
+        eye(16.5, 17.5, 1); eye(24, 17.5, 1);
+        line(c, [[16.5, 23], [20.3, 26], [24, 23]], INK, 1.5);
+      }
+    };
+  }
+  for (const m of ['happy', 'surprised', 'sad', 'angry', 'laugh']) for (const f of [0, 1]) ART['star_' + m + f] = [40, 44, starArt(m, f)];
 
   function scribbleArt(seed) {
     return (c) => {
@@ -795,7 +918,7 @@
   ART.greatBook = [36, 30, (c) => { shape(c, (c) => rrect(c, 3, 4, 30, 23, 3), '#8a63e8'); flat(c, (c) => rrect(c, 3, 22, 30, 4, 2), '#fff8e6'); shape(c, (c) => { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 3 : 7; c.lineTo(18 + Math.cos(a) * r, 13 + Math.sin(a) * r); } c.closePath(); }, '#ffd23f', 1.4); }];
 
   SW.sprites = {};
-  const FLIP = ['bat0', 'bat1', 'grub0', 'grub1', 'player0', 'player1', 'scribble0', 'scribble1', 'puff0', 'puff1', 'thornback0', 'thornback1', 'snapjaw0', 'snapjaw1', 'gloop0', 'gloop1', 'pebblor0', 'pebblor1'];
+  const FLIP = ['snail0', 'snail1', 'bat0', 'bat1', 'grub0', 'grub1', 'player0', 'player1', 'playerAy', 'playerJoy', 'scribble0', 'scribble1', 'puff0', 'puff1', 'thornback0', 'thornback1', 'snapjaw0', 'snapjaw1', 'gloop0', 'gloop1', 'pebblor0', 'pebblor1'];
   const ALIAS = { itemCampfire: 'campfire', itemWall: 'wall', itemAxe: 'toolAxe', itemPick: 'toolPick', itemSword: 'toolSword', itemGemSword: 'toolGemSword', itemMushroom: 'mushroom' };
   const border = (name) => (name.startsWith('item') || name.startsWith('ui') ? 3 : 3.6);
   // World stickers are rendered at the exact on-screen scale so most of them

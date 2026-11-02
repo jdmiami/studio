@@ -42,6 +42,7 @@
         def, save, rows: map.slice(), W: map[0].length, H: map.length, t: 0,
         hero: { x: 0, y: 0, vx: 0, vy: 0, ground: false, ladder: false, slide: 0, face: 1, atkCd: 0, swingT: 0, iframes: 1, hurtT: 0, walkT: 0, drop: 0 },
         foes: [], parts: [], cam: { x: 0, y: 0 }, progress: 0, lit: new Set(), msgT: 0,
+        star: { x: 0, y: 0, vx: 0, vy: 0, t: 0, zapT: 2, zap: null }, cryHitT: 0,
       };
       const lvl = 1 + def.zone * 2;
       for (let r = 0; r < C.H; r++) for (let c = 0; c < C.W; c++) {
@@ -55,6 +56,7 @@
       }
       if (save.solved) for (let i = 1; i <= def.order.length; i++) C.lit.add(i);
       if (save.solved) C.progress = def.order.length;
+      C.star.x = C.hero.x - 30; C.star.y = C.hero.y - 60;
       snapCam(true);
     }
     function spawnFoe(type, c, r, lvl) {
@@ -116,6 +118,15 @@
         if (ch === '*' || ch === 'm' || ch === '$') pickup(c, r, ch);
       }
       updateFoes(dt);
+      updateStar(dt);
+      if (api.crying && api.crying()) {
+        C.cryHitT -= dt;
+        if (C.cryHitT <= 0) {
+          C.cryHitT = 0.32;
+          for (const f of C.foes) if (!f.dying && Math.hypot(f.x - h.x, f.y - h.y) < 190) hitFoe(f, api.attack() * 2, true);
+          for (let i = 0; i < 6; i++) puff(h.x + (Math.random() - 0.5) * 260, h.y - 10, ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a', '#3a3ad0', '#7a35c8'][i], 1);
+        }
+      }
       updateParts(dt);
       if (inp.use) use();
       if (!C) return;                  // walked out of the door
@@ -296,11 +307,25 @@
         if (dd < 26 && f.hurtT < 0.2) hurt(f.dmg, f.x, f.y, -300);
       }
     }
-    function hitFoe(f) {
+    function updateStar(dt) {
+      const st = C.star, h = C.hero;
+      st.t += dt; st.zapT -= dt;
+      if (st.zap) { st.zap.t += dt; if (st.zap.t > 0.3) st.zap = null; }
+      const tx = h.x - h.face * 30, ty = h.y - 64 + Math.sin(st.t * 3) * 6;
+      st.vx += ((tx - st.x) * 10 - st.vx * 4.5) * dt; st.vy += ((ty - st.y) * 10 - st.vy * 4.5) * dt;
+      st.x += st.vx * dt; st.y += st.vy * dt;
+      if (st.zapT <= 0) {
+        let foe = null, fd = 230;
+        for (const f of C.foes) { if (f.dying) continue; const d = Math.hypot(f.x - h.x, f.y - h.y); if (d < fd) { fd = d; foe = f; } }
+        if (foe) { st.zapT = 3.2; st.zap = { x: foe.x, y: foe.y - FOES[foe.type].h / 2, t: 0 }; api.starFeel('angry', 1.2); hitFoe(foe, 1 + Math.floor(api.player().level / 2), true); }
+      }
+    }
+    function hitFoe(f, dmgIn, quiet) {
       const d = FOES[f.type];
-      const dmg = api.attack();
+      const dmg = dmgIn || api.attack();
       f.hp -= dmg; f.hurtT = 0.3;
-      f.vx = C.hero.face * 220; if (!d.fly) f.vy = -220; else f.vy = -80;
+      const away = Math.sign(f.x - C.hero.x) || C.hero.face;
+      f.vx = away * (quiet ? 160 : 220); if (!d.fly) f.vy = -220; else f.vy = -80;
       f.awake = true;
       api.sound('hit'); api.shake(3);
       floatText(f.x, f.y - d.h, '-' + dmg, '#ffffff');
@@ -309,6 +334,7 @@
         f.dying = 0.001;
         api.sound('poof');
         api.xp(Math.round(d.xp * f.lvl));
+        if (api.charge) api.charge(0.09);
         if (Math.random() < 0.5) api.give('shell', 2 + f.lvl);
         for (let i = 0; i < 10; i++) puff(f.x, f.y - d.h / 2, '#c98fd9', 1.2);
       }
@@ -369,6 +395,7 @@
       // creatures, hero, particles
       for (const f of C.foes) drawFoe(g, f, ox, oy, k);
       drawHero(g, ox, oy, k);
+      drawCaveStar(g, ox, oy, k);
       for (const q of C.parts) {
         g.globalAlpha = Math.max(0, 1 - q.t / q.life);
         if (q.text) { g.font = `800 ${Math.round(14 * Math.max(1, k * 0.8))}px Sniglet, sans-serif`; g.textAlign = 'center'; g.lineWidth = 4; g.strokeStyle = '#3b2f4f'; g.strokeText(q.text, ox + q.x * k, oy + q.y * k); g.fillStyle = q.color; g.fillText(q.text, ox + q.x * k, oy + q.y * k); continue; }
@@ -469,14 +496,42 @@
       // walking: a hop, a rock from foot to foot, and a squash as each foot lands
       const step = moving ? Math.sin(h.walkT * 9 * Math.PI / 2) : 0;
       const land = moving ? Math.pow(1 - Math.abs(step), 3) : 0;
-      drawSpr(g, 'player' + fr, x + step * 1.2 * k, y - Math.abs(step) * 3 * k, 46 * k, h.face, flick ? 0.5 : 1, step * 0.08, 1 - 0.08 * land);
+      const face = api.heroFace ? api.heroFace() : null;
+      if (api.crying && api.crying()) drawCaveRainbows(g, x, y, k);
+      drawSpr(g, face || 'player' + fr, x + step * 1.2 * k, y - Math.abs(step) * 3 * k, 66 * k, h.face, flick ? 0.5 : 1, step * 0.08, 1 - 0.08 * land);
       if (h.slide) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(x - h.slide * 18 * k, y - 4 * k, 12 * k, 4 * k, 0, 0, TAU); g.fill(); }
+    }
+    function drawCaveStar(g, ox, oy, k) {
+      const st = C.star, x = ox + st.x * k, y = oy + st.y * k;
+      const q = g.createRadialGradient(x, y - 14 * k, 0, x, y - 14 * k, 44 * k);
+      q.addColorStop(0, 'rgba(255,230,120,0.5)'); q.addColorStop(1, 'rgba(255,230,120,0)');
+      g.fillStyle = q; g.fillRect(x - 46 * k, y - 60 * k, 92 * k, 92 * k);
+      drawSpr(g, 'star_' + (api.starMood ? api.starMood() : 'happy') + (Math.floor(st.t * 5) % 2), x, y, 40 * k, 1, 1, Math.sin(st.t * 2.4) * 0.12);
+      if (st.zap) {
+        g.globalAlpha = 1 - st.zap.t / 0.3; g.lineJoin = 'round';
+        for (const [w, col] of [[6, '#ffffff'], [3, '#ffd23f']]) {
+          g.lineWidth = w * k; g.strokeStyle = col; g.beginPath(); g.moveTo(x, y - 16 * k);
+          for (let i = 1; i <= 5; i++) { const t = i / 5; g.lineTo(x + (ox + st.zap.x * k - x) * t + (i < 5 ? (Math.random() - 0.5) * 12 * k : 0), y - 16 * k + (oy + st.zap.y * k - y + 16 * k) * t + (i < 5 ? (Math.random() - 0.5) * 12 * k : 0)); }
+          g.stroke();
+        }
+        g.globalAlpha = 1;
+      }
+    }
+    function drawCaveRainbows(g, x, y, k) {
+      const bands = ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a', '#3a3ad0', '#7a35c8', '#b03ec2'];
+      const ey = y - 54 * k;
+      g.lineCap = 'round';
+      for (const side of [-1, 1]) {
+        const x1 = x + side * 150 * k, cx = x + side * 80 * k, cy = ey - 50 * k;
+        g.lineWidth = 32 * k; g.strokeStyle = '#ffffff'; g.beginPath(); g.moveTo(x, ey); g.quadraticCurveTo(cx, cy, x1, y); g.stroke();
+        bands.forEach((col, i) => { const o = (i - 3) * 4 * k * side; g.lineWidth = 4.4 * k; g.strokeStyle = col; g.beginPath(); g.moveTo(x, ey); g.quadraticCurveTo(cx + o, cy + o * 0.6, x1 + o, y); g.stroke(); });
+      }
     }
     // darkness with a pool of light around the hero; lit runes and treasure glow
     function drawLight(g, W, H, ox, oy, k) {
       const def = C.def, h = C.hero;
       const lantern = api.has('lantern');
-      const R = (def.dark ? (lantern ? 240 : 95) : 330) * k;
+      const R = (def.dark ? (lantern ? 250 : 175) : 330) * k;   // Star glows even without a lantern
       const amb = def.dark ? 0.94 : 0.72;
       const x = ox + h.x * k, y = oy + (h.y - 20) * k;
       const gr = g.createRadialGradient(x, y, R * 0.25, x, y, R);

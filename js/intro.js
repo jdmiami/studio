@@ -1,7 +1,7 @@
 // Stickerwild — the story intro, drawn as an animated action-manga sequence:
 // ink panels, speed lines, halftone screentone, impact frames and katakana SFX.
 // The world starts in colour; when the Ink spills the pages turn to ink and tone,
-// and only Pip keeps their colour.
+// and only Ene in Pink, and her friend Star, keep their colour.
 'use strict';
 (function () {
   const TAU = Math.PI * 2;
@@ -99,6 +99,31 @@
     g.scale(o.flip ? -sc : sc, sc);
     if (o.alpha !== undefined) g.globalAlpha *= o.alpha;
     g.drawImage(spr.img, -spr.ax, -spr.ay, spr.w, spr.h);
+    g.restore();
+  }
+  // one of the original hand-drawn pictures (Ene's faces, Star), with a white sticker border
+  const artCache = {};
+  function artSticker(key) {
+    if (artCache[key]) return artCache[key];
+    const im = SW.ART_IMG && SW.ART_IMG[key];
+    if (!im || !im.complete || !im.naturalWidth) return null;
+    const pad = 8, c = document.createElement('canvas');
+    c.width = im.naturalWidth + pad * 2; c.height = im.naturalHeight + pad * 2;
+    const x = c.getContext('2d');
+    for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; x.drawImage(im, pad + Math.cos(a) * 5, pad + Math.sin(a) * 5); }
+    x.globalCompositeOperation = 'source-in'; x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+    x.globalCompositeOperation = 'source-over'; x.drawImage(im, pad, pad);
+    return (artCache[key] = c);
+  }
+  function art(key, x, y, h, o = {}) {
+    const c = artSticker(key);
+    if (!c) return;
+    const sc = h / c.height, w = c.width * sc;
+    g.save();
+    g.translate(x, y); if (o.rot) g.rotate(o.rot); if (o.flip) g.scale(-1, 1);
+    if (o.alpha !== undefined) g.globalAlpha *= o.alpha;
+    g.shadowColor = 'rgba(20,16,24,0.25)'; g.shadowOffsetX = 3; g.shadowOffsetY = 5;
+    g.drawImage(c, -w / 2, -h, w, h);
     g.restore();
   }
   // Katakana sound effect: ink letters with a fat white outline that pop in and tremble.
@@ -294,7 +319,8 @@
         const s = b.h * 0.9;
         big('scribble0', b.x + b.w * 0.18, b.y + b.h * 1.05, s, { gray: true, alpha: 0.9 });
         big('scribble1', b.x + b.w * 0.82, b.y + b.h * 1.1, s * 1.1, { gray: true, flip: true, alpha: 0.9 });
-        big('player0', b.cx, b.y + b.h * 0.92, b.h * 0.42);
+        big('player0', b.cx - b.h * 0.12, b.y + b.h * 0.92, b.h * 0.5);
+        big('star_sad0', b.cx + b.h * 0.22, b.y + b.h * 0.6, b.h * 0.24);
       });
       caption('The colours faded. The pages went quiet.', P.x + P.w * 0.04, P.y + P.h * 0.03, Math.min(P.w * 0.6, 440), t - 0.2);
       if (t > 1.4) once('kiri', () => impact(5, 'hit'));
@@ -308,9 +334,11 @@
       panel(c, t, 2.5, [0, 1], (b, tt) => {
         g.fillStyle = '#ffffff'; g.fillRect(b.x, b.y, b.w, b.h);
         radial(b.cx, b.y + b.h * 0.55, b.h * 0.35, Math.hypot(b.w, b.h), 70, INK, tt, 31);
-        big('player0', b.cx, b.y + b.h * 0.95, b.h * 0.75);
+        art('eneFront', b.cx, b.y + b.h * 0.98, b.h * 0.92);
+        art('starSurprised', b.cx + b.h * 0.42, b.y + b.h * 0.42, b.h * 0.34, { rot: 0.15 });
+        sfx('AY!!', b.cx - b.h * 0.45, b.y + b.h * 0.3, Math.min(b.h * 0.3, b.w * 0.12), -0.15, tt - 0.3, { fill: '#ffe23a', edge: '#e0a400' });
       });
-      caption('But one small sticker refused to fade.', P.x + P.w * 0.96, y2 + P.gu + P.h * 0.03, Math.min(P.w * 0.6, 420), t - 2.8, { align: 'right' });
+      caption('But Ene in Pink would not fade.', P.x + P.w * 0.96, y2 + P.gu + P.h * 0.03, Math.min(P.w * 0.6, 420), t - 2.8, { align: 'right' });
     } },
     { dur: 5.6, draw(t) { // PEEL!
       const P = page();
@@ -323,15 +351,15 @@
         tone(b.x, b.y, b.w, b.h, 0.45);
         const px = lerp(b.x + b.w * 0.25, b.x + b.w * 0.58, ease(tt / 0.9)), py = lerp(b.y + b.h * 0.95, b.y + b.h * 0.62, ease(tt / 0.9));
         radial(px, py - b.h * 0.15, Math.min(b.w, b.h) * 0.22, Math.hypot(b.w, b.h), 100, INK, tt, 37);
-        // the sticker-shaped hole Pip left behind, with the backing paper curling up
+        // the sticker-shaped hole Ene left behind, with the backing paper curling up
         const k = ease(tt / 0.6), fx = b.x + b.w * 0.2, fy = b.y + b.h * 0.86, fs = Math.min(b.w, b.h) * 0.3;
         g.beginPath(); g.ellipse(fx, fy, fs * 0.55, fs * 0.42, 0, 0, TAU); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 3; g.strokeStyle = INK; g.setLineDash([7, 6]); g.stroke(); g.setLineDash([]);
         g.beginPath(); g.moveTo(fx + fs * 0.5, fy + fs * 0.2); g.quadraticCurveTo(fx + fs * (0.5 + 0.6 * k), fy - fs * (0.2 + 0.9 * k), fx + fs * (0.1 + 0.3 * k), fy - fs * (0.35 + 0.5 * k)); g.lineTo(fx + fs * 0.25, fy - fs * 0.2); g.closePath();
         g.fillStyle = '#d9d3c7'; g.fill(); g.lineWidth = 3; g.strokeStyle = INK; g.stroke();
-        big('player1', px, py, Math.min(b.h * 0.58, b.w * 0.42), { rot: -0.28 });
+        art('eneCry', px, py, Math.min(b.h * 0.6, b.w * 0.42), { rot: -0.12 });
         sfx('ペリッ!!', b.x + b.w * 0.8, b.y + b.h * 0.24, Math.min(b.w * 0.15, b.h * 0.24), 0.18, tt - 0.45);
       });
-      caption('Pip peeled free from the page...', P.x + P.w * 0.04, P.y + P.h * 0.04, Math.min(P.w * 0.6, 420), t - 0.9);
+      caption('She cried a rainbow so bright it peeled her free from the page...', P.x + P.w * 0.04, P.y + P.h * 0.04, Math.min(P.w * 0.6, 420), t - 0.9);
       if (t > 2.4) once('land', () => impact(7, 'place'));
       panel(b2, t, 2.3, [1, 1], (b, tt) => {
         const sky = g.createLinearGradient(0, b.y, 0, b.y + b.h); sky.addColorStop(0, '#ffffff'); sky.addColorStop(1, '#f3d58b');
@@ -340,9 +368,10 @@
         const h = Math.min(b.h * 0.7, b.w * 0.25), land = ease(tt / 0.25);
         dust(b.cx, b.y + b.h * 0.9, h * 0.8, tt, 53);
         big('player0', b.cx, lerp(b.y - h * 0.2, b.y + b.h * 0.9, land), h, { flip: true });
+        big('star_laugh' + (Math.floor(tt * 6) % 2), b.cx + h * 0.55, lerp(b.y - h * 0.4, b.y + b.h * 0.5, land) + Math.sin(tt * 4) * 6, h * 0.42);
         sfx('ザッ', b.x + b.w * 0.82, b.y + b.h * 0.42, Math.min(b.h * 0.42, b.w * 0.1), -0.1, tt - 0.05);
       });
-      caption('...and landed on Stickerwild.', P.x + P.w * 0.04, s2 + P.gu + P.h * 0.03, Math.min(P.w * 0.5, 380), t - 2.7);
+      caption('...and Star tumbled after her, all the way to Stickerwild.', P.x + P.w * 0.04, s2 + P.gu + P.h * 0.03, Math.min(P.w * 0.5, 380), t - 2.7);
     } },
     { dur: 6, draw(t) { // title
       const P = page();
@@ -377,11 +406,11 @@
         const ph = Math.min(b.h * 0.3, b.w * 0.22), py = b.y + b.h * 0.9 + Math.sin(tt * 3) * 3;
         if (tt > 1.2) {
           const k = ease((tt - 1.2) / 0.4);
-          big('toolSword', b.cx + ph * 0.36, py - ph * 0.42, ph * 0.62 * k, { rot: 0.5 });
-          big('player0', b.cx, py, ph * k);
+          art('eneJoy', b.cx - ph * 0.3, py, ph * 1.1 * k);
+          art('starLaugh', b.cx + ph * 0.55, py - ph * 0.35 + Math.sin(tt * 4) * 5, ph * 0.6 * k, { rot: 0.12 });
         }
       });
-      caption('Survive the night. Take back the island.', P.x + P.w / 2, P.y + P.h * 0.06, Math.min(P.w * 0.8, 520), t - 1.8, { align: 'center' });
+      caption('Ene and Star: find the pages, take back the colours.', P.x + P.w / 2, P.y + P.h * 0.06, Math.min(P.w * 0.8, 520), t - 1.8, { align: 'center' });
     } },
   ];
 
