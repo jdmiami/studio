@@ -44,8 +44,12 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
   box-shadow: 0 0 0 1px rgba(52, 38, 84, 0.12), 2px 3px 0 var(--shade);
 }
 
+/* the sunflower radar: a ring of petals around the safe area, under the HUD */
+#radar { position: fixed; top: var(--st); left: var(--sl); width: calc(100% - var(--sl) - var(--sr)); height: calc(100% - var(--st) - var(--sb)); z-index: 1; pointer-events: none; }
+#radar[hidden] { display: none; }
+
 /* ---------- HUD frame ---------- */
-#hud { position: fixed; inset: 0; pointer-events: none; }
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
 #hud .hud-tl, #hud .hud-tr, #hud .hud-bottom > *, #hud #touchUI button { pointer-events: auto; }
 #hud.ouch::after { content: ""; position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 30px rgba(255, 59, 92, 0.5); animation: fade 0.45s ease-out forwards; }
 @keyframes fade { to { opacity: 0; } }
@@ -88,6 +92,11 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 #quests { list-style: none; margin: 4px 0 0; padding: 0; display: none; flex-direction: column; gap: 3px; }
 .questbox.open #quests { display: flex; }
 #quests li { position: relative; display: flex; justify-content: space-between; gap: 6px; font-size: 11.5px; font-weight: 800; padding: 2px 6px 4px; border-radius: 8px; background: #f4efe6; overflow: hidden; }
+#quests li[data-pick] { cursor: pointer; }
+#quests li[data-pick]:hover { background: #ece4d6; }
+#quests li.picked { background: #fff3b0; box-shadow: inset 0 0 0 2px #ffd23f; }
+#quests li.picked .qt { color: #5a3d0c; }
+#quests li .qsun { width: 10px; height: 18px; object-fit: contain; vertical-align: -4px; margin-right: 3px; }
 #quests li .qt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; z-index: 1; }
 #quests li .qp { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; position: relative; z-index: 1; }
 #quests li i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--violet); border-radius: 3px; transition: width 0.3s; }

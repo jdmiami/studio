@@ -190,7 +190,7 @@
       cam: { x: sp.x, y: sp.y, lv: LH, shake: 0 },
       stats: { harvested: 0, kills: 0, crafted: 0, fish: 0, chests: 0, deaths: 0, best: null, pages: 0, treasures: 0 },
       tips: {}, lastPhaseNight: false, deadT: 0, saveT: 8, cloudT: 45,
-      quests: [], questSeq: 0, regionsSeen: new Set(), region: null, regionT: 0,
+      quests: [], questSeq: 0, regionsSeen: new Set(), region: null, regionT: 0, radarPick: null,
       order: null, fishing: null, hover: null, marker: null,
       drift: Math.random() * TAU, worldMap: null, adv: null, climateT: 0, climate: 'temperate',
       realm: null, known: STARTER_KNOWN(), mods: {}, caves: {}, tq: {}, zonesSeen: [0], inCave: null, talking: false, won: false,
@@ -3234,6 +3234,14 @@
     return dirs[((Math.round(a / 45) % 8) + 8) % 8];
   }
   let questT = 0;
+  // the quest you picked for the sunflower radar gets a sunflower in the list
+  const pickCls = (k) => (G.radarPick === k ? ' picked' : '');
+  const pickIcon = (k) => (G.radarPick === k ? `<img class="qsun" src="${SW.spriteURL('sunflower')}" alt="Radar">` : '');
+  function pickQuest(k) {
+    G.radarPick = G.radarPick === k ? null : k;
+    questDirty = true; radar.scanT = 0;
+    toast(G.radarPick ? 'The sunflower petals now point there.' : 'The petals follow Star again.', 1800);
+  }
   function renderQuests(dt) {
     questT -= dt;
     if (!questDirty && questT > 0) return;
@@ -3244,21 +3252,22 @@
       const page = adv.pages[adv.next];
       if (page) {
         const d = dist(p.x, p.y, page.x, page.y);
-        rows.push(`<li class="adv"><span class="qt">Lost Page ${adv.next + 1}/6</span><span class="qp">${(d / 1000).toFixed(1)} km ${compass(page.x - p.x, page.y - p.y)}</span><i style="width:${(adv.next / 6) * 100}%"></i></li>`);
+        rows.push(`<li class="adv${pickCls('page')}" data-pick="page"><span class="qt">${pickIcon('page')}Lost Page ${adv.next + 1}/6</span><span class="qp">${(d / 1000).toFixed(1)} km ${compass(page.x - p.x, page.y - p.y)}</span><i style="width:${(adv.next / 6) * 100}%"></i></li>`);
       } else rows.push('<li class="adv done"><span class="qt">The Book is whole</span><span class="qp">6/6</span><i style="width:100%"></i></li>');
-      for (const t of adv.treasures) if (!t.dug) { const d = dist(p.x, p.y, t.x, t.y); rows.push(`<li class="adv"><span class="qt">Treasure map</span><span class="qp">${(d / 1000).toFixed(1)} km ${compass(t.x - p.x, t.y - p.y)}</span><i style="width:0"></i></li>`); }
+      adv.treasures.forEach((t, i) => { if (t.dug) return; const d = dist(p.x, p.y, t.x, t.y); rows.push(`<li class="adv${pickCls('tr:' + i)}" data-pick="tr:${i}"><span class="qt">${pickIcon('tr:' + i)}Treasure map</span><span class="qp">${(d / 1000).toFixed(1)} km ${compass(t.x - p.x, t.y - p.y)}</span><i style="width:0"></i></li>`); });
     }
     for (const t of SW.TRIBES) for (const q of t.quests) {
       const st = G.tq[q.id];
       if (!st || st.state === 'done') continue;
       const ready = questReady(q);
-      rows.push(`<li class="tribe${ready ? ' done' : ''}"><span class="qt">${t.name}: ${q.title}</span><span class="qp">${ready ? 'hand in' : questProgress(q)}</span><i style="width:${ready ? 100 : 0}%"></i></li>`);
+      rows.push(`<li class="tribe${ready ? ' done' : ''}${pickCls('tq:' + q.id)}" data-pick="tq:${q.id}"><span class="qt">${pickIcon('tq:' + q.id)}${t.name}: ${q.title}</span><span class="qp">${ready ? 'hand in' : questProgress(q)}</span><i style="width:${ready ? 100 : 0}%"></i></li>`);
     }
     for (const q of G.quests) {
       let prog = `${q.have}/${q.need}`;
       if (q.kind === 'explore') { const d = dist(p.x, p.y, q.tx, q.ty); prog = q.done ? 'Found!' : `${(d / 1000).toFixed(1)} km ${compass(q.tx - p.x, q.ty - p.y)}`; }
       const pct = q.kind === 'explore' ? (q.done ? 100 : 0) : Math.round((q.have / q.need) * 100);
-      rows.push(`<li class="${q.done ? 'done' : ''}"><span class="qt">${q.title}</span><span class="qp">${prog}</span><i style="width:${pct}%"></i></li>`);
+      const pk = q.done ? '' : ` data-pick="q:${q.id}"`;
+      rows.push(`<li class="${q.done ? 'done' : ''}${q.done ? '' : pickCls('q:' + q.id)}"${pk}><span class="qt">${q.done ? '' : pickIcon('q:' + q.id)}${q.title}</span><span class="qp">${prog}</span><i style="width:${pct}%"></i></li>`);
     }
     $('quests').innerHTML = rows.join('');
     $('questCount').textContent = rows.length;
@@ -3563,6 +3572,7 @@
       structures: G.world.structures.map((s) => ({ ...s, fuel: Math.round(s.fuel) })), nextId: G.world.nextId,
       eneCry: G.ene ? +G.ene.cry.toFixed(2) : 0,
       known: [...G.known], mods: G.mods, caves: G.caves, tq: G.tq, zonesSeen: G.zonesSeen, metTribes: G.metTribes || [], won: G.won,
+      radarPick: G.radarPick || null,
     };
   }
   function validSave(s) { return !!(s && typeof s === 'object' && typeof s.seed === 'number' && s.player && typeof s.player.x === 'number'); }
@@ -3580,6 +3590,7 @@
     G.questSeq = s.questSeq || G.questSeq;
     if (s.quests && s.quests.length) { G.quests = s.quests; while (G.quests.length < 3) addQuest(); }
     if (s.adv && s.adv.pages) G.adv = s.adv;
+    G.radarPick = s.radarPick || null;
     // v4: know-how, mods, caves, tribe quests. Older saves keep what they already made.
     G.known = new Set([...STARTER_KNOWN(), ...(s.known || [])]);
     if (!s.known) for (const r of RECIPES) if (r.tool && G.tools[r.tool]) { G.known.add(r.id); if (r.learn) G.known.add(r.learn); }
@@ -3788,6 +3799,7 @@
     $('worldMap').addEventListener('click', mapClick);
     $('menuBtn').addEventListener('click', () => pause(true));
     $('questsToggle').addEventListener('click', toggleQuests);
+    $('quests').addEventListener('click', (e) => { const li = e.target.closest('li[data-pick]'); if (li && G) pickQuest(li.dataset.pick); });
     $('compassBtn').addEventListener('click', () => { camGoal = 0; });
     const holdSpin = (el, dir) => {
       // tap: turn 45 degrees; hold: spin freely
@@ -3898,6 +3910,254 @@
     else if (G.mode === 'title') { $('titleScreen').hidden = false; $('hud').hidden = true; }
   }
 
+
+  // ---------------- the sunflower radar ----------------
+  // A ring of sunflower petals around the whole screen (inside the safe area), under the
+  // HUD. The petals that point toward the goal glow and grow; the rest stay a quiet amber.
+  // Pick any quest in the list and the petals point at it; with nothing picked they follow
+  // Star's goal (the next tribe or cave, the next Lost Page, then your quests in order).
+  const radar = { cv: null, g: null, base: null, w: 0, h: 0, dpr: 0, pts: [], ring: null, scanT: 0, found: null, caveGoal: null, pulse: 0 };
+  const RADAR_INK = '#1c1424';
+  function rrect(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+  // the ring: a rounded rectangle inset from the safe area, walked clockwise at equal steps
+  function radarLayout(w, h, dpr) {
+    radar.w = w; radar.h = h; radar.dpr = dpr;
+    // room outside the ring for a fully lit petal (almost twice the quiet length)
+    const inset = clamp(Math.min(w, h) * 0.074, 28, 58);
+    const x0 = inset, y0 = inset, x1 = w - inset, y1 = h - inset;
+    const rc = Math.min(64, Math.min(x1 - x0, y1 - y0) * 0.16);
+    const sw = x1 - x0 - 2 * rc, sh = y1 - y0 - 2 * rc, arc = (Math.PI / 2) * rc;
+    const per = 2 * sw + 2 * sh + 4 * arc;
+    const corner = (cx, cy, a0) => (t) => { const a = a0 + t / rc; return [cx + Math.cos(a) * rc, cy + Math.sin(a) * rc, Math.cos(a), Math.sin(a)]; };
+    const segs = [
+      [sw, (t) => [x0 + rc + t, y0, 0, -1]], [arc, corner(x1 - rc, y0 + rc, -Math.PI / 2)],
+      [sh, (t) => [x1, y0 + rc + t, 1, 0]], [arc, corner(x1 - rc, y1 - rc, 0)],
+      [sw, (t) => [x1 - rc - t, y1, 0, 1]], [arc, corner(x0 + rc, y1 - rc, Math.PI / 2)],
+      [sh, (t) => [x0, y1 - rc - t, -1, 0]], [arc, corner(x0 + rc, y0 + rc, Math.PI)],
+    ];
+    const at = (s) => { s = ((s % per) + per) % per; for (const [L, f] of segs) { if (s <= L) return f(s); s -= L; } return segs[0][1](0); };
+    const n = Math.max(22, Math.round(per / 38)), step = per / n;
+    const pts = [];
+    for (let i = 0; i < n; i++) { const [x, y, nx, ny] = at(i * step + step * 0.5); pts.push({ x, y, nx, ny, i }); }
+    radar.pts = pts;
+    radar.ring = { x0, y0, x1, y1, rc, per, inset, step, plen: inset * 0.5, pwid: Math.min(step * 0.3, 8.5) };
+    // the quiet frame, drawn once
+    const b = radar.base || (radar.base = document.createElement('canvas'));
+    b.width = Math.round(w * dpr); b.height = Math.round(h * dpr);
+    const g = b.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    for (const p of pts) radarPetal(g, p, 0, 0);
+    radarRing(g);
+  }
+  function radarRing(g) {
+    const r = radar.ring, w = r.x1 - r.x0, h = r.y1 - r.y0;
+    rrect(g, r.x0, r.y0, w, h, r.rc); g.lineWidth = 7.5; g.strokeStyle = RADAR_INK; g.stroke();
+    rrect(g, r.x0, r.y0, w, h, r.rc); g.lineWidth = 4.2; g.strokeStyle = '#5bb04f'; g.stroke();
+    rrect(g, r.x0, r.y0, w, h, r.rc); g.lineWidth = 1.1; g.strokeStyle = 'rgba(255,255,255,0.42)'; g.stroke();
+  }
+  // one petal, its base on the ring at p and its tip pointing out. lit (0..1) brightens
+  // and grows it; grow adds the heartbeat of the brightest ones.
+  function radarPetal(g, p, lit, grow) {
+    const r = radar.ring, len = r.plen * (1 + 0.55 * lit * lit + 0.25 * lit + grow), w = r.pwid * (0.92 + 0.55 * lit);
+    const tx = -p.ny, ty = p.nx, c = 0.5;
+    const bx = p.x + p.nx * 1.5, by = p.y + p.ny * 1.5, tipx = bx + p.nx * len, tipy = by + p.ny * len;
+    const path = () => {
+      g.beginPath();
+      g.moveTo(bx - tx * w * 0.5, by - ty * w * 0.5);
+      g.quadraticCurveTo(bx + p.nx * len * c - tx * w * 1.4, by + p.ny * len * c - ty * w * 1.4, tipx, tipy);
+      g.quadraticCurveTo(bx + p.nx * len * c + tx * w * 1.4, by + p.ny * len * c + ty * w * 1.4, bx + tx * w * 0.5, by + ty * w * 0.5);
+      g.closePath();
+    };
+    path();
+    if (lit > 0) { g.shadowColor = `rgba(255, 220, 50, ${0.95 * lit})`; g.shadowBlur = 10 + 18 * lit; }
+    g.fillStyle = lit > 0 ? `hsl(${44 + 8 * lit}, 100%, ${54 + 20 * lit}%)` : '#d98f2a';
+    g.fill();
+    g.shadowBlur = 0;
+    g.lineWidth = 1.5; g.strokeStyle = RADAR_INK; g.stroke();
+    // the vein, and a soft shine on the lit ones
+    g.beginPath(); g.moveTo(bx + p.nx * 2, by + p.ny * 2); g.lineTo(bx + p.nx * len * 0.62, by + p.ny * len * 0.62);
+    g.lineWidth = 1; g.strokeStyle = lit > 0 ? 'rgba(160, 90, 10, 0.55)' : 'rgba(110, 60, 10, 0.45)'; g.stroke();
+    if (lit > 0.35) {
+      g.beginPath(); g.moveTo(bx + p.nx * len * 0.2 - tx * w * 0.55, by + p.ny * len * 0.2 - ty * w * 0.55);
+      g.quadraticCurveTo(bx + p.nx * len * 0.5 - tx * w * 0.95, by + p.ny * len * 0.5 - ty * w * 0.95, bx + p.nx * len * 0.78 - tx * w * 0.3, by + p.ny * len * 0.78 - ty * w * 0.3);
+      g.lineWidth = 1.6; g.strokeStyle = `rgba(255,255,255,${0.55 * lit})`; g.stroke();
+    }
+  }
+  const radarInside = (x, y) => {
+    const r = radar.ring;
+    if (x < r.x0 || x > r.x1 || y < r.y0 || y > r.y1) return false;
+    const cx = clamp(x, r.x0 + r.rc, r.x1 - r.rc), cy = clamp(y, r.y0 + r.rc, r.y1 - r.rc);
+    return Math.hypot(x - cx, y - cy) <= r.rc;
+  };
+  // where a ray from the anchor leaves the ring
+  function radarExit(ax, ay, th) {
+    const dx = Math.cos(th), dy = Math.sin(th), r = radar.ring;
+    let t = 0; const tmax = Math.hypot(r.x1 - r.x0, r.y1 - r.y0);
+    while (t < tmax && radarInside(ax + dx * t, ay + dy * t)) t += 3;
+    return [ax + dx * t, ay + dy * t];
+  }
+  // ---- what the petals point at ----
+  const radarDist = (d) => (d < 950 ? `${Math.max(10, Math.round(d / 10) * 10)} m` : `${(d / 1000).toFixed(1)} km`);
+  function nearestObj(key) {
+    const p = G.player; let best = null, bd = 1e9;
+    for (const ch of nearChunks(p.x, p.y, 2)) for (const o of ch.objs) {
+      const def = OBJ[o.type];
+      if (!def || !def.drops || !def.drops[key] || (def.needs && !G.tools[def.needs])) continue;
+      const d = dist(o.x, o.y, p.x, p.y);
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best ? { x: best.x, y: best.y, what: SW.OBJ_NAME[best.type] || 'it', near: 40 } : null;
+  }
+  function nearestMob(type) {
+    const p = G.player; let best = null, bd = 1e9;
+    for (const m of G.mobs) { if (m.type !== type || m.dying) continue; const d = dist(m.x, m.y, p.x, p.y); if (d < bd) { bd = d; best = m; } }
+    return best ? { ref: best, x: best.x, y: best.y, what: ENEMIES[type].name, near: 50 } : null;
+  }
+  function nearestWater() {
+    const p = G.player;
+    for (let r = 90; r <= 1500; r += 90) for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * TAU + r * 0.01, x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r;
+      if (G.world.isWater(x, y)) return { x, y, what: 'water', near: 70 };
+    }
+    return null;
+  }
+  function questGoal(q, label) {
+    const t = q.kind === 'explore' ? { x: q.tx, y: q.ty, near: 120 }
+      : q.kind === 'hunt' ? nearestMob(q.key)
+      : q.kind === 'fish' ? nearestWater()
+      : q.kind === 'gather' ? nearestObj(q.key) : null;
+    if (!t) return { none: true, label: `Look around: ${label}` };
+    t.label = t.what ? `${label} · ${t.what}` : label;
+    return t;
+  }
+  function tribeGoal(tr, q) {
+    const st = G.tq[q.id] || {};
+    const here = (t, why) => ({ x: t.x, y: t.y, label: `${why}: ${t.name}`, near: 140 });
+    if (questReady(q)) return here(tr, 'Hand in');
+    if (q.kind === 'relic') { const c = G.realm.caves[tr.zone]; return c ? here(c, q.title) : null; }
+    if (q.kind === 'deliver') { const to = st.state === 'relay' ? tr : G.realm.tribes.find((x) => x.id === q.key); return to ? here(to, 'Deliver') : null; }
+    if (q.kind === 'bring') return { none: true, label: `Gather for ${tr.name}: ${q.title}` };
+    return questGoal(q, q.title);
+  }
+  function resolvePick(k) {
+    const [kind, id] = k.split(':');
+    if (kind === 'page') { const pg = G.adv && G.adv.pages[G.adv.next]; return pg ? { x: pg.x, y: pg.y, label: `Lost Page ${G.adv.next + 1}`, near: 60 } : null; }
+    if (kind === 'tr') { const t = G.adv && G.adv.treasures[+id]; return t && !t.dug ? { x: t.x, y: t.y, label: 'Treasure map', near: 60 } : null; }
+    if (kind === 'tq') {
+      for (const tr of SW.TRIBES) for (const q of tr.quests) if (q.id === id) {
+        const st = G.tq[q.id]; if (!st || st.state === 'done' || !G.realm) return null;
+        const rt = G.realm.tribes.find((x) => x.id === tr.id) || tr;
+        return tribeGoal(rt, q);
+      }
+      return null;
+    }
+    const q = G.quests.find((q) => String(q.id) === id && !q.done);
+    return q ? questGoal(q, q.title) : null;
+  }
+  function autoGoal() {
+    const g = realmGoal();
+    if (g) return { x: g.x, y: g.y, label: g.name || 'Onward', near: 140 };
+    const page = G.adv && G.adv.pages[G.adv.next];
+    if (page) return { x: page.x, y: page.y, label: `Lost Page ${G.adv.next + 1}`, near: 60 };
+    for (const q of G.quests) if (!q.done && q.kind === 'explore') return questGoal(q, q.title);
+    for (const q of G.quests) if (!q.done) { const t = questGoal(q, q.title); if (t && !t.none) return t; }
+    return null;
+  }
+  function caveRadarGoal() {
+    const C = caves.state;
+    if (!C) return null;
+    const want = C.save.taken ? 'D' : 'T';
+    if (!radar.caveGoal || radar.caveGoal.id !== G.inCave || radar.caveGoal.ch !== want) {
+      let pos = null;
+      for (let r = 0; r < C.H && !pos; r++) { const c = C.rows[r].indexOf(want); if (c >= 0) pos = [c * 32 + 16, r * 32 + 16]; }
+      radar.caveGoal = { id: G.inCave, ch: want, pos };
+    }
+    const pos = radar.caveGoal.pos;
+    if (!pos) return null;
+    const h = C.hero, dx = pos[0] - h.x, dy = pos[1] - h.y;
+    return { cave: true, dx, dy, d: Math.hypot(dx, dy), label: want === 'T' ? 'The relic chest' : 'The cave door', near: 44 };
+  }
+  function radarTarget() {
+    if (G.inCave) return caveRadarGoal();
+    let t = null;
+    if (G.radarPick) { t = resolvePick(G.radarPick); if (!t) { G.radarPick = null; questDirty = true; } }
+    return t || autoGoal();
+  }
+  // the goal's direction on screen, from where Ene stands
+  function radarAngle(t) {
+    if (t.cave) return Math.atan2(t.dy, t.dx);
+    const p = G.player, dx = t.x - p.x, dy = t.y - p.y;
+    if (VIEWS[view].parallax) return Math.atan2(dy, dx);
+    return Math.atan2(depthOf(dx, dy) * TILT, screenDX(dx, dy));
+  }
+  function radarLabel(g, text, x, y, bright, ix, iy) {
+    g.font = '800 12px Sniglet, "Trebuchet MS", system-ui, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left';
+    const tw = g.measureText(text).width, pw = tw + 34, ph = 22, r = radar.ring;
+    const fit = () => { x = clamp(x, r.x0 + 6 + pw / 2, r.x1 - 6 - pw / 2); y = clamp(y, r.y0 + 6 + ph / 2, r.y1 - 6 - ph / 2); };
+    fit();
+    // slide inward until the pill is clear of the HUD's boxes
+    const hits = () => (radar.avoid || []).some(([l, t, rr, bb]) => x + pw / 2 > l - 4 && x - pw / 2 < rr + 4 && y + ph / 2 > t - 4 && y - ph / 2 < bb + 4);
+    for (let i = 0; i < 12 && ix != null && hits(); i++) { x += ix * 22; y += iy * 22; fit(); }
+    rrect(g, x - pw / 2, y - ph / 2, pw, ph, 11);
+    g.fillStyle = bright ? '#fff3b0' : '#f6f1e6'; g.fill(); g.lineWidth = 2; g.strokeStyle = RADAR_INK; g.stroke();
+    // a tiny sunflower on the left
+    const sx = x - pw / 2 + 12;
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; g.beginPath(); g.ellipse(sx + Math.cos(a) * 4.6, y + Math.sin(a) * 4.6, 2.6, 1.3, a, 0, TAU); g.fillStyle = '#ffd83a'; g.fill(); }
+    g.beginPath(); g.arc(sx, y, 3, 0, TAU); g.fillStyle = '#8a5a2e'; g.fill();
+    g.fillStyle = RADAR_INK; g.fillText(text, x - pw / 2 + 24, y + 0.5);
+  }
+  function drawRadar(dt) {
+    if (!radar.cv) { radar.cv = $('radar'); radar.g = radar.cv.getContext('2d'); }
+    const cv = radar.cv;
+    const show = !!G && G.mode !== 'title' && !$('hud').hidden;
+    if (cv.hidden === show) cv.hidden = !show;
+    if (!show) return;
+    const rect = cv.getBoundingClientRect(), w = Math.round(rect.width), h = Math.round(rect.height);
+    if (w < 120 || h < 120) return;
+    if (w !== radar.w || h !== radar.h || SDPR !== radar.dpr) { cv.width = Math.round(w * SDPR); cv.height = Math.round(h * SDPR); radarLayout(w, h, SDPR); }
+    radar.scanT -= dt; radar.pulse += dt * 4.5;
+    if (radar.scanT <= 0) {
+      radar.scanT = 0.4; radar.found = radarTarget();
+      // the HUD boxes the label should stay out of
+      radar.avoid = ['hudTL', 'hudTR', 'hotbarWrap', 'touchUI'].map((id) => $(id)).filter((el) => el && !el.hidden && el.offsetParent !== null).map((el) => { const q = el.getBoundingClientRect(); return [q.left - rect.left, q.top - rect.top, q.right - rect.left, q.bottom - rect.top]; });
+    }
+    const t = radar.found, g = radar.g, r = radar.ring;
+    g.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+    g.clearRect(0, 0, w, h);
+    g.drawImage(radar.base, 0, 0, w, h);
+    if (!t) return;
+    if (t.ref) { t.x = t.ref.x; t.y = t.ref.y; }
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    if (t.none) { radar.lastLit = { none: true, label: t.label }; radarLabel(g, t.label, w / 2, r.y1 - 58, false); return; }
+    const p = G.player, d = t.cave ? t.d : dist(p.x, p.y, t.x, t.y), here = d < (t.near || 60);
+    // from where Ene stands on screen (kept inside the ring: first-person puts her below it)
+    const ax = clamp(W / 2 - rect.left, r.x0 + 20, r.x1 - 20), ay = clamp((t.cave ? H * 0.55 : VIEWS[view].parallax ? H * 0.72 : curve.yA) - rect.top, r.y0 + 20, r.y1 - 20);
+    const th = radarAngle(t), [ex, ey] = radarExit(ax, ay, th);
+    radar.lastLit = { ax, ay, ex, ey, th, d, here, label: t.label };
+    const beat = 0.5 + 0.5 * Math.sin(radar.pulse);
+    const lits = [];
+    for (const q of radar.pts) {
+      const lit = here ? 0.75 + 0.25 * Math.sin(radar.pulse + q.i * 0.7) : Math.pow(clamp(1 - Math.hypot(q.x - ex, q.y - ey) / (2.7 * r.step), 0, 1), 1.4);
+      if (lit > 0.03) lits.push([q, lit]);
+    }
+    lits.sort((a, b) => a[1] - b[1]);
+    // a warm glow on the ring where the goal is, then the petals that point there
+    if (!here) {
+      const gx = ex + (ax - ex) / Math.hypot(ax - ex, ay - ey) * r.step * 0.5, gy = ey + (ay - ey) / Math.hypot(ax - ex, ay - ey) * r.step * 0.5;
+      const gl = g.createRadialGradient(gx, gy, 0, gx, gy, 3.4 * r.step);
+      gl.addColorStop(0, `rgba(255, 225, 90, ${0.55 + 0.15 * beat})`); gl.addColorStop(1, 'rgba(255, 225, 90, 0)');
+      g.fillStyle = gl; g.beginPath(); g.arc(gx, gy, 3.4 * r.step, 0, TAU); g.fill();
+    }
+    for (const [q, lit] of lits) radarPetal(g, q, lit, here ? 0.12 * beat : 0.2 * beat * lit * lit);
+    const inx = ax - ex, iny = ay - ey, il = Math.hypot(inx, iny) || 1;
+    radarLabel(g, here ? `${t.label} · here!` : `${t.label} · ${radarDist(d)}`, ex + (inx / il) * 30, ey + (iny / il) * 30, here, inx / il, iny / il);
+  }
+
   // ---------------- boot ----------------
   let layoutT = 0;
   function onResize() { resize(); clearTimeout(setZoom.t); setZoom.t = setTimeout(() => { rescale(); prebuild(); }, 200); }
@@ -3924,6 +4184,7 @@
       render(dt);
     }
     if (G.mode !== 'title') updateHUD(dt);
+    drawRadar(dt);
     if (!$('mapScreen').hidden) renderWorldMap();
     adaptRes(dt);
     layoutT -= dt;
@@ -3979,6 +4240,7 @@
 
   SW.game = {
     get G() { return G; }, newGame, startGame, act, useItem, craft, restore, serialize, toast, saveName, validSave,
+    radar: () => ({ pick: G && G.radarPick, target: radar.found, ring: radar.ring, lit: radar.lastLit }), pickQuest,
     pause, goTitle, showScreen, closeSavePanel, dayOf, gainXP, pointerOrder, setOrder, startFishing, reel, toggleFly,
     setPhase(ph) { G.time = (dayOf(G.time) - 1) * DAY_LEN + ph * DAY_LEN; },
     setAngle(a) { setAngle(a); }, get angle() { return camA; },
