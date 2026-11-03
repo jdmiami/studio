@@ -1205,7 +1205,9 @@
     drawSprite('star_' + s.mood + fr, pt.x, pt.y, Math.sin(s.t * 2.4) * 0.12 + (s.guiding ? 0.15 : 0), 1, 1);
     if (s.zap) {
       // a zigzag of starlight to whatever Star zapped
-      const a = proj(s.zap.x, s.zap.y, s.zap.lv), b = { x: pt.x, y: pt.y - 22 * Z };
+      // proj() hands back one shared point, so Star's spot (kept in d) is read before the
+      // target's projection overwrites it
+      const t = proj(s.zap.x, s.zap.y, s.zap.lv), a = { x: t.x, y: t.y }, b = { x: d.sx, y: d.sy - 22 * Z };
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.globalAlpha = 1 - s.zap.t / 0.3;
       for (const [w, col] of [[7, '#ffffff'], [3.5, '#ffd23f']]) {
