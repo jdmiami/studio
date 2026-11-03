@@ -104,7 +104,7 @@
   }
   // the blade's angle through a swing (radians; 0 points forward, negative is up)
   // side-on: up-forward when ready, back over her head on the wind-up, then down-forward
-  const BLADE_SIDE = [[0, -1.0], [0.38, -2.3], [0.5, -1.2], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
+  const BLADE_SIDE = [[0, -1.0], [0.38, -2.75], [0.5, -0.4], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
   // from the front or behind (forward = out to her side): up, then out and down
   const BLADE_OUT = [[0, -1.2], [0.38, -1.45], [0.5, -0.9], [0.62, 0.55], [0.72, 0.85], [1, -0.4]];
   function swingBlade(aT, side) {
@@ -118,10 +118,11 @@
   // y: + is down). Side-on it's a forehand arc: back behind her at the waist (wind-up),
   // down past the hip, forward and up (the slash), a little overshoot, then settle.
   // From behind: out and up, then down across her back.
-  // Side-on: ready in front of her at the waist, raised up over her head (wind-up), a fast
-  // slash forward and down, a little past, then back to ready. Her hand stays in front of
-  // her body or above her head, never across her torso.
-  const SWING_SIDE = [[0, 44, 58], [0.38, -24, -44], [0.5, 50, -40], [0.62, 96, 30], [0.72, 82, 62], [1, 42, 66]];
+  // Side-on: ready in front of her at the waist, swung back low behind her hip (wind-up,
+  // the blade up behind her), then a fast slash forward and up, a little past, then back
+  // to ready. Her far arm is behind her body, so the path keeps the sword clear of her
+  // silhouette where it can.
+  const SWING_SIDE = [[0, 44, 58], [0.38, -58, 66], [0.5, 30, 92], [0.62, 96, 30], [0.72, 82, 62], [1, 42, 66]];
   // From the front, three-quarter or behind: the arc stays on her own side: raised up and
   // out past her shoulder, then down to her outer hip, never across her chest or back.
   const SWING_OUT = [[0, 22, 78], [0.38, 60, -26], [0.5, 62, -2], [0.62, 44, 70], [0.72, 38, 88], [1, 22, 82]];
@@ -889,23 +890,25 @@
     drawProps('under');                                 // the raft, under her feet
     if (P.view !== 'back') drawProps('behind');         // the tool carried on her back
     if (P.view === 'side') {
-      drawLeg(cg, P.L[1], P, true); if (holder !== 1) drawArm(cg, P.A[1], P, true);
+      // the far arm is always behind her body, with anything it holds; the near arm in front
+      drawLeg(cg, P.L[1], P, true);
+      if (holder === 1) drawTool();
+      drawArm(cg, P.A[1], P, true);
       drawLeg(cg, P.L[0], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
-      drawTool();
-      if (holder === 1) drawArm(cg, P.A[1], P, false);
+      if (holder === 0) drawTool();
       drawArm(cg, P.A[0], P, false);
     } else if (P.view === 'back') {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
-      // on a ladder both hands reach up in front of her hair; swinging, the sword arm comes
-      // round in front too, so the stroke shows from behind
-      const over = (j) => P.climb || (P.act === 'swing' && j === P.toolArm) || j === holder;
+      // from behind both arms are at her sides, behind her back and hair (the swing stays
+      // out to her side, so it shows); only on a ladder do her hands reach up over her hair
+      const over = () => P.climb;
+      drawTool();
       for (const j of [0, 1]) if (!over(j)) drawArm(cg, P.A[j], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
       drawProps('behind');                              // from behind, the carried tool is over her back
-      drawTool();
       for (const j of [0, 1]) if (over(j)) drawArm(cg, P.A[j], P, false);
     } else {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
