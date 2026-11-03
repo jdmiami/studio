@@ -18,6 +18,14 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const ease = (t) => t * t * (3 - 2 * t);
 
+  // joints saved on the rig bench (Nov 3). The bench had each arm's shoulder swapped to
+  // the other side to turn the hands round; the thumb rule now turns the hands, so the
+  // shoulders are kept at the saved spots but each arm stays on its own side.
+  const BENCH_TUNE = {
+    front: { shoulders: [[79, 278.6], [151.9, 272.4]], upper: 48.8, fore: 74.6 },
+    threeQ: { shoulders: [[60.3, 272], [121.9, 281.6]] },
+    back: { shoulders: [[61.1, 287.3], [113.8, 286.8]] },
+  };
   const SHOULDERS = { front: [[82, 283], [130, 291]], threeQ: [[62, 276], [109, 283]], side: [[62.5, 281], [57, 280]], back: [[75, 281], [111, 285]] };
   // per-view skeleton, measured from the drawings
   function build() {
@@ -45,8 +53,10 @@
         frontArm: v === 'front' ? 0 : v === 'threeQ' ? 0 : v === 'side' ? 0 : -1,
       };
     }
-    // hand-tuned joints (from the rig preview page) override the measured ones
-    const TUNE = SW.ENE_TUNE || {};
+    // hand-tuned joints override the measured ones: first the ones saved on the rig
+    // bench, then anything set live (the bench itself)
+    const TUNE = {};
+    for (const src of [BENCH_TUNE, SW.ENE_TUNE || {}]) for (const v in src) TUNE[v] = Object.assign({}, TUNE[v], src[v]);
     for (const v in TUNE) if (out[v]) for (const k in TUNE[v]) out[v][k] = JSON.parse(JSON.stringify(TUNE[v][k]));
     return out;
   }
@@ -60,6 +70,18 @@
     if (k < 0.62) { const q = outCubic((k - 0.38) / 0.24); return { sh: lerp(-2.8, 1.55, q), el: lerp(1.5, 0.05, q), crouch: 1 - 0.3 * q, lean: lerp(-1, 1.2, q) }; }
     const q = ease((k - 0.62) / 0.38);
     return { sh: lerp(1.55, 0.9, q), el: lerp(0.05, 0.3, q), crouch: 0.7 * (1 - q), lean: 1.2 * (1 - q) };
+  }
+  // the hand's path through the swing, as offsets from the shoulder (x: + is forward,
+  // y: + is down). Side-on it's a forehand arc: back behind her at the waist (wind-up),
+  // down past the hip, forward and up (the slash), a little overshoot, then settle.
+  // From behind: out and up, then down across her back.
+  const SWING_SIDE = [[0, -8, 98], [0.38, -72, 38], [0.5, -10, 107], [0.62, 98, 22], [0.72, 86, -28], [1, 56, 70]];
+  const SWING_BACK = [[0, 5, 98], [0.38, 70, -15], [0.62, -28, 92], [0.72, -36, 80], [1, 8, 96]];
+  function swingHand(aT, back) {
+    const K = back ? SWING_BACK : SWING_SIDE, k = clamp(aT / 0.26, 0, 1);
+    let j = 0; while (j < K.length - 2 && k > K[j + 1][0]) j++;
+    const a = K[j], b = K[j + 1], q = ease(clamp((k - a[0]) / (b[0] - a[0]), 0, 1));
+    return [lerp(a[1], b[1], q), lerp(a[2], b[2], q)];
   }
   // ---------------- the pose ----------------
   // st: { view, flip, t, phase, speed (0 idle .. 1 walk .. 1.6 run), action, actionT,
@@ -128,7 +150,10 @@
         // the tool arm: wind up over the shoulder, then slash forward and down
         // anticipation (wind up slowly), a fast slash that overshoots, then follow-through
         const W = swingCurve(aT);
-        sh = W.sh; el = W.el; out = 0.15; fist = true;
+        const o = swingHand(aT, isBack), S0 = V.shoulders[i] || V.shoulders[0];
+        // forward on screen is the way the drawing faces (left), or out to her side from behind
+        const fx = isBack ? (S0[0] < V.anchor ? 1 : -1) : (V.face < 0 ? 1 : -1);
+        target = [S0[0] - o[0] * fx, S0[1] + o[1], 0]; fist = true; handAbs = null;
       }
       if (act === 'hurt') {
         // AY!! one hand clutches her chest, the other flies out, fingers spread
@@ -136,8 +161,16 @@
         if (i === 0 && !isSide) { target = [V.anchor - 14, V.shoulders[0][1] + 24, 1]; fingers = 0.2; handAbs = -0.4; }
         else { sh = lerp(sh, -1.9, k); el = lerp(el, 1.3, k); out = (i ? 1.1 : -1.1) * k + out * (1 - k); fingers = 0.05; }
       }
-      if (act === 'joy' || act === 'cry' || (act === 'swing' && i === toolArm)) { target = null; handAbs = null; }
-      if (act === 'joy') { const k = Math.sin(clamp(aT / 1.2, 0, 1) * Math.PI * 0.5 + 0.25) ; sh = lerp(sh, -2.75, k); el = lerp(el, 0.35, k); out = (i ? 1.15 : -1.15) * k + out * (1 - k); fingers = 1; fist = false; }
+      if (act === 'joy' || act === 'cry') { target = null; handAbs = null; }
+      if (act === 'joy') {
+        // arms thrown up in a V, hands open, a little bounce at the top
+        const k = Math.sin(clamp(aT / 1.2, 0, 1) * Math.PI * 0.5 + 0.25), S0 = V.shoulders[i] || V.shoulders[0];
+        const side = isSide ? V.face : (S0[0] < V.anchor ? -1 : 1);
+        const reach = Math.min(V.upper + V.fore - 6, 96);
+        const up = [S0[0] + side * reach * 0.62, S0[1] - reach * 0.74 + Math.sin(t * 9 + i) * 3];
+        const down = [S0[0] + side * 8, S0[1] + V.upper + V.fore - 6];
+        target = [lerp(down[0], up[0], k), lerp(down[1], up[1], k), 0]; fingers = 1; fist = false; handAbs = null;
+      }
       if (act === 'cry') { sh = 0.08 + Math.sin(t * 40 + i) * 0.025; el = 0.12; out = i ? 0.32 : -0.32; fist = true; }
       const sy0 = V.shoulders[0][1];
       if (st.fish) { target = isSide ? [V.anchor + V.face * (62 + i * 6), sy0 + 26 + i * 4, 1] : [V.anchor + (i ? 10 : -6), sy0 + 34, i ? 1 : -1]; fist = true; }
@@ -166,6 +199,7 @@
     P.face = st.face && st.faceT > 0 ? st.face : null;
     P.blink = !!st.blink;
     P.climb = !!st.climb;
+    P.act = act || null;
     // ---- solve the joints ----
     solve(P, st);
     return P;
@@ -203,7 +237,11 @@
         const maxd = V.upper + V.fore - 1; if (d > maxd) { dx *= maxd / d; dy *= maxd / d; d = maxd; }
         const a0 = Math.atan2(dy, dx);
         const cosA = clamp((V.upper * V.upper + d * d - V.fore * V.fore) / (2 * V.upper * d), -1, 1);
-        const bend = (a.target[2] || 1) * Math.acos(cosA);
+        let bend = (a.target[2] || 1) * Math.acos(cosA);
+        if (a.target[2] === 0) {
+          const b0 = Math.acos(cosA), ya = Math.sin(a0 + b0), yb = Math.sin(a0 - b0);
+          bend = ya >= yb ? b0 : -b0;
+        }
         const elbow = [sh[0] + Math.cos(a0 + bend) * V.upper, sh[1] + Math.sin(a0 + bend) * V.upper];
         const wrist = [sh[0] + dx, sh[1] + dy];
         return { shoulder: sh, elbow, wrist, ang: Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]), i, handAbs: a.handAbs };
@@ -408,6 +446,8 @@
     }
     return true;
   }
+  // which side each hand drawing has its thumb on, with the wrist at the top: -1 left, +1 right
+  const THUMB = { hand: -1, fist: -1, hand_grip: -1, hand_spread: 1, hand_reach: -1 };
   // which hand drawing: the sheet's relaxed hand, or one from the AI-drawn library
   function handPiece(P, i) {
     const M = PIECES(), want = P.hand && P.hand[i];
@@ -441,10 +481,20 @@
       bone(g, 'foreArm', a.elbow, a.wrist, behind, mir);
     }
     // the drawn hand, open and relaxed, or the drawn fist; it bends a little at the wrist
-    const fist = P.fist[a.i];
-    const bend = (fist ? 0.25 : -0.12 + 0.25 * (P.fingers[a.i] - 0.4)) * (mir ? -1 : 1) * (P.view === 'side' ? (V.face < 0 ? 1 : -1) : 1);
+    // ---- which way the hand faces: the thumb rule ----
+    // Seen from the front, the back or three-quarter, a hand's thumb points in toward her
+    // middle (and up, when the arm is held out sideways). Side-on it points forward, the
+    // way she faces. Each hand drawing has its thumb on one side (THUMB); the hand is
+    // mirrored whenever that side would come out the wrong way for where the arm is.
+    const piece = handPiece(P, a.i), fist = P.fist[a.i];
+    const inward = P.view === 'side' ? (V.face < 0 ? -1 : 1) : (a.shoulder[0] < V.anchor ? 1 : -1);
+    const bendSign = P.view === 'side' ? -inward : inward;
+    const bend = (fist ? 0.2 : -0.1 + 0.2 * (P.fingers[a.i] - 0.4)) * bendSign;
     // a hand laid flat (on her chest) is placed by its own angle; otherwise it follows the forearm
-    part(g, handPiece(P, a.i), a.wrist, a.handAbs != null ? a.handAbs : a.ang + bend, behind, a.handAbs != null ? true : mir);
+    const ang = a.handAbs != null ? a.handAbs : a.ang + bend;
+    const tx = (THUMB[piece] || -1) * Math.sin(ang), ty = (THUMB[piece] || -1) * -Math.cos(ang);
+    const flipHand = tx * inward + ty * -0.6 < 0;
+    part(g, piece, a.wrist, ang, behind, flipHand);
     return true;
   }
 
@@ -558,10 +608,13 @@
     } else if (P.view === 'back') {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
       // on a ladder her hands reach up in front of her hair
-      if (!P.climb) { drawArm(cg, P.A[0], P, false); drawArm(cg, P.A[1], P, false); }
+      // on a ladder both hands reach up in front of her hair; swinging, the sword arm comes
+      // round in front too, so the stroke shows from behind
+      const over = (j) => P.climb || (P.act === 'swing' && j === P.toolArm);
+      for (const j of [0, 1]) if (!over(j)) drawArm(cg, P.A[j], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
-      if (P.climb) { drawArm(cg, P.A[0], P, false); drawArm(cg, P.A[1], P, false); }
+      for (const j of [0, 1]) if (over(j)) drawArm(cg, P.A[j], P, false);
     } else {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
       drawArm(cg, P.A[1], P, false);

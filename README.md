@@ -16,7 +16,13 @@ Her limbs are **traced off the sheet**, not redrawn: the upper arm, forearm and 
 
 **Hands.** Her own relaxed hand from the sheet, plus a small library of hands drawn by an AI image editor (FLUX.1 Kontext) from her sheet: a fist gripping a tool (the tool shows through the grip), an open spread hand (hurt, joy, jumping, sliding) and a reaching hand (climbing). Each was cleaned, recoloured to her pink, given a heavier pen line so it reads at her size, and scaled to her drawn hand. Generating new body angles was tried (Qwen Image Edit's camera-angle mode and FLUX.1 Kontext) but neither turned her reliably, so the four drawn views stay.
 
-**The swing** has three beats: a slow wind-up with a crouch and a lean back, a fast slash that overshoots, then a follow-through that settles; her knees bend into it.
+**Which way each hand faces.** Seen from the front, the back or three-quarter, her thumbs point in toward her middle (and up when an arm is held out sideways); side-on they point forward, the way she faces. Each hand drawing records which side its thumb is on, and the game mirrors the hand whenever that would come out the wrong way for where the arm is, in every pose.
+
+**The swing** follows a path for her hand rather than joint angles: a forehand arc, cocked back behind her at the waist, down past the hip, then a fast slash forward and up that overshoots and settles; her knees bend and she leans into it. The elbow always bends to the lower side, so it never twists. From behind (third person) the sword arm comes round over her back, so the stroke shows.
+
+**Joy** throws both arms up in a V with open hands. The crying and joy faces are laid over her front view with her own eyes and mouth painted out first, so no second pair of eyes shows through.
+
+**Joints from the rig bench.** Joint positions and arm lengths saved on the rig bench page are built into the game (`BENCH_TUNE` in `js/ene.js`).
 
 Her **shoulders** are round and bare above the tube dress, at the edges of her chest where the drawing is widest; they sit behind the drawn chest and neck, so only their outer line shows, running on into the arm. Every frame she is posed from what she is doing:
 
