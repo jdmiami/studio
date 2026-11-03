@@ -503,6 +503,41 @@
     };
   }
   for (const m of ['happy', 'surprised', 'sad', 'angry', 'laugh']) for (const f of [0, 1]) ART['star_' + m + f] = [40, 44, starArt(m, f)];
+  // Star's other looks, with the same feelings and the same two frames (wings up, wings down)
+  const starFace = (mood) => (mood === 'laugh' ? 'grin' : mood);
+  // a flying Caticorn: a round cat with a golden horn, a rainbow fringe and little wings
+  function caticornArt(mood, frame) {
+    return (c) => {
+      const w = frame ? -4 : 3;
+      shape(c, (c) => { ell(c, 7.5, 23 + w, 7, 3.6, -0.35 - w * 0.06); ell(c, 32.5, 23 + w, 7, 3.6, 0.35 + w * 0.06); }, '#eadcff', 1.5);
+      line(c, [[12, 33], [6.5, 36.5], [4.5, 31]], INK, 3.8); line(c, [[12, 33], [6.5, 36.5], [4.5, 31]], '#ffd6e3', 1.9);
+      shape(c, (c) => { ell(c, 20, 32, 9, 6.5); circ(c, 20, 21, 11); polyPath(c, [[11, 15], [9, 5], [16.5, 11]]); polyPath(c, [[29, 15], [31, 5], [23.5, 11]]); }, '#fff3f7', 1.9);
+      flat(c, P([[11.8, 12.8], [10.6, 7.6], [15.2, 11.6]]), '#ffb3c6'); flat(c, P([[28.2, 12.8], [29.4, 7.6], [24.8, 11.6]]), '#ffb3c6');
+      shape(c, P([[17.6, 11.5], [20, 1.5], [22.4, 11.5]]), '#ffd83a', 1.3);
+      line(c, [[18.5, 9], [21.6, 7.8]], '#e0a400', 0.9); line(c, [[19.1, 6.2], [21.3, 5.3]], '#e0a400', 0.9);
+      [['#ff6b6b', 14.6], ['#ffb347', 16.8], ['#8bd96b', 19], ['#6bb6ff', 21.2], ['#c58bff', 23.4]].forEach(([col, x]) => line(c, [[x, 12.6], [x - 1.3, 16.4]], col, 1.6));
+      flat(c, blobs([[15.5, 37, 2.2], [24.5, 37, 2.2]]), '#ffe0ea');
+      face(c, 20, 20.5, 0.8, starFace(mood), { gap: 4.6 });
+      flat(c, P([[18.9, 23.6], [21.1, 23.6], [20, 24.9]]), '#ff8fa8');
+      line(c, [[9.5, 24], [14.3, 25]], INK, 0.7); line(c, [[9.5, 27.2], [14.3, 26.5]], INK, 0.7);
+      line(c, [[30.5, 24], [25.7, 25]], INK, 0.7); line(c, [[30.5, 27.2], [25.7, 26.5]], INK, 0.7);
+      flat(c, blobs([[13, 24.6, 1.6], [27, 24.6, 1.6]]), 'rgba(255,140,170,0.45)');
+    };
+  }
+  // a bumblebee: striped, with see-through wings and a stinger
+  function beeArt(mood, frame) {
+    return (c) => {
+      const w = frame ? 2 : -3;
+      shape(c, (c) => { ell(c, 11.5, 16 + w, 7.5, 4, -0.5 - w * 0.08); ell(c, 28.5, 16 + w, 7.5, 4, 0.5 + w * 0.08); }, '#e9f5ff', 1.4);
+      line(c, [[16.5, 14], [13.5, 8]], INK, 1.3); line(c, [[23.5, 14], [26.5, 8]], INK, 1.3); flat(c, blobs([[13.1, 7.4, 1.4], [26.9, 7.4, 1.4]]), INK);
+      shape(c, (c) => { ell(c, 20, 29.5, 11, 9); circ(c, 20, 19, 9); polyPath(c, [[18, 37.5], [20, 42.5], [22, 37.5]]); }, '#ffd83a', 1.9);
+      line(c, [[11, 27.5], [29, 27.5]], INK, 3); line(c, [[12, 33], [28, 33]], INK, 3);
+      face(c, 20, 18.5, 0.78, starFace(mood), { gap: 4.4 });
+      flat(c, blobs([[13.6, 22, 1.5], [26.4, 22, 1.5]]), 'rgba(255,120,120,0.4)');
+    };
+  }
+  for (const m of ['happy', 'surprised', 'sad', 'angry', 'laugh']) for (const f of [0, 1]) { ART['caticorn_' + m + f] = [40, 44, caticornArt(m, f)]; ART['bee_' + m + f] = [40, 44, beeArt(m, f)]; }
+  SW.STAR_SKINS = [{ id: 'star', name: 'Star' }, { id: 'caticorn', name: 'Caticorn' }, { id: 'bee', name: 'Bumble' }];
 
   function scribbleArt(seed) {
     return (c) => {

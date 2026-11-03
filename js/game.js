@@ -996,6 +996,8 @@
     eneOutline: (unit, hurt) => { const c = eneGear(G.player, bestWeapon()); c.hurt = !!hurt; c.night = true; return eneOutline(c, unit); },
     charge: (n) => chargeCry(n),
     starMood: () => (G.star ? G.star.mood : 'happy'),
+    starSpr: (fr) => starSpr(G.star ? G.star.mood : 'happy', fr),
+    starAt: (x, y, r) => { radar.starNext = { x, y, r }; },
     starFeel: (m, t) => starFeel(m, t),
   });
   function enterCave(c) {
@@ -1202,7 +1204,8 @@
     const g = ctx.createRadialGradient(pt.x, pt.y - 20 * Z, 0, pt.x, pt.y - 20 * Z, 46 * Z);
     g.addColorStop(0, `rgba(255,230,120,${0.45 * glowA})`); g.addColorStop(1, 'rgba(255,230,120,0)');
     ctx.fillStyle = g; ctx.fillRect(pt.x - 50 * Z, pt.y - 70 * Z, 100 * Z, 100 * Z);
-    drawSprite('star_' + s.mood + fr, pt.x, pt.y, Math.sin(s.t * 2.4) * 0.12 + (s.guiding ? 0.15 : 0), 1, 1);
+    drawSprite(starSpr(s.mood, fr), pt.x, pt.y, Math.sin(s.t * 2.4) * 0.12 + (s.guiding ? 0.15 : 0), 1, 1);
+    const ss = flatToScreen(d.sx, d.sy - 18 * Z); radar.starNext = { x: ss.x, y: ss.y, r: 26 * ss.s * Z };
     if (s.zap) {
       // a zigzag of starlight to whatever Star zapped
       // proj() hands back one shared point, so Star's spot (kept in d) is read before the
@@ -1457,7 +1460,8 @@
       const g = sctx.createRadialGradient(sx, yy - 20 * sc, 0, sx, yy - 20 * sc, 46 * sc);
       g.addColorStop(0, `rgba(255,230,120,${0.45 * Math.max(0.25, darkness(phaseOf(G.time)))})`); g.addColorStop(1, 'rgba(255,230,120,0)');
       sctx.fillStyle = g; sctx.fillRect(sx - 50 * sc, yy - 70 * sc, 100 * sc, 100 * sc);
-      pxSprite('star_' + s.mood + fr, sx, yy, sc, Math.sin(s.t * 2.4) * 0.12);
+      pxSprite(starSpr(s.mood, fr), sx, yy, sc, Math.sin(s.t * 2.4) * 0.12);
+      radar.starNext = { x: sx, y: yy - 18 * sc, r: 26 * sc };
       if (s.zap) {
         const a = pxProj(s.zap.x, pxU(s.zap.y));
         if (a) {
@@ -3241,7 +3245,7 @@
   const pickIcon = (k) => (G.radarPick === k ? `<img class="qsun" src="${SW.spriteURL('sunflower')}" alt="Radar">` : '');
   function pickQuest(k) {
     G.radarPick = G.radarPick === k ? null : k;
-    questDirty = true; radar.scanT = 0;
+    questDirty = true; radar.scanT = 0; radar.labelUntil = performance.now() + 4000;
     toast(G.radarPick ? 'The sunflower petals now point there.' : 'The petals follow Star again.', 1800);
   }
   function renderQuests(dt) {
@@ -3413,11 +3417,12 @@
     let top, left, width, mode;
     const bn = $('banner'), bh = (banner.until || 0) > performance.now() ? bn.offsetHeight + 6 : 0;
     const below = Math.max(a.bottom, b.bottom) + 8;
-    if (gapR - gapL >= 230) { top = 10; left = gapL; width = gapR - gapL; mode = 'gap'; }
+    const edge = radar.ring ? radar.ring.inset + 6 : 10;
+    if (gapR - gapL >= 230) { top = edge; left = gapL; width = gapR - gapL; mode = 'gap'; }
     else if (below + 50 + bh < charTop) { top = below; left = 12; width = W - 24; mode = 'below'; }
     else { top = Math.max(charBottom + 6, (hot.top || H) - 56); left = 12; width = W - 24; mode = 'bottom'; }
     // the cave's rune pill: between the top corners if there's room, else above the hotbar on the left
-    if (gapR - gapL >= 200) { caveHud.x = (gapL + gapR) / 2; caveHud.y = mode === 'gap' ? 18 : 18; }
+    if (gapR - gapL >= 200) { caveHud.x = (gapL + gapR) / 2; caveHud.y = edge + 8; }
     else { caveHud.x = Math.max(70, (hot.left || 12) + 70); caveHud.y = (hot.top || H) - 44; }
     // while a banner is up, the tip sits just under it (or just over it at the bottom)
     const tops = mode === 'bottom' ? { banner: top - bh, toast: top } : { banner: top, toast: top + bh };
@@ -3758,6 +3763,7 @@
     canvas.addEventListener('mousedown', (e) => {
       if (G.mode !== 'play') return;
       SW.audio.unlock();
+      if (e.button === 0 && tapStar(...toGame(e.clientX, e.clientY))) return;
       if (G.inCave) { if (e.button === 0) input.useEdge = true; return; }
       if (e.button === 2 || e.button === 1) { input.rotating = true; input.rotX = e.clientX; e.preventDefault(); return; }
       if (e.button !== 0) return;
@@ -3878,7 +3884,7 @@
       for (const t of e.changedTouches) {
         touches.delete(t.identifier);
         if (t.identifier === stickId) {
-          if (!dragging && !twist && performance.now() - t0 < 500) { if (G.inCave) input.useEdge = true; else pointerOrder(...toGame(t.clientX, t.clientY)); }
+          if (!dragging && !twist && performance.now() - t0 < 500) { if (tapStar(...toGame(t.clientX, t.clientY))) {} else if (G.inCave) input.useEdge = true; else pointerOrder(...toGame(t.clientX, t.clientY)); }
           stickId = null; dragging = false; input.x = input.y = 0; stick.classList.remove('on');
           knob.style.transform = 'translate(-50%, -50%)';
         }
@@ -3912,6 +3918,35 @@
     else if (G.mode === 'title') { $('titleScreen').hidden = false; $('hud').hidden = true; }
   }
 
+
+  // ---------------- Star's look, and tapping Star ----------------
+  let starSkin = SW.store.get('starSkin', 'star');
+  if (!(SW.STAR_SKINS || []).some((k) => k.id === starSkin)) starSkin = 'star';
+  const starSpr = (mood, fr) => starSkin + '_' + mood + fr;
+  function setStarSkin(id) {
+    if (!(SW.STAR_SKINS || []).some((k) => k.id === id)) return;
+    starSkin = id; SW.store.set('starSkin', id);
+    document.querySelectorAll('#starSkins button').forEach((b) => b.classList.toggle('on', b.dataset.skin === id));
+    if (G && G.star) starFeel('laugh', 1.2);
+  }
+  function buildSkinPicker() {
+    const box = $('starSkins');
+    if (!box) return;
+    for (const k of SW.STAR_SKINS || []) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.dataset.skin = k.id; b.className = k.id === starSkin ? 'on' : '';
+      b.innerHTML = `<img src="${SW.spriteURL(k.id + '_happy0')}" alt=""><span>${k.name}</span>`;
+      b.addEventListener('click', () => { setStarSkin(k.id); toast(`Star is a ${k.name} now.`, 1600); });
+      box.appendChild(b);
+    }
+  }
+  // a tap on Star shows where the sunflower petals point, for a few seconds
+  function tapStar(x, y) {
+    const s = radar.star;
+    if (!s || G.mode !== 'play' || Math.hypot(x - s.x, y - s.y) > s.r + 6) return false;
+    radar.labelUntil = performance.now() + 4000; starFeel('laugh', 1);
+    return true;
+  }
 
   // ---------------- the sunflower radar ----------------
   // A ring of sunflower petals around the whole screen (inside the safe area), under the
@@ -3947,6 +3982,9 @@
     for (let i = 0; i < n; i++) { const [x, y, nx, ny] = at(i * step + step * 0.5); pts.push({ x, y, nx, ny, i }); }
     radar.pts = pts;
     radar.ring = { x0, y0, x1, y1, rc, per, inset, step, plen: inset * 0.5, pwid: Math.min(step * 0.3, 8.5) };
+    // the HUD sits snug inside the ring
+    document.documentElement.style.setProperty('--ring', inset + 'px');
+    requestAnimationFrame(layoutHUD);
     // the quiet frame, drawn once
     const b = radar.base || (radar.base = document.createElement('canvas'));
     b.width = Math.round(w * dpr); b.height = Math.round(h * dpr);
@@ -4123,6 +4161,8 @@
     if (w < 120 || h < 120) return;
     if (w !== radar.w || h !== radar.h || SDPR !== radar.dpr) { cv.width = Math.round(w * SDPR); cv.height = Math.round(h * SDPR); radarLayout(w, h, SDPR); }
     radar.scanT -= dt; radar.pulse += dt * 4.5;
+    const labelOn = (radar.labelUntil || 0) > performance.now();
+    radar.star = radar.starNext; radar.starNext = null;
     if (radar.scanT <= 0) {
       radar.scanT = 0.4; radar.found = radarTarget();
       // the HUD boxes the label should stay out of
@@ -4135,12 +4175,13 @@
     if (!t) return;
     if (t.ref) { t.x = t.ref.x; t.y = t.ref.y; }
     g.lineJoin = 'round'; g.lineCap = 'round';
-    if (t.none) { radar.lastLit = { none: true, label: t.label }; radarLabel(g, t.label, w / 2, r.y1 - 58, false); return; }
+    if (t.none) { radar.lastLit = { none: true, label: t.label, shown: labelOn }; if (labelOn) radarLabel(g, t.label, w / 2, r.y1 - 58, false); return; }
     const p = G.player, d = t.cave ? t.d : dist(p.x, p.y, t.x, t.y), here = d < (t.near || 60);
     // from where Ene stands on screen (kept inside the ring: first-person puts her below it)
     const ax = clamp(W / 2 - rect.left, r.x0 + 20, r.x1 - 20), ay = clamp((t.cave ? H * 0.55 : VIEWS[view].parallax ? H * 0.72 : curve.yA) - rect.top, r.y0 + 20, r.y1 - 20);
     const th = radarAngle(t), [ex, ey] = radarExit(ax, ay, th);
-    radar.lastLit = { ax, ay, ex, ey, th, d, here, label: t.label };
+    const showLabel = here || labelOn;
+    radar.lastLit = { ax, ay, ex, ey, th, d, here, label: t.label, shown: showLabel };
     const beat = 0.5 + 0.5 * Math.sin(radar.pulse);
     const lits = [];
     for (const q of radar.pts) {
@@ -4157,7 +4198,7 @@
     }
     for (const [q, lit] of lits) radarPetal(g, q, lit, here ? 0.12 * beat : 0.2 * beat * lit * lit);
     const inx = ax - ex, iny = ay - ey, il = Math.hypot(inx, iny) || 1;
-    radarLabel(g, here ? `${t.label} · here!` : `${t.label} · ${radarDist(d)}`, ex + (inx / il) * 30, ey + (iny / il) * 30, here, inx / il, iny / il);
+    if (showLabel) radarLabel(g, here ? `${t.label} · here!` : `${t.label} · ${radarDist(d)}`, ex + (inx / il) * 30, ey + (iny / il) * 30, here, inx / il, iny / il);
   }
 
   // ---------------- boot ----------------
@@ -4218,6 +4259,7 @@
     makeGrain();
     document.querySelectorAll('img[data-icon]').forEach((img) => { img.src = SW.spriteURL(img.dataset.icon); });
     bindInput();
+    buildSkinPicker();
     setMute(SW.audio.muted);
     if (SW.store.get('questsOpen', window.innerWidth > 700 && window.innerHeight > 520)) $('questBox').classList.add('open');
     window.addEventListener('resize', onResize);
@@ -4242,7 +4284,7 @@
 
   SW.game = {
     get G() { return G; }, newGame, startGame, act, useItem, craft, restore, serialize, toast, saveName, validSave,
-    radar: () => ({ pick: G && G.radarPick, target: radar.found, ring: radar.ring, lit: radar.lastLit }), pickQuest,
+    radar: () => ({ pick: G && G.radarPick, target: radar.found, ring: radar.ring, lit: radar.lastLit, star: radar.star, skin: starSkin }), pickQuest, setStarSkin,
     pause, goTitle, showScreen, closeSavePanel, dayOf, gainXP, pointerOrder, setOrder, startFishing, reel, toggleFly,
     setPhase(ph) { G.time = (dayOf(G.time) - 1) * DAY_LEN + ph * DAY_LEN; },
     setAngle(a) { setAngle(a); }, get angle() { return camA; },

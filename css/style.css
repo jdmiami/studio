@@ -15,7 +15,8 @@
   --shade: rgba(52, 38, 84, 0.3);
   --display: "Bagel Fat One", "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
   --body: "Sniglet", ui-rounded, "Trebuchet MS", system-ui, sans-serif;
-  --edge: 10px;
+  --ring: 4px;                        /* the sunflower radar's ring inset, set by the game */
+  --edge: calc(var(--ring) + 6px);     /* the HUD sits snug inside the ring */
   --st: env(safe-area-inset-top, 0px);
   --sb: env(safe-area-inset-bottom, 0px);
   --sl: env(safe-area-inset-left, 0px);
@@ -262,6 +263,13 @@ body.touch .round-btn.desk { display: none; }
 .pause-info { margin: -8px 0 14px; color: var(--muted); font-weight: 800; font-size: 13px; }
 .chip-btn { font-weight: 800; font-size: 13px; border: 2px solid var(--ink); background: #fff; border-radius: 999px; padding: 4px 12px; }
 .chip-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Star's look: one button per skin */
+.skins { display: flex; gap: 8px; justify-content: center; align-items: stretch; flex-wrap: wrap; margin-top: 4px; }
+.skins > span { font-weight: 800; font-size: 13px; color: var(--muted); width: 100%; text-align: center; }
+.skins button { all: unset; cursor: pointer; display: grid; justify-items: center; gap: 2px; padding: 6px 10px 5px; border-radius: 14px; border: 2px solid transparent; background: #f4efe6; font-weight: 800; font-size: 11px; color: var(--ink); }
+.skins button img { width: 40px; height: 44px; object-fit: contain; }
+.skins button.on { border-color: var(--ink); background: #fff3b0; }
+.skins button:focus-visible { outline: 3px dashed var(--ink); outline-offset: 2px; }
 .map-card { width: min(560px, 100%); padding: 14px 16px 12px; }
 .map-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .map-head h2 { margin: 0 !important; font-family: var(--display); font-weight: 400; font-size: 26px; }
@@ -310,7 +318,7 @@ body.touch .slot kbd, body.touch #craftBtn kbd { display: none; }
 
 /* phones in portrait: everything a notch smaller */
 @media (max-width: 560px) {
-  :root { --btn: 34px; --edge: 8px; }
+  :root { --btn: 34px; --edge: calc(var(--ring) + 4px); }
   .hud-tl { max-width: 52vw; }
   .vitals, .questbox { width: min(168px, 50vw); }
   .xpnum { display: none; }
@@ -326,7 +334,7 @@ body.touch .slot kbd, body.touch #craftBtn kbd { display: none; }
 }
 /* phones in landscape: very little height, so cluster things in rows */
 @media (max-height: 500px) {
-  :root { --btn: 32px; --edge: 6px; }
+  :root { --btn: 32px; --edge: calc(var(--ring) + 3px); }
   .hud-tl { flex-direction: row; align-items: flex-start; max-width: 60vw; }
   .vitals { width: 170px; padding: 4px 7px 5px 5px; gap: 3px; }
   .vrow img { width: 16px; height: 16px; }

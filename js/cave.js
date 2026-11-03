@@ -510,7 +510,9 @@
       const q = g.createRadialGradient(x, y - 14 * k, 0, x, y - 14 * k, 44 * k);
       q.addColorStop(0, 'rgba(255,230,120,0.5)'); q.addColorStop(1, 'rgba(255,230,120,0)');
       g.fillStyle = q; g.fillRect(x - 46 * k, y - 60 * k, 92 * k, 92 * k);
-      drawSpr(g, 'star_' + (api.starMood ? api.starMood() : 'happy') + (Math.floor(st.t * 5) % 2), x, y, 40 * k, 1, 1, Math.sin(st.t * 2.4) * 0.12);
+      const fr = Math.floor(st.t * 5) % 2;
+      drawSpr(g, api.starSpr ? api.starSpr(fr) : 'star_' + (api.starMood ? api.starMood() : 'happy') + fr, x, y, 40 * k, 1, 1, Math.sin(st.t * 2.4) * 0.12);
+      if (api.starAt) api.starAt(x, y - 14 * k, 26 * k);
       if (st.zap) {
         g.globalAlpha = 1 - st.zap.t / 0.3; g.lineJoin = 'round';
         for (const [w, col] of [[6, '#ffffff'], [3, '#ffd23f']]) {
