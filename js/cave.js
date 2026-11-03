@@ -501,7 +501,7 @@
       // in device pixels from here, so the sticker is sharp
       const X = m.a * x + m.e, Y = m.d * y + m.f;
       // her tool, between her body and her hand
-      SW.ene.draw(g, X, Y, s * dpr, P, { flash: flick || h.hurtT > 0 ? 0.6 : 0, border: 2.4 * k * dpr * 0.6, tool: h.swingT > 0 && tool && SW.sprites[tool] ? { spr: SW.sprites[tool], off: 0.55 } : null });
+      SW.ene.draw(g, X, Y, s * dpr, P, { flash: flick || h.hurtT > 0 ? 0.6 : 0, outline: api.eneOutline ? api.eneOutline(k * dpr * 0.6, h.hurtT > 0) : { width: 2.4 * k * dpr * 0.6 }, tool: h.swingT > 0 && tool && SW.sprites[tool] ? { spr: SW.sprites[tool], off: 0.55 } : null });
       g.restore();
       if (h.slide) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(x - h.slide * 18 * k, y - 4 * k, 12 * k, 4 * k, 0, 0, TAU); g.fill(); }
     }

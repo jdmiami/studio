@@ -99,7 +99,8 @@
     bk.globalCompositeOperation = 'source-over';
 
     const ay = opts.anchorY ?? h;
-    return { img: fin, back, flash: out, w: cw / S, h: ch / S, ax: pad + w / 2, ay: pad + ay, S };
+    // raw: the art alone, with no outline, for stickers that share one outline (Ene and her gear)
+    return { img: fin, back, flash: out, raw: base, w: cw / S, h: ch / S, ax: pad + w / 2, ay: pad + ay, S };
   }
 
   // ---------- cartoon kit ----------

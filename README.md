@@ -27,6 +27,15 @@ Her limbs are **traced off the sheet**, not redrawn: the upper arm, forearm and 
 6. *Walking arms keep their length.* Seen from the front a real arm swing goes toward and away from us and would just shrink, so the stride is drawn as a gentle swing on screen, toward where she walks in three-quarter.
 7. *The tool sits between her body and her hand.* The sword, axe, pick or rod is drawn inside her sticker after her body and before the arm that holds it, so it always shows, whichever way she faces.
 
+**One sticker, one outline.** Ene and everything she holds or carries are drawn as layers of a single sticker, so one white die-cut outline wraps them all instead of each piece having its own. Every sticker keeps its art without an outline (`raw` in `js/sprites.js`) for this. The layers, back to front: the raft under her feet; the tool carried on her back (over her back when seen from behind); her legs, arms and body; the tool in her hand, between her body and the hand that holds it; and the leaf glider over her head with the two stems from her fists.
+
+**The outline changes with her gear.** `OUTLINE_RULES` in `js/game.js` is a table: each row says when it applies and sets the white's colour, a coloured rim along its outer edge, a soft glow beyond it, or its width. Rows apply in order, so the moment-to-moment states at the bottom win:
+- Bark vest: a bark-brown rim. Stone mail: a stone-grey rim. Crystal plate: an ice-blue rim and glow. Warm cloak: a frosty white.
+- Gem sword: a cyan glow. Ink blade: a purple glow. Lantern at night or in a cave: a warm glow.
+- Gliding: a leaf-green rim. Sailing: a water-blue rim. Hurt: a red rim. Crying rainbows: a glow that cycles through the rainbow.
+
+Adding an item's look is one new row.
+
 When hurt ("AY!!"), her right hand clutches her chest and her left comes up beside her face, palm out.
 
 `SW.ene.handInfo(pose)` lists, for any pose, each arm's side, what its hand is doing, palm or back, the drawing used and whether it is mirrored.

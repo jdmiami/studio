@@ -785,7 +785,20 @@
     for (const j of [...P.A, ...P.L]) for (const q of [j.wrist || j.ankle, j.elbow || j.knee]) {
       x0 = Math.min(x0, q[0] - 40); x1 = Math.max(x1, q[0] + 40); y0 = Math.min(y0, q[1] - 40); y1 = Math.max(y1, q[1] + 30);
     }
-    const m = ((opts.border || 3.4) * dpr + 4) / s + (opts.tool ? 60 : 0);
+    // her gear, laid out in the drawing's own pixels, to fit the canvas around everything
+    const K = (RIG.front.ground - 8) / 108;              // sticker units -> sheet pixels (she is 108 units tall)
+    const props = layoutProps(P, opts, K);
+    for (const pr of props) {
+      // the prop's own four corners, scaled, turned and placed (in the unmirrored drawing)
+      const c = Math.cos(pr.rot || 0), n = Math.sin(pr.rot || 0), sp = pr.spr;
+      for (const [u, v] of [[-sp.ax, -sp.ay], [sp.w - sp.ax, -sp.ay], [-sp.ax, sp.h - sp.ay], [sp.w - sp.ax, sp.h - sp.ay]]) {
+        const px = u * pr.kx * K, py = v * pr.ky * K;
+        const qx = pr.x + px * c - py * n, qy = pr.y + px * n + py * c;
+        x0 = Math.min(x0, qx); x1 = Math.max(x1, qx); y0 = Math.min(y0, qy); y1 = Math.max(y1, qy);
+      }
+    }
+    const ow = (opts.outline && opts.outline.width) || opts.border || 3.4;
+    const m = ((ow * ((opts.outline && opts.outline.glow) ? 2 : 1)) * dpr + 4) / s + (opts.tool ? 60 : 0);
     if (P.flip) { const a = V.anchor * 2 - x1, b2 = V.anchor * 2 - x0; x0 = a; x1 = b2; }
     x0 -= m; y0 -= m; x1 += m; y1 += m;
     const w = Math.ceil((x1 - x0) * s), h = Math.ceil((y1 - y0) * s);
@@ -811,14 +824,17 @@
       const k = 0.9 * (RIG.front.ground - 8) / 108;    // sticker units -> sheet pixels (her height is 108 units)
       cg.save(); cg.translate(grip[0], grip[1]); cg.rotate(a.ang - fl * (opts.tool.off || 0.55) + Math.PI / 2);
       cg.scale(k * fl, k);
-      cg.drawImage(spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
+      cg.drawImage(spr.raw || spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
       cg.restore();
     };
+    const drawProps = (layer) => { for (const pr of props) if (pr.layer === layer) drawProp(cg, pr, P, K); };
     // draw order, back to front:
     //   side:  far leg, far arm, near leg, body, (tool, holding arm), near arm
     //   back:  legs, both arms, body (arms reaching up a ladder, or holding the tool, over it)
     //   front: legs, body, her left arm, (tool), her right arm
     let ok;
+    drawProps('under');                                 // the raft, under her feet
+    if (P.view !== 'back') drawProps('behind');         // the tool carried on her back
     if (P.view === 'side') {
       drawLeg(cg, P.L[1], P, true); if (holder !== 1) drawArm(cg, P.A[1], P, true);
       drawLeg(cg, P.L[0], P, false);
@@ -835,6 +851,7 @@
       for (const j of [0, 1]) if (!over(j)) drawArm(cg, P.A[j], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
+      drawProps('behind');                              // from behind, the carried tool is over her back
       drawTool();
       for (const j of [0, 1]) if (over(j)) drawArm(cg, P.A[j], P, false);
     } else {
@@ -849,6 +866,7 @@
       drawTool();
       drawArm(cg, P.A[fa], P, false);
     }
+    drawProps('over');                                  // the leaf glider and its stems, over her head
     if (!ok) return null;
     if (opts.raw) {
       // just the drawing, for a caller that makes its own sticker of it
@@ -856,12 +874,31 @@
       return locate(x, y, s0, P);
     }
     // sticker border and shadow
-    const b = Math.max(1.5, (opts.border || 3.4)) * dpr;
-    skg.setTransform(1, 0, 0, 1, 0, 0); skg.clearRect(0, 0, sk.width, sk.height);
-    const ns = b < 5 ? 8 : 12;      // a thin border needs fewer stamps to stay round
-    for (let k = 0; k < ns; k++) { const a = (k / ns) * TAU; skg.drawImage(cv, 0, 0, w, h, Math.cos(a) * b, Math.sin(a) * b, w, h); }
-    skg.globalCompositeOperation = 'source-in'; skg.fillStyle = '#ffffff'; skg.fillRect(0, 0, w, h);
-    skg.globalCompositeOperation = 'source-over';
+    // ---- the shared outline: one die-cut edge round her and everything she holds ----
+    const O = opts.outline || {}, b = Math.max(1.5, ow) * dpr;
+    const ring = (rad, color, soft) => {
+      skg.setTransform(1, 0, 0, 1, 0, 0); skg.globalCompositeOperation = 'source-over'; skg.clearRect(0, 0, sk.width, sk.height);
+      // a thin border needs fewer stamps to stay round; a soft halo needs only a few
+      const ns = soft ? 6 : rad < 5 ? 8 : rad < 10 ? 12 : 16;
+      for (let k = 0; k < ns; k++) { const a = (k / ns) * TAU; skg.drawImage(cv, 0, 0, w, h, Math.cos(a) * rad, Math.sin(a) * rad, w, h); }
+      skg.drawImage(cv, 0, 0, w, h, 0, 0, w, h);
+      skg.globalCompositeOperation = 'source-in'; skg.fillStyle = color; skg.fillRect(0, 0, w, h);
+      skg.globalCompositeOperation = 'source-over';
+    };
+    const ox0 = x + (x0 - V.anchor) * s0, oy0 = y + (y0 - V.ground) * s0;
+    if (O.glow) {
+      // a soft halo outside the edge, in the gear's colour
+      ring(b * 2.1, O.glow, true);
+      g.save(); g.globalAlpha *= (O.glowAlpha || 0.55) * (opts.alpha === undefined ? 1 : opts.alpha);
+      g.drawImage(sk, 0, 0, w, h, ox0, oy0, w / dpr, h / dpr); g.restore();
+    }
+    if (O.rim) {
+      // a coloured band along the outer edge of the white
+      ring(b, O.rim);
+      g.save(); if (opts.alpha !== undefined) g.globalAlpha *= opts.alpha;
+      g.drawImage(sk, 0, 0, w, h, ox0, oy0, w / dpr, h / dpr); g.restore();
+    }
+    ring(O.rim ? b * 0.68 : b, O.color || '#ffffff');
     const ox = x + (x0 - V.anchor) * s0, oy = y + (y0 - V.ground) * s0, dw = w / dpr, dh = h / dpr;
     g.save();
     if (opts.alpha !== undefined) g.globalAlpha *= opts.alpha;
@@ -929,6 +966,49 @@
     else if (!st.action && p.hurtT > 0) { st.action = 'hurt'; st.actionT = 0.5 * (1 - p.hurtT / 0.35); }
     else if (!st.action && e.faceT > 0 && e.face === 'Joy') { st.action = 'joy'; st.actionT = 1.6 - e.faceT; }
     return Object.assign(st, extra);
+  }
+
+  // ---- her gear as layers of her sticker ----
+  // Each prop is a sticker's raw art (no outline of its own), placed in the drawing's
+  // pixels and drawn in her canvas at its layer, so it shares her one outline:
+  //   under:  the raft, below her feet
+  //   behind: the tool carried on her back (over her back when seen from behind)
+  //   over:   the leaf glider over her head, held by two stems from her hands
+  function layoutProps(P, opts, K) {
+    const V = P.V, out = [];
+    const side = P.view === 'side', back = P.view === 'back';
+    if (opts.raft && opts.raft.spr) {
+      const r = opts.raft;
+      out.push({ layer: 'under', spr: r.spr, x: V.anchor, y: V.ground + 6 * K + (r.bob || 0) * K, rot: r.rot || 0, kx: r.kx || 1, ky: r.ky || 1 });
+    }
+    if (opts.carry && opts.carry.spr) {
+      // the blade over a shoulder: side-on behind her (she faces left), from the front
+      // over her left shoulder, from behind across her back
+      const dx = side ? 9 : back ? 10 : -9, rot = side ? 0.55 : back ? 0.5 : -0.55, kx = side ? 0.8 : back ? 0.8 : -0.8;
+      out.push({ layer: 'behind', spr: opts.carry.spr, x: V.anchor + dx * K, y: V.ground - 50 * K + P.body.y, rot, kx, ky: 0.8 });
+    }
+    if (opts.glider && opts.glider.spr) {
+      const gl = opts.glider;
+      out.push({ layer: 'over', spr: gl.spr, x: V.anchor, y: V.ground - 100 * K + P.body.y, rot: gl.rot || 0, kx: 0.9, ky: 0.9 * (gl.ky || 1), stems: true });
+    }
+    return out;
+  }
+  function drawProp(g, pr, P, K) {
+    if (pr.stems) {
+      // two leaf stems from her fists up to the leaf's middle
+      g.lineCap = 'round';
+      for (const [wd, col] of [[4.6, INK], [2.2, '#6fae3c']]) {
+        g.lineWidth = wd; g.strokeStyle = col;
+        for (const a of P.A) {
+          const h = [a.wrist[0] + Math.cos(a.ang) * 10, a.wrist[1] + Math.sin(a.ang) * 10];
+          g.beginPath(); g.moveTo(h[0], h[1]); g.quadraticCurveTo((h[0] + pr.x) / 2, pr.y + 30, pr.x + (h[0] - pr.x) * 0.25, pr.y + 20); g.stroke();
+        }
+      }
+    }
+    const spr = pr.spr;
+    g.save(); g.translate(pr.x, pr.y); if (pr.rot) g.rotate(pr.rot); g.scale(pr.kx * K, pr.ky * K);
+    g.drawImage(spr.raw || spr.img, -spr.ax, -spr.ay, spr.w, spr.h);
+    g.restore();
   }
 
   // the whole height of the character in sheet pixels (feet to hair top)

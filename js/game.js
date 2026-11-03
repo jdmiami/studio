@@ -992,6 +992,8 @@
     heroFace: () => { const e = G.ene; return !e ? null : e.cryT > 0 ? 'playerCry' : e.faceT > 0 && e.face ? 'player' + e.face : null; },
     crying: () => !!(G.ene && G.ene.cryT > 0),
     eneReact: () => G.ene,
+    // her outline in a cave: her gear, plus being hurt there
+    eneOutline: (unit, hurt) => { const c = eneGear(G.player, bestWeapon()); c.hurt = !!hurt; c.night = true; return eneOutline(c, unit); },
     charge: (n) => chargeCry(n),
     starMood: () => (G.star ? G.star.mood : 'happy'),
     starFeel: (m, t) => starFeel(m, t),
@@ -1430,7 +1432,6 @@
       const bob = p.alt * sc + (p.boat ? Math.sin(G.time * 3) * 2 * sc : 0);
       sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
       sctx.fillStyle = 'rgba(46,34,82,0.22)'; sctx.beginPath(); sctx.ellipse(sx, sy, 15 * sc, 5 * sc, 0, 0, TAU); sctx.fill();
-      if (p.boat) pxSprite('raft', sx, sy + 6 * sc, sc);
       if (e2.cryT > 0) drawRainbows(sx, sy - bob, sctx, sc, SDPR);
       const fishing = !!G.fishing;
       const toolName = fishing ? 'rod' : p.swingT > 0 ? p.swingTool : bestWeapon() || (G.tools.axe ? 'axe' : G.tools.pick ? 'pick' : null);
@@ -1438,11 +1439,11 @@
       const P = SW.ene.pose(eneState(p, { fish: fishing, glide: p.flying || p.alt > 4, boat: p.boat }));
       const s = ENE_UNITS * sc / SW.ene.height, f = eneFacing(P, p);
       const inHand = (p.swingT > 0 || fishing) && toolSpr;
-      if (toolSpr && !inHand && !p.flying) pxSprite(toolSpr, sx - f * 9 * sc, sy - bob - 50 * sc, sc, -f * 0.55, 0.8 * -f, 0.8);
       sctx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
       const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
-      const info = SW.ene.draw(sctx, sx, sy - bob, s, P, { dpr: SDPR, flash: p.hurtT > 0 || flick ? 0.7 : 0, border: 2.4 * sc, tool: inHand && SW.sprites[toolSpr] ? { spr: SW.sprites[toolSpr], off: fishing ? 1.25 : 0.55 } : null });
-      if (p.flying || p.alt > 4) { if (info) eneLeafStems(sctx, info.hands, sx, sy - bob - 100 * sc, sc, SDPR); pxSprite('glider', sx, sy - bob - 100 * sc, sc * 0.9); }
+      const info = SW.ene.draw(sctx, sx, sy - bob, s, P, Object.assign({ dpr: SDPR, flash: p.hurtT > 0 || flick ? 0.7 : 0,
+        tool: inHand && SW.sprites[toolSpr] ? { spr: SW.sprites[toolSpr], off: fishing ? 1.25 : 0.55 } : null,
+        outline: eneOutline(eneGear(p, inHand ? toolName : bestWeapon()), sc) }, eneProps(p, toolSpr, inHand)));
       if (info) px.list.push({ k: 3, x0: sx - 20 * sc, y0: sy - 100 * sc, x1: sx + 20 * sc, y1: sy });
       return;
     }
@@ -2729,26 +2730,55 @@
   const eneLook = (p, sdx, sdy, moving, forceBack) => SW.ene.look(p, sdx, sdy, moving, forceBack, G.time, p.swingT > 0 || G.fishing ? (p.face || 1) : 0);
   const eneState = (p, extra) => SW.ene.state(p, G.ene, G.time, extra);
   const eneToolSpr = (n) => n ? { axe: 'toolAxe', pick: 'toolPick', sword: 'toolSword', gemSword: 'toolGemSword', inkBlade: 'toolInkBlade', rod: 'toolRod' }[n] : null;
-  // her tool in her hand, under her fingers: drawn first, so the puppet's hand closes over it
-  // `ang` is her forearm's direction on screen, `f` the way she faces (1 right, -1 left),
-  // `off` how far the tool tips forward of the forearm (0: straight on, PI/2: square to it)
-  function drawEneTool(g, toolSpr, hand, ang, f, off, sc, dpr) {
-    const spr = SW.sprites[toolSpr];
-    if (!spr || !hand) return;
-    g.save(); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.translate(hand[0], hand[1]);
-    g.rotate(ang - f * off + Math.PI / 2);   // the tool art points up from its handle end
-    g.scale(sc * 0.9 * f, sc * 0.9);
-    g.drawImage(spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
-    g.restore();
-  }
-  // two thin stems from her fists up to the leaf
-  function eneLeafStems(g, hands, lx, ly, sc, dpr) {
-    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.lineCap = 'round';
-    for (const [w, col] of [[4.2, '#141016'], [2, '#6fae3c']]) {
-      g.lineWidth = w * sc; g.strokeStyle = col;
-      for (const h of hands) { g.beginPath(); g.moveTo(h[0], h[1]); g.quadraticCurveTo((h[0] + lx) / 2, ly + 6 * sc, lx + (h[0] - lx) * 0.25, ly + 4 * sc); g.stroke(); }
+
+
+  // ---- her sticker outline, from what she carries and what she is doing ----
+  // One white die-cut outline wraps Ene and everything she holds. Its look comes from her
+  // gear: each row below can set `color` (the white itself), `rim` (a coloured band on the
+  // outside of the white), `glow` (a soft halo beyond it) and `width`. Rows apply in order,
+  // later ones winning, so the moment-to-moment states at the bottom override the gear.
+  const OUTLINE_RULES = [
+    { when: (c) => c.has('barkVest'), rim: '#b07a44' },
+    { when: (c) => c.has('stoneMail'), rim: '#8e94aa' },
+    { when: (c) => c.has('crystalPlate'), rim: '#7fd8f0', glow: '#bff4ff', glowAlpha: 0.35 },
+    { when: (c) => c.has('warmCloak'), color: '#eef4ff' },
+    { when: (c) => c.weapon === 'gemSword', glow: '#8fe8f6', glowAlpha: 0.5 },
+    { when: (c) => c.weapon === 'inkBlade', glow: '#6a46b0', glowAlpha: 0.55 },
+    { when: (c) => c.has('lantern') && c.night, glow: '#ffd76a', glowAlpha: 0.45 },
+    { when: (c) => c.gliding, rim: '#7cbf4a' },
+    { when: (c) => c.sailing, rim: '#6cb6f0' },
+    { when: (c) => c.hurt, rim: '#ff4d6d' },
+    { when: (c) => c.crying, glow: (c) => `hsl(${(c.t * 240) % 360} 95% 65%)`, glowAlpha: 0.7, width: 1.25 },
+  ];
+  function eneOutline(c, unit) {
+    const o = { color: '#ffffff', width: 2.4 * unit };
+    for (const r of OUTLINE_RULES) if (r.when(c)) {
+      if (r.color) o.color = r.color;
+      if (r.rim) o.rim = r.rim;
+      if (r.glow) { o.glow = typeof r.glow === 'function' ? r.glow(c) : r.glow; o.glowAlpha = r.glowAlpha; }
+      if (r.width) o.width = 2.4 * unit * r.width;
     }
+    return o;
+  }
+  function eneGear(p, weapon) {
+    const e = G.ene || {};
+    return {
+      has: (k) => !!G.tools[k], weapon, t: G.time,
+      night: darkness(phaseOf(G.time)) > 0.35 || G.inCave != null,
+      gliding: p.flying || p.alt > 4, sailing: !!p.boat,
+      hurt: p.hurtT > 0, crying: e.cryT > 0,
+    };
+  }
+  // her gear as layers of her sticker: the tool on her back, the raft, the leaf glider
+  function eneProps(p, toolSpr, inHand) {
+    const o = {};
+    if (toolSpr && !inHand && !p.flying && SW.sprites[toolSpr]) o.carry = { spr: SW.sprites[toolSpr] };
+    if (p.boat && SW.sprites.raft) o.raft = { spr: SW.sprites.raft, rot: Math.sin(G.time * 2) * 0.03, kx: 1 - p.raftWet * 0.12, ky: 1 - p.raftWet * 0.2 };
+    if ((p.flying || p.alt > 4) && SW.sprites.glider) {
+      const bank = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.here.gust * 0.22;
+      o.glider = { spr: SW.sprites.glider, rot: 0.1 + Math.sin(G.time * 2) * 0.03 + bank + Math.sin(G.time * 3) * 0.04, ky: 1 - p.leafWet * 0.25 };
+    }
+    return o;
   }
   // which way she faces on screen, from the pose
   const eneFacing = (P, p) => P.view === 'side' || P.view === 'threeQ' ? (P.flip ? 1 : -1) : P.view === 'front' ? 1 : (p.face || 1);
@@ -2765,9 +2795,7 @@
     // which way she is seen, from where she is heading on screen
     const sdx = screenDX(p.vx, p.vy), sdy = -p.vx * sinA + p.vy * cosA;
     eneLook(p, sdx, sdy, p.moving && (ground || p.boat), back);
-    // a soggy raft sags and curls up at the edges
     const bob = p.boat ? Math.sin(G.time * 3) * 2 * Z : 0;
-    if (p.boat) drawFolded('raft', gx, gy + 6 * Z + bob, Math.sin(G.time * 2) * 0.03, 1 - p.raftWet * 0.12, 1 - p.raftWet * 0.2, 0.55, p.raftWet * 1.1);
     const fishing = !!G.fishing;
     const toolName = fishing ? 'rod' : p.swingT > 0 ? p.swingTool : bestWeapon() || (G.tools.axe ? 'axe' : G.tools.pick ? 'pick' : null);
     const toolSpr = eneToolSpr(toolName);
@@ -2777,23 +2805,17 @@
     const s = ENE_UNITS * Z / SW.ene.height;
     const inHand = (p.swingT > 0 || fishing) && toolSpr;
     const f = eneFacing(P, p);
-    // idle, the tool rides on her back, the blade showing over a shoulder; drawn behind her
-    if (toolSpr && !inHand && !p.flying) {
-      drawSprite(toolSpr, sx + (back ? 10 : -f * 9) * Z, sy - 50 * Z - bob, (back ? 0.5 : -f * 0.55), 0.8 * (back ? 1 : -f), 0.8);
-    }
     const flick = p.iframes > 0 && Math.floor(p.iframes * 20) % 2 === 0;
     drawRainbows(sx, sy);                       // behind her, so they pour out past her face
     // the tool in her hand is drawn inside her sticker, between her body and her hand
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     const heldTool = inHand && SW.sprites[toolSpr] ? { spr: SW.sprites[toolSpr], off: fishing ? 1.25 : 0.55 } : null;
-    const info = SW.ene.draw(ctx, sx, sy - bob, s, P, { dpr: DPR, flash: p.hurtT > 0 || flick ? 0.75 : 0, border: 2.4 * Z, tool: heldTool });
+    // she, the tool in her hand, the tool on her back, the raft and the leaf glider are one
+    // sticker with one outline, styled by her gear
+    const weapon = bestWeapon();
+    const info = SW.ene.draw(ctx, sx, sy - bob, s, P, Object.assign({ dpr: DPR, flash: p.hurtT > 0 || flick ? 0.75 : 0, tool: heldTool,
+      outline: eneOutline(eneGear(p, inHand ? toolName : weapon), Z) }, eneProps(p, toolSpr, inHand)));
     G.eneHand = info ? info.hand : null;
-    // the leaf banks with the wind and droops as it gets wet; she holds it up by its stem
-    if (p.flying || p.alt > 4) {
-      if (info) eneLeafStems(ctx, info.hands, sx, sy - 100 * Z, Z, DPR);
-      const bank = screenDX(Math.cos(WX.windAngle), Math.sin(WX.windAngle)) * WX.here.gust * 0.22;
-      drawFolded('glider', sx, sy - 100 * Z, (p.face || 1) * 0.1 + Math.sin(G.time * 2) * 0.03 + bank + Math.sin(G.time * 3) * 0.04, 0.9, 0.9 * (1 - p.leafWet * 0.15), 0.5, p.leafWet * 1.2);
-    }
     if (fishing && G.fishing.phase === 'bite') { const s = 1 + Math.sin(G.time * 20) * 0.12; drawSprite('uiBang', sx, sy - 120 * Z, 0, s, s); }
   }
 
