@@ -103,10 +103,10 @@
     return gripCache.get(spr);
   }
   // the blade's angle through a swing (radians; 0 points forward, negative is up)
-  // side-on: up-forward when ready; on the wind-up her hand goes back behind her hip but
-  // the blade stays pointing straight up, never backwards; then down
-  // and forward into the slash.
-  const BLADE_SIDE = [[0, -1.0], [0.38, -1.6], [0.5, -0.4], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
+  // side-on: up-forward when ready; on the wind-up her hand pulls back behind her hip
+  // while the blade keeps pointing forward, the way she faces (up-forward, then level,
+  // then a little down: cocked for the thrust), never backwards; then the slash.
+  const BLADE_SIDE = [[0, -1.0], [0.2, -0.65], [0.38, 0.5], [0.5, -0.4], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
   // from the front or behind (forward = out to her side): up, then out and down
   const BLADE_OUT = [[0, -1.2], [0.38, -1.45], [0.5, -0.9], [0.62, 0.55], [0.72, 0.85], [1, -0.4]];
   function swingBlade(aT, side) {
