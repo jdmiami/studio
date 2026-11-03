@@ -103,8 +103,11 @@
     return gripCache.get(spr);
   }
   // the blade's angle through a swing (radians; 0 points forward, negative is up)
-  // side-on: up-forward when ready, back over her head on the wind-up, then down-forward
-  const BLADE_SIDE = [[0, -1.0], [0.38, -2.75], [0.5, -0.4], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
+  // side-on: up-forward when ready; on the wind-up it drops (pointing down as her hand
+  // passes her hip) and trails back behind her, low, never by her head; then it swings
+  // through low and up into the slash. (3.53 = back, a touch down: going that way round
+  // keeps the blade below her shoulders the whole wind-up.)
+  const BLADE_SIDE = [[0, -1.0], [0.38, 3.53], [0.5, -0.4], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
   // from the front or behind (forward = out to her side): up, then out and down
   const BLADE_OUT = [[0, -1.2], [0.38, -1.45], [0.5, -0.9], [0.62, 0.55], [0.72, 0.85], [1, -0.4]];
   function swingBlade(aT, side) {
@@ -118,11 +121,11 @@
   // y: + is down). Side-on it's a forehand arc: back behind her at the waist (wind-up),
   // down past the hip, forward and up (the slash), a little overshoot, then settle.
   // From behind: out and up, then down across her back.
-  // Side-on: ready in front of her at the waist, swung back low behind her hip (wind-up,
-  // the blade up behind her), then a fast slash forward and up, a little past, then back
+  // Side-on: ready in front of her at the waist, swung back low behind her hip with the
+  // arm nearly straight and angled back (wind-up, blade trailing behind her), then a fast slash forward and up, a little past, then back
   // to ready. Her far arm is behind her body, so the path keeps the sword clear of her
   // silhouette where it can.
-  const SWING_SIDE = [[0, 44, 58], [0.38, -58, 66], [0.5, 30, 92], [0.62, 96, 30], [0.72, 82, 62], [1, 42, 66]];
+  const SWING_SIDE = [[0, 44, 58], [0.38, -44, 98], [0.5, 30, 92], [0.62, 96, 30], [0.72, 82, 62], [1, 42, 66]];
   // From the front, three-quarter or behind: the arc stays on her own side: raised up and
   // out past her shoulder, then down to her outer hip, never across her chest or back.
   const SWING_OUT = [[0, 22, 78], [0.38, 60, -26], [0.5, 62, -2], [0.62, 44, 70], [0.72, 38, 88], [1, 22, 82]];
