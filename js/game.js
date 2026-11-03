@@ -1577,6 +1577,8 @@
     G.order = o;
     G.fishing = null;
     if (o) { o.t = 0; o.lx = G.player.x; o.ly = G.player.y; o.progT = 0; o.detourT = 0; o.detour = 1; }
+    // a fresh order (walk there, chop that, go talk): Ene points the way for a moment
+    if (o) G.player.pointT = 0.7;
   }
   function orderTarget(o) {
     const w = G.world;

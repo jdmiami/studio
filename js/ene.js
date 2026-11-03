@@ -179,13 +179,23 @@
       if (st.air && act !== 'swing') { sh = -1.9; el = 0.7; out = i ? 0.7 : -0.7; fingers = 1; }
       if (st.slide) { sh = -2.2; el = 0.4; out = i ? 0.9 : -0.9; fingers = 1; }
       if (st.boat && walk < 0.05) { sh = 0.35 + 0.1 * Math.sin(t * 2 + i * 2); el = 0.4; out = (i ? 0.75 : -0.75) + 0.1 * Math.sin(t * 2); }
+      // pointing the way (a tap or click to walk): the near arm out front at shoulder height
+      const pointing = !!st.point && !act && !st.fish && !st.glide && !st.climb && i === (isSide || isBack ? 0 : 1);
+      if (pointing) {
+        const S0 = V.shoulders[i] || V.shoulders[0], f = isSide ? V.face : (S0[0] < V.anchor ? -1 : 1);
+        const reach = Math.min(V.upper + V.fore - 4, 100);
+        target = [S0[0] + f * reach * 0.95, S0[1] - reach * 0.18, 0]; fist = false; handAbs = null;
+      }
       if (st.rest) { sh = 0; el = 0; out = 0; target = null; handAbs = null; fist = false; }   // straight arms
       P.arms.push({ sh, el, out, i, target, handAbs: fist ? null : handAbs });
       P.fingers[i] = clamp(fingers, 0, 1); P.fist[i] = fist;
       // the hand drawing for this moment
-      P.hand[i] = st.climb ? 'hand_reach' : fist ? 'hand_grip'
-        : act === 'hurt' || act === 'joy' || st.air || st.slide ? 'hand_spread'
-        : st.glide ? 'hand_grip' : null;
+      // a fist that holds something (the tool, the rod, the leaf's stems) is the grip;
+      // an empty fist (running, crying) is the plain fist
+      const holding = (act === 'swing' && i === toolArm) || st.fish || st.glide;
+      P.hand[i] = pointing ? 'hand_point' : st.climb ? 'hand_reach' : handAbs != null ? 'hand_flat'
+        : fist ? (holding ? 'hand_grip' : 'hand_fist')
+        : act === 'hurt' || act === 'joy' || st.air || st.slide ? 'hand_spread' : null;
     }
     // ---- body ----
     const breath = Math.sin(t * 2.1) * 0.008;
@@ -447,7 +457,7 @@
     return true;
   }
   // which side each hand drawing has its thumb on, with the wrist at the top: -1 left, +1 right
-  const THUMB = { hand: -1, fist: -1, hand_grip: -1, hand_spread: 1, hand_reach: -1 };
+  const THUMB = { hand: -1, fist: -1, hand_grip: -1, hand_spread: 1, hand_reach: -1, hand_fist: 1, hand_flat: 1, hand_point: 1 };
   // which hand drawing: the sheet's relaxed hand, or one from the AI-drawn library
   function handPiece(P, i) {
     const M = PIECES(), want = P.hand && P.hand[i];
@@ -686,6 +696,7 @@
     p.eneSwayV = (p.eneSwayV || 0) + ((across - p.eneSway) * 60 - (p.eneSwayV || 0) * 7) * dt;
     p.eneSway += p.eneSwayV * dt;
     p.eneBlink -= dt; if (p.eneBlink < -0.12) p.eneBlink = 1.8 + Math.random() * 3;
+    if (p.pointT > 0) p.pointT -= dt;
     return dt;
   }
   function state(p, react, now, extra) {
@@ -693,7 +704,7 @@
     const st = {
       view: p.eneView, flip: p.eneFlip, t: now, phase: p.walkT * 1.75, speed: p.eneSpd,
       sway: clamp(p.eneSway, -1.2, 1.2), blink: p.eneBlink < 0,
-      lean: p.eneSpd > 1.2 ? 0.08 : 0,
+      lean: p.eneSpd > 1.2 ? 0.08 : 0, point: p.pointT > 0,
     };
     if (e.cryT > 0) { st.face = 'cry'; st.faceT = 1; st.action = 'cry'; st.actionT = 0; }
     else if (e.faceT > 0 && e.face) { st.face = e.face === 'Joy' ? 'joy' : 'ay'; st.faceT = e.faceT; }
