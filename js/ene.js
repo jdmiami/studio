@@ -83,7 +83,7 @@
     const V = P.V;
     const fx = P.view === 'side' ? (V.face < 0 ? -1 : 1) : (a.shoulder[0] < V.anchor ? -1 : 1);
     let beta;
-    if (P.act === 'swing') { const th = swingBlade(P.actT || 0); beta = Math.atan2(Math.sin(th), fx * Math.cos(th)); }
+    if (P.act === 'swing') { const th = swingBlade(P.actT || 0, P.view === 'side'); beta = Math.atan2(Math.sin(th), fx * Math.cos(th)); }
     else beta = a.ang - fx * (tool.off || 0.55);
     const wrap = (x) => Math.atan2(Math.sin(x), Math.cos(x));
     const c1 = beta + Math.PI / 2, c2 = beta - Math.PI / 2;
@@ -103,8 +103,12 @@
     return gripCache.get(spr);
   }
   // the blade's angle through a swing (radians; 0 points forward, negative is up)
-  const BLADE = [[0, -0.95], [0.38, -2.0], [0.5, -1.05], [0.62, 0.45], [0.72, 0.7], [1, 0.2]];
-  function swingBlade(aT) {
+  // side-on: up-forward when ready, back over her head on the wind-up, then down-forward
+  const BLADE_SIDE = [[0, -1.0], [0.38, -2.3], [0.5, -1.2], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
+  // from the front or behind (forward = out to her side): up, then out and down
+  const BLADE_OUT = [[0, -1.2], [0.38, -1.45], [0.5, -0.9], [0.62, 0.55], [0.72, 0.85], [1, -0.4]];
+  function swingBlade(aT, side) {
+    const BLADE = side ? BLADE_SIDE : BLADE_OUT;
     const k = clamp(aT / 0.26, 0, 1);
     let j = 0; while (j < BLADE.length - 2 && k > BLADE[j + 1][0]) j++;
     const a = BLADE[j], b = BLADE[j + 1], q = ease(clamp((k - a[0]) / (b[0] - a[0]), 0, 1));
@@ -114,10 +118,15 @@
   // y: + is down). Side-on it's a forehand arc: back behind her at the waist (wind-up),
   // down past the hip, forward and up (the slash), a little overshoot, then settle.
   // From behind: out and up, then down across her back.
-  const SWING_SIDE = [[0, -8, 98], [0.38, -72, 38], [0.5, -10, 107], [0.62, 98, 22], [0.72, 86, -28], [1, 56, 70]];
-  const SWING_BACK = [[0, 5, 98], [0.38, 70, -15], [0.62, -28, 92], [0.72, -36, 80], [1, 8, 96]];
-  function swingHand(aT, back) {
-    const K = back ? SWING_BACK : SWING_SIDE, k = clamp(aT / 0.26, 0, 1);
+  // Side-on: ready in front of her at the waist, raised up over her head (wind-up), a fast
+  // slash forward and down, a little past, then back to ready. Her hand stays in front of
+  // her body or above her head, never across her torso.
+  const SWING_SIDE = [[0, 44, 58], [0.38, -24, -44], [0.5, 50, -40], [0.62, 96, 30], [0.72, 82, 62], [1, 42, 66]];
+  // From the front, three-quarter or behind: the arc stays on her own side: raised up and
+  // out past her shoulder, then down to her outer hip, never across her chest or back.
+  const SWING_OUT = [[0, 22, 78], [0.38, 60, -26], [0.5, 62, -2], [0.62, 44, 70], [0.72, 38, 88], [1, 22, 82]];
+  function swingHand(aT, side) {
+    const K = side ? SWING_SIDE : SWING_OUT, k = clamp(aT / 0.26, 0, 1);
     let j = 0; while (j < K.length - 2 && k > K[j + 1][0]) j++;
     const a = K[j], b = K[j + 1], q = ease(clamp((k - a[0]) / (b[0] - a[0]), 0, 1));
     return [lerp(a[1], b[1], q), lerp(a[2], b[2], q)];
@@ -203,10 +212,10 @@
         // the tool arm: wind up over the shoulder, then slash forward and down
         // anticipation (wind up slowly), a fast slash that overshoots, then follow-through
         const W = swingCurve(aT);
-        const o = swingHand(aT, isBack), S0 = V.shoulders[i] || V.shoulders[0];
-        // forward on screen is the way the drawing faces (left), or out to her side from behind
-        const fx = isBack ? (S0[0] < V.anchor ? 1 : -1) : (V.face < 0 ? 1 : -1);
-        target = [S0[0] - o[0] * fx, S0[1] + o[1], 0]; fist = true; handAbs = null;
+        const o = swingHand(aT, isSide), S0 = V.shoulders[i] || V.shoulders[0];
+        // forward on screen: the way she faces side-on, else out to this arm's own side
+        const dx = isSide ? (V.face < 0 ? -1 : 1) : (S0[0] < V.anchor ? -1 : 1);
+        target = [S0[0] + o[0] * dx, S0[1] + o[1], 0]; fist = true; handAbs = null;
       }
       if (act === 'hurt') {
         // AY!! her right hand clutches her chest; the other comes up beside her face, palm
