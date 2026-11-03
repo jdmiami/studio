@@ -129,7 +129,7 @@
   // out past her shoulder, then down to her outer hip, never across her chest or back.
   // On the way up the hand arcs out to her side at arm's length, never in close to her
   // shoulder (where the elbow would have to wing up or fold across her).
-  const SWING_OUT = [[0, 22, 78], [0.19, 78, 34], [0.38, 60, -26], [0.5, 62, -2], [0.62, 44, 70], [0.72, 38, 88], [1, 22, 82]];
+  const SWING_OUT = [[0, 52, 52], [0.19, 78, 34], [0.38, 60, -26], [0.5, 62, -2], [0.62, 56, 58], [0.72, 52, 66], [1, 52, 54]];
   function swingHand(aT, side) {
     const K = side ? SWING_SIDE : SWING_OUT, k = clamp(aT / 0.26, 0, 1);
     let j = 0; while (j < K.length - 2 && k > K[j + 1][0]) j++;
@@ -329,18 +329,21 @@
         // forward, so the elbow sits behind the shoulder-to-hand line. From the front, the
         // back and three-quarter, the elbow points out, away from her body.
         const b0 = Math.acos(cosA);
-        if (a.fore3d && d < V.upper + V.fore - 2) {
-          // the sword arm from the front, three-quarter or back: when the hand comes in
-          // closer than arm's length, the forearm points toward (or away from) us rather
-          // than folding sideways across her: the elbow stays near the shoulder-to-hand
-          // line, tipped a little out (never up into a wing), and the forearm is drawn
-          // shorter, as it would look
+        if (a.fore3d) {
+          // the sword arm from the front, three-quarter or back, as drawn by hand: the upper
+          // arm hangs straight down from the shoulder (a touch out), the elbow at her side,
+          // and the forearm goes out to the hand like an L (shorter when it points toward
+          // us). Only when the hand is out of the forearm's reach from there (raised high)
+          // does the elbow lift, to whichever bend sits nearest that hanging place.
           const outS = s[0] < V.anchor ? -1 : 1;
-          if (d < V.upper * 1.3) { const f = V.upper * 1.3 / Math.max(d, 1e-3); dx *= f; dy *= f; d = V.upper * 1.3; }
-          let tilt = Math.cos(a0 + 0.3) * outS >= Math.cos(a0 - 0.3) * outS ? 0.3 : -0.3;
-          if (Math.sin(a0 + tilt) < -0.05 && dy > 0) tilt = -tilt;
-          const elbow = [sh[0] + Math.cos(a0 + tilt) * V.upper, sh[1] + Math.sin(a0 + tilt) * V.upper];
+          const hang = [sh[0] + Math.sin(0.12 * outS) * V.upper, sh[1] + Math.cos(0.12) * V.upper];
           const wrist = [sh[0] + dx, sh[1] + dy];
+          let elbow = hang;
+          if (Math.hypot(wrist[0] - hang[0], wrist[1] - hang[1]) > V.fore) {
+            const e1 = [sh[0] + Math.cos(a0 + b0) * V.upper, sh[1] + Math.sin(a0 + b0) * V.upper];
+            const e2 = [sh[0] + Math.cos(a0 - b0) * V.upper, sh[1] + Math.sin(a0 - b0) * V.upper];
+            elbow = Math.hypot(e1[0] - hang[0], e1[1] - hang[1]) <= Math.hypot(e2[0] - hang[0], e2[1] - hang[1]) ? e1 : e2;
+          }
           return { shoulder: sh, elbow, wrist, ang: Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]), i, handAbs: a.handAbs };
         }
         let bend;
