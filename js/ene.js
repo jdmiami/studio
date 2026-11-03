@@ -26,6 +26,10 @@
     threeQ: { shoulders: [[60.3, 272], [121.9, 281.6]] },
     back: { shoulders: [[61.1, 287.3], [113.8, 286.8]] },
   };
+  // her right (R) and left (L) arm, as arm 0 and arm 1 of each drawing. Front and 3/4 face
+  // us, so her right is on our left; the back view shows her left on our left; side-on
+  // she faces our left, so we see her left side: her left arm is the near one.
+  const ARM_SIDE = { front: ['R', 'L'], threeQ: ['R', 'L'], back: ['L', 'R'], side: ['L', 'R'] };
   const SHOULDERS = { front: [[82, 283], [130, 291]], threeQ: [[62, 276], [109, 283]], side: [[62.5, 281], [57, 280]], back: [[75, 281], [111, 285]] };
   // per-view skeleton, measured from the drawings
   function build() {
@@ -91,15 +95,22 @@
     let view = st.view || 'front';
     // a big reaction turns her to the camera
     if (st.face && view !== 'front' && st.faceT > 0) view = 'front';
-    const V = RIG[view], P = { view, V, flip: !!st.flip, legs: [], arms: [], body: { x: 0, y: 0, rot: 0, sx: 1, sy: 1 }, fingers: [0.3, 0.3], fist: [false, false], hand: [null, null], tool: null };
+    const V = RIG[view], P = { view, V, flip: !!st.flip, legs: [], arms: [], body: { x: 0, y: 0, rot: 0, sx: 1, sy: 1 }, fingers: [0.3, 0.3], fist: [false, false], role: ['relaxed', 'relaxed'], tool: null };
     const t = st.t || 0, sp = clamp(st.speed || 0, 0, 1.8), ph = (st.phase || 0) * TAU;
     const act = st.action, aT = st.actionT || 0;
     const fw = V.face || 1;                         // forward direction on screen (before flip)
     const isSide = view === 'side', isFront = view === 'front' || view === 'threeQ', isBack = view === 'back';
     const run = clamp((sp - 1) / 0.6, 0, 1), walk = clamp(sp, 0, 1);
     // the hand that holds the tool: the near one side-on, the viewer's left from behind, else her left
-    const toolArm = isSide || isBack ? 0 : 1;
-    P.toolArmI = toolArm;
+    // ---- her right and left ----
+    // Arm 0/1 in each drawing is her right or her left (ARM_SIDE). A mirrored view (flip)
+    // mirrors her whole, so on screen that arm then looks like her other one. She is
+    // right-handed: pointing, the tool and the hand on her chest go to the arm that looks
+    // like her right on screen.
+    const sideOf = ARM_SIDE[view];
+    const dom = sideOf.indexOf(P.flip ? 'L' : 'R');
+    const toolArm = dom;
+    P.toolArmI = toolArm; P.sideOf = sideOf; P.dom = dom;
 
     // ---- legs ----
     for (let i = 0; i < 2; i++) {
@@ -139,10 +150,17 @@
         sh = A * Math.sin(p2);
         el = lerp(0.3, 1.25, run) * walk + 0.25 * Math.max(0, Math.sin(p2));
         fist = run > 0.4;
-      } else if (isFront && i === 0 && !st.fish) {
-        // the sheet's pose: her right hand pressed to her chest
-        target = [V.anchor - 16 + Math.sin(t * 1.4) * 1.5, V.shoulders[0][1] + 26, 1]; fingers = 0.15; handAbs = -0.25 + Math.sin(t * 1.4) * 0.05;
-      } else if (isFront && i === 1) {
+      } else if (isFront && i === dom && !st.fish) {
+        // the sheet's pose: her right hand pressed to her chest, fingers across it
+        const m = i === 0 ? 1 : -1, S0 = V.shoulders[i];
+        target = [V.anchor - 16 * m + Math.sin(t * 1.4) * 1.5, S0[1] + 26, 0]; fingers = 0.15;
+        handAbs = i === 0 ? -0.25 + Math.sin(t * 1.4) * 0.05 : Math.PI + 0.25 - Math.sin(t * 1.4) * 0.05;
+      } else if (isBack && i === dom && !st.fish) {
+        // from behind (the sheet's back view): the same hand on her chest, hidden in
+        // front of her; only the elbow shows, out to the side
+        const S0 = V.shoulders[i], m = S0[0] < V.anchor ? 1 : -1;
+        target = [V.anchor + m * 4, S0[1] + 30, m]; fingers = 0.15;
+      } else if (isFront && i !== dom) {
         // the other hand hangs, fingers curling and uncurling a little
         sh = 0.05 + 0.04 * Math.sin(t * 0.9); el = 0.45; out = 0.3; fingers = 0.55 + 0.3 * Math.sin(t * 2.3);
       }
@@ -158,7 +176,7 @@
       if (act === 'hurt') {
         // AY!! one hand clutches her chest, the other flies out, fingers spread
         const k = Math.sin(clamp(aT / 0.5, 0, 1) * Math.PI);
-        if (i === 0 && !isSide) { target = [V.anchor - 14, V.shoulders[0][1] + 24, 1]; fingers = 0.2; handAbs = -0.4; }
+        if (i === dom && !isSide) { const m = i === 0 ? 1 : -1; target = [V.anchor - 14 * m, V.shoulders[i][1] + 24, 0]; fingers = 0.2; handAbs = i === 0 ? -0.4 : Math.PI + 0.4; }
         else { sh = lerp(sh, -1.9, k); el = lerp(el, 1.3, k); out = (i ? 1.1 : -1.1) * k + out * (1 - k); fingers = 0.05; }
       }
       if (act === 'joy' || act === 'cry') { target = null; handAbs = null; }
@@ -180,7 +198,7 @@
       if (st.slide) { sh = -2.2; el = 0.4; out = i ? 0.9 : -0.9; fingers = 1; }
       if (st.boat && walk < 0.05) { sh = 0.35 + 0.1 * Math.sin(t * 2 + i * 2); el = 0.4; out = (i ? 0.75 : -0.75) + 0.1 * Math.sin(t * 2); }
       // pointing the way (a tap or click to walk): the near arm out front at shoulder height
-      const pointing = !!st.point && !act && !st.fish && !st.glide && !st.climb && i === (isSide || isBack ? 0 : 1);
+      const pointing = !!st.point && !act && !st.fish && !st.glide && !st.climb && i === dom;
       if (pointing) {
         const S0 = V.shoulders[i] || V.shoulders[0], f = isSide ? V.face : (S0[0] < V.anchor ? -1 : 1);
         const reach = Math.min(V.upper + V.fore - 4, 100);
@@ -192,10 +210,12 @@
       // the hand drawing for this moment
       // a fist that holds something (the tool, the rod, the leaf's stems) is the grip;
       // an empty fist (running, crying) is the plain fist
+      // what the hand is doing (the picture is chosen when it's drawn, from which hand
+      // this is and whether its palm or its back faces us)
       const holding = (act === 'swing' && i === toolArm) || st.fish || st.glide;
-      P.hand[i] = pointing ? 'hand_point' : st.climb ? 'hand_reach' : handAbs != null ? 'hand_flat'
-        : fist ? (holding ? 'hand_grip' : 'hand_fist')
-        : act === 'hurt' || act === 'joy' || st.air || st.slide ? 'hand_spread' : null;
+      P.role[i] = pointing ? 'point' : st.climb ? 'reach' : handAbs != null ? 'chest'
+        : fist ? (holding ? 'grip' : 'fist')
+        : act === 'hurt' || act === 'joy' || st.air || st.slide ? 'spread' : 'relaxed';
     }
     // ---- body ----
     const breath = Math.sin(t * 2.1) * 0.008;
@@ -456,13 +476,39 @@
     }
     return true;
   }
-  // which side each hand drawing has its thumb on, with the wrist at the top: -1 left, +1 right
-  const THUMB = { hand: -1, fist: -1, hand_grip: -1, hand_spread: 1, hand_reach: -1, hand_fist: 1, hand_flat: 1, hand_point: 1 };
-  // which hand drawing: the sheet's relaxed hand, or one from the AI-drawn library
-  function handPiece(P, i) {
-    const M = PIECES(), want = P.hand && P.hand[i];
-    if (want && M && M[want] && pieceImg(want)) return want;
-    return P.fist[i] ? 'fist' : 'hand';
+  // ---- the hand library ----
+  // Each drawing is one real hand, seen from one side: h = her Right or Left hand, f =
+  // its palm or its back toward us. A drawing is mirrored to make the other hand.
+  const HAND = {
+    hand: { h: 'L', f: 'back' },        // the sheet's own relaxed hand (side view, her left)
+    hand_palm: { h: 'L', f: 'palm' },   // open palm, fingers together
+    hand_flat: { h: 'R', f: 'back' },   // back of the hand, fingers loosely curled: on her chest
+    hand_fist: { h: 'R', f: 'back' },   // empty fist, knuckles to us, thumb tucked
+    hand_grip: { h: 'R', f: 'palm' },   // fist round a handle, fingertips to us
+    hand_spread: { h: 'L', f: 'palm' }, // open palm, fingers spread
+    hand_reach: { h: 'L', f: 'back' },  // back of a reaching hand
+    hand_point: { h: 'R', f: 'palm' },  // pointing, three fingers curled under the thumb
+  };
+  // for each thing a hand does: the drawing to use when its palm faces us, and when its back does
+  const ROLE = {
+    relaxed: { back: 'hand', palm: 'hand_palm' },
+    chest: { back: 'hand_flat', palm: 'hand_flat' },
+    fist: { back: 'hand_fist', palm: 'hand_grip' },
+    grip: { back: 'hand_fist', palm: 'hand_grip' },
+    spread: { back: 'hand_reach', palm: 'hand_spread' },
+    reach: { back: 'hand_reach', palm: 'hand_palm' },
+    point: { back: 'hand_point', palm: 'hand_point' },
+  };
+  // Which way a hand turns: arms relaxed, the backs of her hands face out and forward and
+  // the palms in and back. So from the front we see backs, from behind palms, and side-on
+  // the back of the near hand and the palm of the far one. Raised open hands (joy, AY!!)
+  // show palms to whoever is in front of her and backs to whoever is behind; a hand on her
+  // chest or reaching up a ladder shows its back.
+  function handFace(view, i, role) {
+    if (role === 'chest' || role === 'reach') return 'back';
+    if (view === 'back') return role === 'spread' ? 'back' : 'palm';
+    if (view === 'side') return role === 'spread' ? 'palm' : i === 0 ? 'back' : 'palm';
+    return role === 'spread' ? 'palm' : 'back';
   }
   function drawLegTraced(g, l, P, behind) {
     const V = P.V, view = P.view, i = view === 'side' ? 0 : l.i, M = PIECES();
@@ -496,15 +542,17 @@
     // middle (and up, when the arm is held out sideways). Side-on it points forward, the
     // way she faces. Each hand drawing has its thumb on one side (THUMB); the hand is
     // mirrored whenever that side would come out the wrong way for where the arm is.
-    const piece = handPiece(P, a.i), fist = P.fist[a.i];
+    const role = P.role[a.i] || 'relaxed', face = handFace(P.view, a.i, role);
+    let piece = ROLE[role][face];
+    if (!PIECES()[piece] || !pieceImg(piece)) piece = 'hand';
+    const fist = P.fist[a.i];
     const inward = P.view === 'side' ? (V.face < 0 ? -1 : 1) : (a.shoulder[0] < V.anchor ? 1 : -1);
     const bendSign = P.view === 'side' ? -inward : inward;
     const bend = (fist ? 0.2 : -0.1 + 0.2 * (P.fingers[a.i] - 0.4)) * bendSign;
     // a hand laid flat (on her chest) is placed by its own angle; otherwise it follows the forearm
     const ang = a.handAbs != null ? a.handAbs : a.ang + bend;
-    const tx = (THUMB[piece] || -1) * Math.sin(ang), ty = (THUMB[piece] || -1) * -Math.cos(ang);
-    const flipHand = tx * inward + ty * -0.6 < 0;
-    part(g, piece, a.wrist, ang, behind, flipHand);
+    // the drawing is mirrored only when it is the other hand from this arm's
+    part(g, piece, a.wrist, ang, behind, HAND[piece].h !== P.sideOf[a.i]);
     return true;
   }
 
@@ -548,7 +596,9 @@
     return c;
   }
   function drawBody(g, P) {
-    const V = P.V, key = P.view === 'front' && P.face === 'joy' ? 'front_joy' : P.view === 'front' && P.face === 'cry' ? 'front_cry' : P.view;
+    // the face: joy or crying (front only), eyes closed for a blink, or her own drawing
+    const V = P.V, key = P.view === 'front' && P.face === 'joy' ? 'front_joy' : P.view === 'front' && P.face === 'cry' ? 'front_cry'
+      : P.blink && !P.face && SW.ENE_BODY[P.view + '_blink'] ? P.view + '_blink' : P.view;
     const src = SW.ENE_BODY[key];
     if (!src || !src.complete || !src.naturalWidth) return false;
     const R0 = SW.ENE_RIG_SCALE, bh = src.naturalHeight / R0, bw = src.naturalWidth / R0;
@@ -569,13 +619,6 @@
         const off = P.sway * Math.pow((a - y0) / (bh - y0) + 0.06, 1.4) * 14;
         const hh = Math.min(step + lap, bh - a);
         g.drawImage(im, 0, a * S, im.width, hh * S, off, a, bw, hh);
-      }
-    }
-    // blink: lids drawn over the drawn eyes
-    if (P.blink && !P.face && V.eyes && V.eyes.length) {
-      for (const [ex, ey, rx, ry] of V.eyes) {
-        g.beginPath(); g.ellipse(ex, ey, rx + 1.5, ry + 1.5, 0, 0, TAU); g.fillStyle = V.skin; g.fill();
-        g.beginPath(); g.moveTo(ex - rx, ey + ry * 0.4); g.quadraticCurveTo(ex, ey + ry * 0.9, ex + rx, ey + ry * 0.4); g.lineWidth = 3; g.strokeStyle = INK; g.lineCap = 'round'; g.stroke();
       }
     }
     g.restore();
@@ -627,10 +670,12 @@
       for (const j of [0, 1]) if (over(j)) drawArm(cg, P.A[j], P, false);
     } else {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
-      drawArm(cg, P.A[1], P, false);
+      // her right arm (on her chest, pointing, or holding the tool) in front of her body
+      const fa = P.dom === undefined ? 0 : P.dom;
+      drawArm(cg, P.A[1 - fa], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
-      drawArm(cg, P.A[0], P, false);
+      drawArm(cg, P.A[fa], P, false);
     }
     if (!ok) return null;
     if (opts.raw) {
@@ -717,6 +762,12 @@
   // the whole height of the character in sheet pixels (feet to hair top)
   SW.ene = {
     pose, draw, locate, look, state,
+    // for checking: each arm's hand in a pose, as {side, onScreen, role, face, picture, mirrored}
+    handInfo: (P) => P.A.map((a) => {
+      const role = P.role[a.i] || 'relaxed', face = handFace(P.view, a.i, role), piece = ROLE[role][face];
+      const side = P.sideOf[a.i];
+      return { arm: a.i, side, onScreen: P.flip ? (side === 'R' ? 'L' : 'R') : side, role, face, picture: piece, pictureHand: HAND[piece].h, mirrored: HAND[piece].h !== side };
+    }),
     // the rig preview page: read the skeleton, and retune it live
     skeleton: () => { if (!RIG) RIG = build(); return RIG; },
     retune: (t) => { SW.ENE_TUNE = t; RIG = null; },
