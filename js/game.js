@@ -3736,18 +3736,24 @@
       if (!document.hidden && G && G.mode !== 'title') wakeLock();
     });
 
+    // a pointer's position in the game's own screen units, measured against where the
+    // canvas really is on screen (so a stale size or a shifted page can't offset it)
+    const toGame = (cx, cy) => {
+      const r = canvas.getBoundingClientRect();
+      return [r.width ? (cx - r.left) * W / r.width : cx, r.height ? (cy - r.top) * H / r.height : cy];
+    };
     canvas.addEventListener('mousedown', (e) => {
       if (G.mode !== 'play') return;
       SW.audio.unlock();
       if (G.inCave) { if (e.button === 0) input.useEdge = true; return; }
       if (e.button === 2 || e.button === 1) { input.rotating = true; input.rotX = e.clientX; e.preventDefault(); return; }
       if (e.button !== 0) return;
-      input.mouseX = e.clientX; input.mouseY = e.clientY;
-      const o = pointerOrder(e.clientX, e.clientY);
+      [input.mouseX, input.mouseY] = toGame(e.clientX, e.clientY);
+      const o = pointerOrder(input.mouseX, input.mouseY);
       input.holdMove = !!(o && o.kind === 'move');
     });
     canvas.addEventListener('mousemove', (e) => {
-      input.mouseX = e.clientX; input.mouseY = e.clientY;
+      [input.mouseX, input.mouseY] = toGame(e.clientX, e.clientY);
       if (input.rotating) { setAngle(camA + (e.clientX - input.rotX) * 0.008); input.rotX = e.clientX; camGoal = null; saveAngle(); }
     });
     canvas.addEventListener('mouseleave', () => { input.mouseX = -1; input.holdMove = false; });
@@ -3858,7 +3864,7 @@
       for (const t of e.changedTouches) {
         touches.delete(t.identifier);
         if (t.identifier === stickId) {
-          if (!dragging && !twist && performance.now() - t0 < 500) { if (G.inCave) input.useEdge = true; else pointerOrder(t.clientX, t.clientY); }
+          if (!dragging && !twist && performance.now() - t0 < 500) { if (G.inCave) input.useEdge = true; else pointerOrder(...toGame(t.clientX, t.clientY)); }
           stickId = null; dragging = false; input.x = input.y = 0; stick.classList.remove('on');
           knob.style.transform = 'translate(-50%, -50%)';
         }
@@ -3894,9 +3900,16 @@
 
   // ---------------- boot ----------------
   let layoutT = 0;
+  function onResize() { resize(); clearTimeout(setZoom.t); setZoom.t = setTimeout(() => { rescale(); prebuild(); }, 200); }
+  // re-measure whenever the window's size (or pixel density) no longer matches what the
+  // game last laid out for: every layer and the mouse mapping are rebuilt together
+  function syncSize() {
+    if (window.innerWidth !== W || window.innerHeight !== H || Math.min(2, window.devicePixelRatio || 1) !== SDPR) onResize();
+  }
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    syncSize();
     pollGamepad();
     if (G.inCave) {
       if (G.mode === 'play' && !G.talking) { G.time += dt; caveSurvival(dt); if (G.inCave) caves.update(dt, caveInput()); }
@@ -3944,7 +3957,15 @@
     bindInput();
     setMute(SW.audio.muted);
     if (SW.store.get('questsOpen', window.innerWidth > 700 && window.innerHeight > 520)) $('questBox').classList.add('open');
-    window.addEventListener('resize', () => { resize(); clearTimeout(setZoom.t); setZoom.t = setTimeout(() => { rescale(); prebuild(); }, 200); });
+    window.addEventListener('resize', onResize);
+    // The window can change size without a resize event arriving when it should (leaving
+    // fullscreen, switching apps and back, a phone's address bar, the page inside a frame):
+    // check again on each of these, and every frame (syncSize), so the mouse never drifts.
+    document.addEventListener('fullscreenchange', onResize);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) onResize(); });
+    window.addEventListener('focus', onResize);
+    window.addEventListener('pageshow', onResize);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
     if (data && validSave(data.save)) restore(data.save);
     else {
       goTitle();
