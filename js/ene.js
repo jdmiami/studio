@@ -476,29 +476,144 @@
     }
     return true;
   }
-  // ---- the hand library ----
-  // Each drawing is one real hand, seen from one side: h = her Right or Left hand, f =
-  // its palm or its back toward us. A drawing is mirrored to make the other hand.
-  const HAND = {
-    hand: { h: 'L', f: 'back' },        // the sheet's own relaxed hand (side view, her left)
-    hand_palm: { h: 'L', f: 'palm' },   // open palm, fingers together
-    hand_flat: { h: 'R', f: 'back' },   // back of the hand, fingers loosely curled: on her chest
-    hand_fist: { h: 'R', f: 'back' },   // empty fist, knuckles to us, thumb tucked
-    hand_grip: { h: 'R', f: 'palm' },   // fist round a handle, fingertips to us
-    hand_spread: { h: 'L', f: 'palm' }, // open palm, fingers spread
-    hand_reach: { h: 'L', f: 'back' },  // back of a reaching hand
-    hand_point: { h: 'R', f: 'palm' },  // pointing, three fingers curled under the thumb
+  // ---- her hands, drawn in code ----
+  // Each hand is drawn as a real right or left hand, seen from its palm or its back, in her
+  // pink with her pen line. Local frame: the wrist at (0, 0), the fingers pointing to +y.
+  //  * The thumb's side: a right hand seen from the back, fingers down, has its thumb on our
+  //    right; seen from the palm, on our left; a left hand the other way round.
+  //  * Fingers curl toward the palm. Each finger has three bones; as it bends, a bone's
+  //    on-screen length shrinks by the cosine of its angle, and past 90 degrees it folds back
+  //    toward the wrist. Folding toward the palm means toward us when we see the palm (drawn
+  //    over it) and away from us when we see the back (hidden behind it, so only the
+  //    knuckles show).
+  //  * Seen from the back: knuckles and fingernails. From the palm: creases, no nails.
+  const HP = 14, HW = 15;                              // palm length (wrist to knuckles), knuckle width
+  // index, middle, ring, little: across the hand from the thumb side, and length
+  const FINGERS = [[0.36, 18], [0.12, 20], [-0.12, 19], [-0.36, 15]];
+  const JOINT = [1.55, 1.75, 1.2];                     // a full fist: knuckle, middle and end joints
+  const BONE = [0.45, 0.32, 0.23];
+  // how curled each finger is (0 straight .. 1 fist), how far apart they fan, the thumb's place
+  const HPOSE = {
+    relaxed: { curl: [0.22, 0.26, 0.3, 0.34], fan: 0.05, thumb: 'side' },
+    spread: { curl: [0, 0, 0.02, 0.05], fan: 0.2, thumb: 'out' },
+    flat: { curl: [0.06, 0.05, 0.07, 0.1], fan: 0.02, thumb: 'along' },
+    fist: { curl: [1, 1, 1, 1], fan: 0, thumb: 'tuck' },
+    grip: { curl: [0.86, 0.88, 0.88, 0.86], fan: 0, thumb: 'tuck' },
+    point: { curl: [0, 1, 1, 1], fan: 0, thumb: 'tuck' },
+    reach: { curl: [0.55, 0.58, 0.6, 0.62], fan: 0.1, thumb: 'oppose' },
   };
-  // for each thing a hand does: the drawing to use when its palm faces us, and when its back does
-  const ROLE = {
-    relaxed: { back: 'hand', palm: 'hand_palm' },
-    chest: { back: 'hand_flat', palm: 'hand_flat' },
-    fist: { back: 'hand_fist', palm: 'hand_grip' },
-    grip: { back: 'hand_fist', palm: 'hand_grip' },
-    spread: { back: 'hand_reach', palm: 'hand_spread' },
-    reach: { back: 'hand_reach', palm: 'hand_palm' },
-    point: { back: 'hand_point', palm: 'hand_point' },
-  };
+  function tube(g, pts, w, skin) {
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) g.lineTo(pts[k][0], pts[k][1]);
+    g.strokeStyle = INK; g.lineWidth = w + 2.3; g.stroke();
+    g.strokeStyle = skin; g.lineWidth = w; g.stroke();
+  }
+  function drawHandVec(g, p, ang, side, face, pose, skin, shade) {
+    const H = HPOSE[pose] || HPOSE.relaxed;
+    const s = (side === 'R' ? 1 : -1) * (face === 'back' ? 1 : -1);   // which side the thumb is on (+x or -x)
+    const palmUp = face === 'palm';
+    g.save(); g.translate(p[0], p[1]); g.rotate(ang - Math.PI / 2);
+    const front = [], behind = [];                    // things drawn over / under the palm
+    // ---- fingers ----
+    FINGERS.forEach(([fx, len], k) => {
+      const x0 = s * fx * HW, a0 = s * H.fan * (1.5 - k);
+      let x = x0, y = HP - 1, beta = 0;
+      const pts = [[x, y]], back = [];
+      for (let b = 0; b < 3; b++) {
+        beta += JOINT[b] * H.curl[k];
+        const L = len * BONE[b], c = Math.cos(beta);
+        x += Math.sin(a0) * L * Math.abs(c); y += Math.cos(a0) * L * c;
+        pts.push([x, y]);
+      }
+      const curled = H.curl[k] > 0.5;
+      const w = 4.1 - k * 0.25;
+      const item = { k, pts, w, curled, tipOut: Math.cos(beta) > 0.45 };
+      if (curled && !palmUp) behind.push(item); else front.push(item);
+    });
+    // ---- thumb ----
+    const tb = [s * 6.6, 4.5];
+    const T = {
+      side: [[s * 9, 10], [s * 9.5, 16]], out: [[s * 11.5, 8], [s * 15, 12.5]], along: [[s * 8.2, 10.5], [s * 8.4, 16.5]],
+      oppose: [[s * 9.5, 11], [s * 6.5, 18]],
+      tuck: palmUp ? [[s * 5.5, 13], [s * -0.5, 17.5]] : [[s * 7.4, 11.5], [s * 5.5, 16.5]],
+    }[H.thumb];
+    const thumb = { pts: [tb, T[0], T[1]], w: 4.6 };
+    // the thumb grows from the palm side, so from the back it sits under the palm and fingers
+    const thumbBehind = !palmUp;
+    // ---- draw: what's behind the palm, the palm, then what's in front ----
+    for (const f of behind) tube(g, f.pts, f.w, skin);
+    if (thumbBehind) {
+      tube(g, thumb.pts, thumb.w, skin);
+      if (H.thumb !== 'tuck') {
+        const [ax, ay] = thumb.pts[1], [bx, by] = thumb.pts[2], an = Math.atan2(by - ay, bx - ax);
+        g.save(); g.translate(bx - Math.cos(an) * 1.7, by - Math.sin(an) * 1.7); g.rotate(an);
+        g.beginPath(); g.ellipse(0, 0, 1.7, 1.4, 0, 0, TAU); g.fillStyle = '#fbd2f6'; g.fill(); g.lineWidth = 0.7; g.strokeStyle = INK; g.stroke();
+        g.restore();
+      }
+    }
+    // the palm: narrow at the wrist, widest at the knuckles, a pad of muscle below the thumb
+    g.beginPath();
+    g.moveTo(-5.2, -1);
+    g.lineTo(5.2, -1);
+    g.quadraticCurveTo(s > 0 ? 9.5 : 7.4, 6, (HW / 2 + 0.6), HP - 2);
+    g.quadraticCurveTo(HW / 2 + 0.4, HP + 2.4, 0, HP + 2);
+    g.quadraticCurveTo(-HW / 2 - 0.4, HP + 2.4, -(HW / 2 + 0.6), HP - 2);
+    g.quadraticCurveTo(s < 0 ? -9.5 : -7.4, 6, -5.2, -1);
+    g.closePath();
+    g.lineJoin = 'round'; g.lineWidth = 2.3; g.strokeStyle = INK; g.stroke(); g.fillStyle = skin; g.fill();
+    // the little-finger edge in her magenta shade
+    g.lineCap = 'round'; g.strokeStyle = shade; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(-s * 5, 1.5); g.quadraticCurveTo(-s * 7.6, 7, -s * 7.4, HP - 1.5); g.stroke();
+    if (palmUp) {
+      // palm creases
+      g.strokeStyle = INK; g.lineWidth = 0.9;
+      g.beginPath(); g.moveTo(s * 4.5, 3.5); g.quadraticCurveTo(s * 1.5, 7.5, s * 3, 11.5); g.stroke();
+      g.beginPath(); g.moveTo(-s * 6, 8.5); g.quadraticCurveTo(-s * 1, 7.5, s * 2.5, 9.5); g.stroke();
+    } else {
+      // tendons fanning to the knuckles
+      g.strokeStyle = shade; g.lineWidth = 0.8;
+      for (const [fx] of FINGERS) { g.beginPath(); g.moveTo(s * fx * 6, 3.5); g.lineTo(s * fx * HW * 0.95, HP - 3.5); g.stroke(); }
+    }
+    for (const f of front) {
+      tube(g, f.pts, f.w, skin);
+      // knuckle creases across each joint
+      g.strokeStyle = INK; g.lineWidth = 0.75;
+      for (let b = 1; b < 3; b++) {
+        const [ax, ay] = f.pts[b], [bx, by] = f.pts[b + 1], dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy);
+        if (l < 1.2) continue;
+        const nx = -dy / l, ny = dx / l, cx = ax + dx * 0.08, cy = ay + dy * 0.08;
+        g.beginPath(); g.moveTo(cx - nx * f.w * 0.32, cy - ny * f.w * 0.32); g.lineTo(cx + nx * f.w * 0.32, cy + ny * f.w * 0.32); g.stroke();
+      }
+      // a fingernail at the tip, only on the back of the hand and only if the tip points out
+      if (!palmUp && f.tipOut) {
+        const [ax, ay] = f.pts[2], [bx, by] = f.pts[3], an = Math.atan2(by - ay, bx - ax);
+        g.save(); g.translate(bx - Math.cos(an) * 1.6, by - Math.sin(an) * 1.6); g.rotate(an);
+        g.beginPath(); g.ellipse(0, 0, 1.6, 1.25, 0, 0, TAU); g.fillStyle = '#fbd2f6'; g.fill(); g.lineWidth = 0.7; g.strokeStyle = INK; g.stroke();
+        g.restore();
+      }
+    }
+    if (!palmUp) {
+      // the knuckles: a small bump where each curled finger turns under
+      for (const f of behind) {
+        const [x, y] = f.pts[0];
+        g.beginPath(); g.arc(x, y + 1.2, f.w * 0.55, 0.1, Math.PI - 0.1); g.lineWidth = 2.1; g.strokeStyle = INK; g.stroke();
+        g.beginPath(); g.arc(x, y + 0.2, f.w * 0.5, 0, TAU); g.fillStyle = skin; g.fill();
+        g.lineWidth = 0.8; g.strokeStyle = shade; g.beginPath(); g.arc(x, y - 0.6, 1.1, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
+      }
+    }
+    if (!thumbBehind) {
+      tube(g, thumb.pts, thumb.w, skin);
+      if (!palmUp && H.thumb !== 'tuck') {
+        const [ax, ay] = thumb.pts[1], [bx, by] = thumb.pts[2], an = Math.atan2(by - ay, bx - ax);
+        g.save(); g.translate(bx - Math.cos(an) * 1.7, by - Math.sin(an) * 1.7); g.rotate(an);
+        g.beginPath(); g.ellipse(0, 0, 1.7, 1.4, 0, 0, TAU); g.fillStyle = '#fbd2f6'; g.fill(); g.lineWidth = 0.7; g.strokeStyle = INK; g.stroke();
+        g.restore();
+      }
+    }
+    g.restore();
+  }
+  // which drawn pose each job uses
+  const ROLE_POSE = { relaxed: 'relaxed', chest: 'flat', fist: 'fist', grip: 'grip', spread: 'spread', reach: 'reach', point: 'point' };
   // Which way a hand turns: arms relaxed, the backs of her hands face out and forward and
   // the palms in and back. So from the front we see backs, from behind palms, and side-on
   // the back of the near hand and the palm of the far one. Raised open hands (joy, AY!!)
@@ -543,16 +658,16 @@
     // way she faces. Each hand drawing has its thumb on one side (THUMB); the hand is
     // mirrored whenever that side would come out the wrong way for where the arm is.
     const role = P.role[a.i] || 'relaxed', face = handFace(P.view, a.i, role);
-    let piece = ROLE[role][face];
-    if (!PIECES()[piece] || !pieceImg(piece)) piece = 'hand';
     const fist = P.fist[a.i];
     const inward = P.view === 'side' ? (V.face < 0 ? -1 : 1) : (a.shoulder[0] < V.anchor ? 1 : -1);
     const bendSign = P.view === 'side' ? -inward : inward;
     const bend = (fist ? 0.2 : -0.1 + 0.2 * (P.fingers[a.i] - 0.4)) * bendSign;
     // a hand laid flat (on her chest) is placed by its own angle; otherwise it follows the forearm
     const ang = a.handAbs != null ? a.handAbs : a.ang + bend;
-    // the drawing is mirrored only when it is the other hand from this arm's
-    part(g, piece, a.wrist, ang, behind, HAND[piece].h !== P.sideOf[a.i]);
+    // her sheet's own relaxed hand (a left hand seen from the back) wherever it fits:
+    // as drawn on her left, mirrored on her right; every other hand is drawn in code
+    if (role === 'relaxed' && face === 'back' && pieceImg('hand')) part(g, 'hand', a.wrist, ang, behind, P.sideOf[a.i] !== 'L');
+    else drawHandVec(g, a.wrist, ang, P.sideOf[a.i], face, ROLE_POSE[role] || 'relaxed', skin, behind ? mixRGB(V.shade, '#3a1040', 0.15) : V.shade);
     return true;
   }
 
@@ -762,11 +877,12 @@
   // the whole height of the character in sheet pixels (feet to hair top)
   SW.ene = {
     pose, draw, locate, look, state,
+    drawHand: drawHandVec,   // for the hand contact sheet
     // for checking: each arm's hand in a pose, as {side, onScreen, role, face, picture, mirrored}
     handInfo: (P) => P.A.map((a) => {
-      const role = P.role[a.i] || 'relaxed', face = handFace(P.view, a.i, role), piece = ROLE[role][face];
-      const side = P.sideOf[a.i];
-      return { arm: a.i, side, onScreen: P.flip ? (side === 'R' ? 'L' : 'R') : side, role, face, picture: piece, pictureHand: HAND[piece].h, mirrored: HAND[piece].h !== side };
+      const role = P.role[a.i] || 'relaxed', face = handFace(P.view, a.i, role), side = P.sideOf[a.i];
+      const sheet = role === 'relaxed' && face === 'back';
+      return { arm: a.i, side, onScreen: P.flip ? (side === 'R' ? 'L' : 'R') : side, role, face, picture: sheet ? 'sheet hand' : 'drawn ' + (ROLE_POSE[role] || 'relaxed'), pictureHand: sheet ? 'L' : side, mirrored: sheet && side !== 'L' };
     }),
     // the rig preview page: read the skeleton, and retune it live
     skeleton: () => { if (!RIG) RIG = build(); return RIG; },
