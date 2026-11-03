@@ -104,9 +104,9 @@
   }
   // the blade's angle through a swing (radians; 0 points forward, negative is up)
   // side-on: up-forward when ready; on the wind-up her hand pulls back behind her hip
-  // while the blade keeps pointing forward, the way she faces (up-forward, then level,
-  // then a little down: cocked for the thrust), never backwards; then the slash.
-  const BLADE_SIDE = [[0, -1.0], [0.2, -0.65], [0.38, 0.5], [0.5, -0.4], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
+  // while the blade keeps pointing forward, the way she faces (up-forward, then level
+  // at her waist, tip a touch up: cocked for the thrust), never backwards; then the slash.
+  const BLADE_SIDE = [[0, -1.0], [0.2, -0.65], [0.38, -0.1], [0.5, -0.4], [0.62, 0.5], [0.72, 0.8], [1, -0.6]];
   // from the front or behind (forward = out to her side): up, then out and down
   const BLADE_OUT = [[0, -1.2], [0.38, -1.45], [0.5, -0.9], [0.62, 0.55], [0.72, 0.85], [1, -0.4]];
   function swingBlade(aT, side) {
@@ -210,8 +210,10 @@
         const S0 = V.shoulders[i], m = S0[0] < V.anchor ? 1 : -1;
         target = [V.anchor + m * 4, S0[1] + 30, m]; fingers = 0.15;
       } else if (isFront && i !== dom) {
-        // the other hand hangs, fingers curling and uncurling a little
-        sh = 0.05 + 0.04 * Math.sin(t * 0.9); el = 0.45; out = 0.3; fingers = 0.55 + 0.3 * Math.sin(t * 2.3);
+        // the other hand hangs nearly straight down outside her dress (out to its own
+        // side, whichever side that is), fingers curling and uncurling a little
+        const outS = (V.shoulders[i] || V.shoulders[0])[0] < V.anchor ? -1 : 1;
+        sh = 0.05 + 0.04 * Math.sin(t * 0.9); el = 0.08; out = 0.14 * outS; fingers = 0.55 + 0.3 * Math.sin(t * 2.3);
       }
       if (act === 'swing' && i === toolArm) {
         // the tool arm: wind up over the shoulder, then slash forward and down
