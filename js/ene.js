@@ -174,10 +174,19 @@
         target = [S0[0] - o[0] * fx, S0[1] + o[1], 0]; fist = true; handAbs = null;
       }
       if (act === 'hurt') {
-        // AY!! one hand clutches her chest, the other flies out, fingers spread
-        const k = Math.sin(clamp(aT / 0.5, 0, 1) * Math.PI);
-        if (i === dom && !isSide) { const m = i === 0 ? 1 : -1; target = [V.anchor - 14 * m, V.shoulders[i][1] + 24, 0]; fingers = 0.2; handAbs = i === 0 ? -0.4 : Math.PI + 0.4; }
-        else { sh = lerp(sh, -1.9, k); el = lerp(el, 1.3, k); out = (i ? 1.1 : -1.1) * k + out * (1 - k); fingers = 0.05; }
+        // AY!! her right hand clutches her chest; the other comes up beside her face, palm
+        // out, elbow bent (side-on: up in front of her face)
+        const k = Math.sin(clamp(aT / 0.5, 0, 1) * Math.PI), S0 = V.shoulders[i];
+        if (i === dom) {
+          if (isSide) { target = [V.anchor + V.face * 10, S0[1] + 24, 0]; handAbs = -Math.PI / 2 + V.face * 0.3; }
+          else { const m = i === 0 ? 1 : -1; target = [V.anchor - 14 * m, S0[1] + 24, 0]; handAbs = i === 0 ? -0.4 : Math.PI + 0.4; }
+          fingers = 0.2;
+        } else {
+          const outS = S0[0] < V.anchor ? -1 : 1;
+          const up = isSide ? [V.anchor + V.face * 34, S0[1] - 34] : [S0[0] + outS * 26, S0[1] - 36];
+          const rest = [S0[0] + (isSide ? V.face * 6 : outS * 8), S0[1] + V.upper + V.fore - 10];
+          target = [lerp(rest[0], up[0], k), lerp(rest[1], up[1], k), 0]; fingers = 0.05; handAbs = null;
+        }
       }
       if (act === 'joy' || act === 'cry') { target = null; handAbs = null; }
       if (act === 'joy') {
@@ -267,14 +276,35 @@
         const maxd = V.upper + V.fore - 1; if (d > maxd) { dx *= maxd / d; dy *= maxd / d; d = maxd; }
         const a0 = Math.atan2(dy, dx);
         const cosA = clamp((V.upper * V.upper + d * d - V.fore * V.fore) / (2 * V.upper * d), -1, 1);
-        let bend = (a.target[2] || 1) * Math.acos(cosA);
-        if (a.target[2] === 0) {
-          const b0 = Math.acos(cosA), ya = Math.sin(a0 + b0), yb = Math.sin(a0 - b0);
-          bend = ya >= yb ? b0 : -b0;
+        // The elbow only bends one way. Side-on (the drawing faces left) the forearm folds
+        // forward, so the elbow sits behind the shoulder-to-hand line. From the front, the
+        // back and three-quarter, the elbow points out, away from her body.
+        const b0 = Math.acos(cosA);
+        let bend;
+        if (isSide) bend = -b0;
+        else {
+          const out = s[0] < V.anchor ? -1 : 1;
+          bend = Math.cos(a0 + b0) * out >= Math.cos(a0 - b0) * out ? b0 : -b0;
         }
         const elbow = [sh[0] + Math.cos(a0 + bend) * V.upper, sh[1] + Math.sin(a0 + bend) * V.upper];
         const wrist = [sh[0] + dx, sh[1] + dy];
         return { shoulder: sh, elbow, wrist, ang: Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]), i, handAbs: a.handAbs };
+      }
+      if (!isSide && Math.abs(a.sh) < 1.25) {
+        // a stride from the front, back or three-quarter. A real swing goes toward and away
+        // from us; drawn that way the arm just shrinks, so it is drawn as a gentle swing on
+        // screen instead (toward where she walks in three-quarter; in toward her middle as it
+        // comes forward from the front), the arm keeping its length.
+        const outS = s[0] < V.anchor ? -1 : 1;
+        const fwd = view === 'threeQ' ? (V.face < 0 ? -1 : 1) : -outS;
+        const k1 = view === 'threeQ' ? 0.42 : 0.12;
+        const upA = a.out * 0.9 + fwd * a.sh * k1;                 // from straight down, + toward screen right
+        const elbow = [sh[0] + V.upper * Math.sin(upA), sh[1] + V.upper * Math.cos(upA) * (1 - 0.12 * Math.sin(a.sh) ** 2)];
+        // the elbow bends forward: from the front the forearm comes up in toward her middle
+        const foA = upA + (view === 'threeQ' ? fwd * 0.75 : -outS * 0.3) * a.el;
+        // from the front a bent elbow brings the hand up toward us: the forearm looks shorter
+        const wrist = [elbow[0] + V.fore * Math.sin(foA), elbow[1] + V.fore * Math.cos(foA) * (1 - (view === 'threeQ' ? 0.15 : 0.25) * Math.sin(Math.min(a.el, 1.5)) ** 2)];
+        return { shoulder: sh, elbow, wrist, ang: Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]), i };
       }
       // sideways reach (out) and swing (sh), foreshortened in front/back views
       const ox = Math.sin(a.out) * 1, side = isSide ? 1 : depth;
@@ -749,11 +779,13 @@
     const V = P.V, dpr = opts.dpr || 1, s = s0 * dpr;
     P._s = s;
     // only as big as this pose: the body plus wherever the hands and feet reach
-    let x0 = Math.min(0, -Math.abs(P.sway) * 16), x1 = V.w + Math.abs(P.sway) * 16, y0 = Math.min(0, P.body.y), y1 = V.ground + 16;
+    // room for the hair to swing and for the body to lean
+    const lean = Math.abs(P.body.rot) * 260 + 6;
+    let x0 = Math.min(0, -Math.abs(P.sway) * 16) - lean, x1 = V.w + Math.abs(P.sway) * 16 + lean, y0 = Math.min(0, P.body.y) - 8, y1 = V.ground + 16;
     for (const j of [...P.A, ...P.L]) for (const q of [j.wrist || j.ankle, j.elbow || j.knee]) {
       x0 = Math.min(x0, q[0] - 40); x1 = Math.max(x1, q[0] + 40); y0 = Math.min(y0, q[1] - 40); y1 = Math.max(y1, q[1] + 30);
     }
-    const m = ((opts.border || 3.4) * dpr + 4) / s;
+    const m = ((opts.border || 3.4) * dpr + 4) / s + (opts.tool ? 60 : 0);
     if (P.flip) { const a = V.anchor * 2 - x1, b2 = V.anchor * 2 - x0; x0 = a; x1 = b2; }
     x0 -= m; y0 -= m; x1 += m; y1 += m;
     const w = Math.ceil((x1 - x0) * s), h = Math.ceil((y1 - y0) * s);
@@ -766,30 +798,55 @@
     //   side:  far leg, far arm, near leg, body, near arm
     //   front: legs, the tool arm (behind her), body, the chest arm
     //   back:  legs, both arms, then the body and hair over them
+    // The tool in her hand (opts.tool: a sticker sprite and how far it tips forward of the
+    // forearm) is drawn after her body and before the arm that holds it, so it always sits
+    // between her body and her hand. That arm comes in front of her body while it holds it.
+    const tool = opts.tool && opts.tool.spr;
+    const holder = tool ? P.toolArm : -1;
+    const drawTool = () => {
+      if (!tool) return;
+      const a = P.A[holder], spr = opts.tool.spr;
+      const fl = P.view === 'side' ? (V.face < 0 ? -1 : 1) : (a.shoulder[0] < V.anchor ? -1 : 1);
+      const grip = [a.wrist[0] + Math.cos(a.ang) * 14, a.wrist[1] + Math.sin(a.ang) * 14];
+      const k = 0.9 * (RIG.front.ground - 8) / 108;    // sticker units -> sheet pixels (her height is 108 units)
+      cg.save(); cg.translate(grip[0], grip[1]); cg.rotate(a.ang - fl * (opts.tool.off || 0.55) + Math.PI / 2);
+      cg.scale(k * fl, k);
+      cg.drawImage(spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
+      cg.restore();
+    };
+    // draw order, back to front:
+    //   side:  far leg, far arm, near leg, body, (tool, holding arm), near arm
+    //   back:  legs, both arms, body (arms reaching up a ladder, or holding the tool, over it)
+    //   front: legs, body, her left arm, (tool), her right arm
     let ok;
     if (P.view === 'side') {
-      drawLeg(cg, P.L[1], P, true); drawArm(cg, P.A[1], P, true);
+      drawLeg(cg, P.L[1], P, true); if (holder !== 1) drawArm(cg, P.A[1], P, true);
       drawLeg(cg, P.L[0], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
+      drawTool();
+      if (holder === 1) drawArm(cg, P.A[1], P, false);
       drawArm(cg, P.A[0], P, false);
     } else if (P.view === 'back') {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
-      // on a ladder her hands reach up in front of her hair
       // on a ladder both hands reach up in front of her hair; swinging, the sword arm comes
       // round in front too, so the stroke shows from behind
-      const over = (j) => P.climb || (P.act === 'swing' && j === P.toolArm);
+      const over = (j) => P.climb || (P.act === 'swing' && j === P.toolArm) || j === holder;
       for (const j of [0, 1]) if (!over(j)) drawArm(cg, P.A[j], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
+      drawTool();
       for (const j of [0, 1]) if (over(j)) drawArm(cg, P.A[j], P, false);
     } else {
       drawLeg(cg, P.L[0], P, false); drawLeg(cg, P.L[1], P, false);
       // her right arm (on her chest, pointing, or holding the tool) in front of her body
+      // both arms over her hair, as on the sheet (her left arm comes out over it); her
+      // right arm (on her chest, pointing, or holding the tool) last, in front
       const fa = P.dom === undefined ? 0 : P.dom;
-      drawArm(cg, P.A[1 - fa], P, false);
       drawShoulders(cg, P);
       ok = drawBody(cg, P);
+      drawArm(cg, P.A[1 - fa], P, false);
+      drawTool();
       drawArm(cg, P.A[fa], P, false);
     }
     if (!ok) return null;

@@ -500,15 +500,8 @@
       g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
       // in device pixels from here, so the sticker is sharp
       const X = m.a * x + m.e, Y = m.d * y + m.f;
-      if (h.swingT > 0 && tool && SW.sprites[tool]) {
-        const q = SW.ene.locate(X, Y, s * dpr, P), f = P.view === 'side' ? (P.flip ? 1 : -1) : (h.face || 1);
-        const spr = SW.sprites[tool];
-        g.translate(q.grip[0], q.grip[1]); g.rotate(q.ang - f * 0.55 + Math.PI / 2);
-        const sc = 26 * k * dpr / spr.h; g.scale(sc * f, sc);
-        g.drawImage(spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
-        g.setTransform(1, 0, 0, 1, 0, 0);
-      }
-      SW.ene.draw(g, X, Y, s * dpr, P, { flash: flick || h.hurtT > 0 ? 0.6 : 0, border: 2.4 * k * dpr * 0.6 });
+      // her tool, between her body and her hand
+      SW.ene.draw(g, X, Y, s * dpr, P, { flash: flick || h.hurtT > 0 ? 0.6 : 0, border: 2.4 * k * dpr * 0.6, tool: h.swingT > 0 && tool && SW.sprites[tool] ? { spr: SW.sprites[tool], off: 0.55 } : null });
       g.restore();
       if (h.slide) { g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(x - h.slide * 18 * k, y - 4 * k, 12 * k, 4 * k, 0, 0, TAU); g.fill(); }
     }

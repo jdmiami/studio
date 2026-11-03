@@ -23,6 +23,12 @@ Her limbs are **traced off the sheet**, not redrawn: the upper arm, forearm and 
 3. *Palm or back.* With her arms relaxed, the backs of her hands face out and forward. So from the front we see the backs of both hands, from behind the palms, and side-on the back of the near hand and the palm of the far one. Raised open hands (joy, "AY!!") show their palms to whoever is in front of her; a hand on her chest or reaching up a ladder shows its back.
 4. *Drawn as a real hand.* Her hands are drawn in code (`drawHandVec` in `js/ene.js`), each as a right or left hand seen from its palm or its back, in her pink with her pen line: seen from the back, knuckles and fingernails; from the palm, creases and no nails. The thumb's side follows from which hand it is and which side we see. Fingers curl toward the palm: each finger's bones shorten on screen as they bend and fold back past 90 degrees, in front of the palm when we see the palm and behind it (leaving the knuckles) when we see the back. Poses: relaxed, spread, flat (on her chest), fist, grip, point (five digits, three curled under the thumb) and reach. Her sheet's own relaxed hand is used wherever a relaxed hand shows its back.
 
+5. *Elbows bend one way.* Side-on the forearm folds forward, so the elbow points back; from the front, back and three-quarter the elbow points out, away from her body.
+6. *Walking arms keep their length.* Seen from the front a real arm swing goes toward and away from us and would just shrink, so the stride is drawn as a gentle swing on screen, toward where she walks in three-quarter.
+7. *The tool sits between her body and her hand.* The sword, axe, pick or rod is drawn inside her sticker after her body and before the arm that holds it, so it always shows, whichever way she faces.
+
+When hurt ("AY!!"), her right hand clutches her chest and her left comes up beside her face, palm out.
+
 `SW.ene.handInfo(pose)` lists, for any pose, each arm's side, what its hand is doing, palm or back, the drawing used and whether it is mirrored.
 
 **The swing** follows a path for her hand rather than joint angles: a forehand arc, cocked back behind her at the waist, down past the hip, then a fast slash forward and up that overshoots and settles; her knees bend and she leans into it. The elbow always bends to the lower side, so it never twists. From behind (third person) the sword arm comes round over her back, so the stroke shows.
