@@ -75,6 +75,41 @@
     const q = ease((k - 0.62) / 0.38);
     return { sh: lerp(1.55, 0.9, q), el: lerp(0.05, 0.3, q), crouch: 0.7 * (1 - q), lean: 1.2 * (1 - q) };
   }
+  // How a tool sits in her hand: the blade points along beta; her fist wraps the handle, so
+  // the hand turns at the wrist to lie square across it (whichever of the two square angles
+  // bends the wrist least), and the handle's grip point is in the middle of the fist.
+  const GRIP_FIST = 1.45;                              // how much bigger a gripping fist is drawn
+  function toolHold(P, a, tool) {
+    const V = P.V;
+    const fx = P.view === 'side' ? (V.face < 0 ? -1 : 1) : (a.shoulder[0] < V.anchor ? -1 : 1);
+    let beta;
+    if (P.act === 'swing') { const th = swingBlade(P.actT || 0); beta = Math.atan2(Math.sin(th), fx * Math.cos(th)); }
+    else beta = a.ang - fx * (tool.off || 0.55);
+    const wrap = (x) => Math.atan2(Math.sin(x), Math.cos(x));
+    const c1 = beta + Math.PI / 2, c2 = beta - Math.PI / 2;
+    const hand = Math.abs(wrap(c1 - a.ang)) < Math.abs(wrap(c2 - a.ang)) ? c1 : c2;
+    const fist = [a.wrist[0] + Math.cos(hand) * 11 * GRIP_FIST, a.wrist[1] + Math.sin(hand) * 11 * GRIP_FIST];
+    return { beta, hand, fist, fx };
+  }
+  // where each tool is held: its grip on the handle, in sticker units from the art's
+  // bottom middle (the sticker's anchor)
+  const GRIP = { toolSword: [-0.5, -7], toolGemSword: [-0.5, -7], toolInkBlade: [-0.5, -7], toolAxe: [-0.5, -7], toolPick: [-0.5, -7], toolRod: [-7, -6] };
+  const gripCache = new Map();
+  function toolGrip(spr) {
+    if (!gripCache.has(spr)) {
+      const name = Object.keys(SW.sprites || {}).find((n) => SW.sprites[n] === spr);
+      gripCache.set(spr, GRIP[name] || [0, -6]);
+    }
+    return gripCache.get(spr);
+  }
+  // the blade's angle through a swing (radians; 0 points forward, negative is up)
+  const BLADE = [[0, -0.95], [0.38, -2.0], [0.5, -1.05], [0.62, 0.45], [0.72, 0.7], [1, 0.2]];
+  function swingBlade(aT) {
+    const k = clamp(aT / 0.26, 0, 1);
+    let j = 0; while (j < BLADE.length - 2 && k > BLADE[j + 1][0]) j++;
+    const a = BLADE[j], b = BLADE[j + 1], q = ease(clamp((k - a[0]) / (b[0] - a[0]), 0, 1));
+    return lerp(a[1], b[1], q);
+  }
   // the hand's path through the swing, as offsets from the shoulder (x: + is forward,
   // y: + is down). Side-on it's a forehand arc: back behind her at the waist (wind-up),
   // down past the hip, forward and up (the slash), a little overshoot, then settle.
@@ -238,7 +273,7 @@
     P.face = st.face && st.faceT > 0 ? st.face : null;
     P.blink = !!st.blink;
     P.climb = !!st.climb;
-    P.act = act || null;
+    P.act = act || null; P.actT = aT;
     // ---- solve the joints ----
     solve(P, st);
     return P;
@@ -693,11 +728,19 @@
     const bendSign = P.view === 'side' ? -inward : inward;
     const bend = (fist ? 0.2 : -0.1 + 0.2 * (P.fingers[a.i] - 0.4)) * bendSign;
     // a hand laid flat (on her chest) is placed by its own angle; otherwise it follows the forearm
-    const ang = a.handAbs != null ? a.handAbs : a.ang + bend;
+    let ang = a.handAbs != null ? a.handAbs : a.ang + bend;
+    // holding a tool, the fist turns to wrap its handle
+    if (P._tool && P._holder === a.i) ang = toolHold(P, a, P._tool).hand;
     // her sheet's own relaxed hand (a left hand seen from the back) wherever it fits:
     // as drawn on her left, mirrored on her right; every other hand is drawn in code
     if (role === 'relaxed' && face === 'back' && pieceImg('hand')) part(g, 'hand', a.wrist, ang, behind, P.sideOf[a.i] !== 'L');
-    else drawHandVec(g, a.wrist, ang, P.sideOf[a.i], face, ROLE_POSE[role] || 'relaxed', skin, behind ? mixRGB(V.shade, '#3a1040', 0.15) : V.shade);
+    else {
+      // a fist round a handle is drawn bigger, so it wraps the tool (as cartoons draw them)
+      const big = P._tool && P._holder === a.i ? GRIP_FIST : 1;
+      g.save(); g.translate(a.wrist[0], a.wrist[1]); g.scale(big, big); g.translate(-a.wrist[0], -a.wrist[1]);
+      drawHandVec(g, a.wrist, ang, P.sideOf[a.i], face, ROLE_POSE[role] || 'relaxed', skin, behind ? mixRGB(V.shade, '#3a1040', 0.15) : V.shade);
+      g.restore();
+    }
     return true;
   }
 
@@ -816,17 +859,18 @@
     // between her body and her hand. That arm comes in front of her body while it holds it.
     const tool = opts.tool && opts.tool.spr;
     const holder = tool ? P.toolArm : -1;
+    P._tool = tool ? opts.tool : null; P._holder = holder;
     const drawTool = () => {
       if (!tool) return;
-      const a = P.A[holder], spr = opts.tool.spr;
-      const fl = P.view === 'side' ? (V.face < 0 ? -1 : 1) : (a.shoulder[0] < V.anchor ? -1 : 1);
-      const grip = [a.wrist[0] + Math.cos(a.ang) * 14, a.wrist[1] + Math.sin(a.ang) * 14];
-      const k = 0.9 * (RIG.front.ground - 8) / 108;    // sticker units -> sheet pixels (her height is 108 units)
-      cg.save(); cg.translate(grip[0], grip[1]); cg.rotate(a.ang - fl * (opts.tool.off || 0.55) + Math.PI / 2);
-      cg.scale(k * fl, k);
-      cg.drawImage(spr.raw || spr.img, -spr.ax, -spr.ay + spr.h * 0.18, spr.w, spr.h);
+      const H = toolHold(P, P.A[holder], opts.tool), spr = opts.tool.spr, gp = toolGrip(spr);
+      const k = 0.72 * (RIG.front.ground - 8) / 108;   // sticker units -> sheet pixels (her height is 108 units)
+      cg.save(); cg.translate(H.fist[0], H.fist[1]); cg.rotate(H.beta + Math.PI / 2);
+      cg.scale(k * H.fx, k);
+      cg.drawImage(spr.raw || spr.img, -spr.ax - gp[0], -spr.ay - gp[1], spr.w, spr.h);
       cg.restore();
     };
+
+
     const drawProps = (layer) => { for (const pr of props) if (pr.layer === layer) drawProp(cg, pr, P, K); };
     // draw order, back to front:
     //   side:  far leg, far arm, near leg, body, (tool, holding arm), near arm
