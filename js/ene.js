@@ -121,13 +121,15 @@
   // down past the hip, forward and up (the slash), a little overshoot, then settle.
   // From behind: out and up, then down across her back.
   // Side-on: ready in front of her at the waist, swung back low behind her hip with the
-  // arm nearly straight and angled back (wind-up, blade trailing behind her), then a fast slash forward and up, a little past, then back
+  // arm straight and angled back (no bend there to read as a backwards elbow) (wind-up, blade trailing behind her), then a fast slash forward and up, a little past, then back
   // to ready. Her far arm is behind her body, so the path keeps the sword clear of her
   // silhouette where it can.
-  const SWING_SIDE = [[0, 44, 58], [0.38, -44, 98], [0.5, 30, 92], [0.62, 96, 30], [0.72, 82, 62], [1, 42, 66]];
+  const SWING_SIDE = [[0, 44, 58], [0.38, -50, 106], [0.5, 30, 92], [0.62, 96, 30], [0.72, 82, 62], [1, 42, 66]];
   // From the front, three-quarter or behind: the arc stays on her own side: raised up and
   // out past her shoulder, then down to her outer hip, never across her chest or back.
-  const SWING_OUT = [[0, 22, 78], [0.38, 60, -26], [0.5, 62, -2], [0.62, 44, 70], [0.72, 38, 88], [1, 22, 82]];
+  // On the way up the hand arcs out to her side at arm's length, never in close to her
+  // shoulder (where the elbow would have to wing up or fold across her).
+  const SWING_OUT = [[0, 22, 78], [0.19, 78, 34], [0.38, 60, -26], [0.5, 62, -2], [0.62, 44, 70], [0.72, 38, 88], [1, 22, 82]];
   function swingHand(aT, side) {
     const K = side ? SWING_SIDE : SWING_OUT, k = clamp(aT / 0.26, 0, 1);
     let j = 0; while (j < K.length - 2 && k > K[j + 1][0]) j++;
@@ -190,7 +192,7 @@
     // arm 0 is the viewer's left in front/back views and the near arm in the side view
     for (let i = 0; i < 2; i++) {
       const p2 = ph + (i ? 0 : Math.PI);           // opposite to the leg on the same side
-      let sh = 0.12, el = 0.25, out = i ? 0.16 : -0.16, fingers = 0.35 + 0.2 * Math.sin(t * 1.7 + i), fist = false, target = null, handAbs = null;
+      let sh = 0.12, el = 0.25, out = i ? 0.16 : -0.16, fingers = 0.35 + 0.2 * Math.sin(t * 1.7 + i), fist = false, target = null, handAbs = null, fore3d = false;
       if (view === 'threeQ' && i === 1) out = 0.42;
       if (walk > 0.02) {
         const A = lerp(0.42, 0.95, run) * walk;
@@ -218,7 +220,7 @@
         const o = swingHand(aT, isSide), S0 = V.shoulders[i] || V.shoulders[0];
         // forward on screen: the way she faces side-on, else out to this arm's own side
         const dx = isSide ? (V.face < 0 ? -1 : 1) : (S0[0] < V.anchor ? -1 : 1);
-        target = [S0[0] + o[0] * dx, S0[1] + o[1], 0]; fist = true; handAbs = null;
+        target = [S0[0] + o[0] * dx, S0[1] + o[1], 0]; fist = true; handAbs = null; fore3d = !isSide;
       }
       if (act === 'hurt') {
         // AY!! her right hand clutches her chest; the other comes up beside her face, palm
@@ -261,7 +263,7 @@
         target = [S0[0] + f * reach * 0.95, S0[1] - reach * 0.18, 0]; fist = false; handAbs = null;
       }
       if (st.rest) { sh = 0; el = 0; out = 0; target = null; handAbs = null; fist = false; }   // straight arms
-      P.arms.push({ sh, el, out, i, target, handAbs: fist ? null : handAbs });
+      P.arms.push({ sh, el, out, i, target, handAbs: fist ? null : handAbs, fore3d });
       P.fingers[i] = clamp(fingers, 0, 1); P.fist[i] = fist;
       // the hand drawing for this moment
       // a fist that holds something (the tool, the rod, the leaf's stems) is the grip;
@@ -320,18 +322,36 @@
         // two-bone reach: put the hand on the target, the elbow bent outward
         const tx = a.target[0], ty = a.target[1] + P.body.y;
         let dx = tx - sh[0], dy = ty - sh[1], d = Math.hypot(dx, dy);
-        const maxd = V.upper + V.fore - 1; if (d > maxd) { dx *= maxd / d; dy *= maxd / d; d = maxd; }
+        const maxd = V.upper + V.fore - 0.05; if (d > maxd) { dx *= maxd / d; dy *= maxd / d; d = maxd; }
         const a0 = Math.atan2(dy, dx);
         const cosA = clamp((V.upper * V.upper + d * d - V.fore * V.fore) / (2 * V.upper * d), -1, 1);
         // The elbow only bends one way. Side-on (the drawing faces left) the forearm folds
         // forward, so the elbow sits behind the shoulder-to-hand line. From the front, the
         // back and three-quarter, the elbow points out, away from her body.
         const b0 = Math.acos(cosA);
+        if (a.fore3d && d < V.upper + V.fore - 2) {
+          // the sword arm from the front, three-quarter or back: when the hand comes in
+          // closer than arm's length, the forearm points toward (or away from) us rather
+          // than folding sideways across her: the elbow stays near the shoulder-to-hand
+          // line, tipped a little out (never up into a wing), and the forearm is drawn
+          // shorter, as it would look
+          const outS = s[0] < V.anchor ? -1 : 1;
+          if (d < V.upper * 1.3) { const f = V.upper * 1.3 / Math.max(d, 1e-3); dx *= f; dy *= f; d = V.upper * 1.3; }
+          let tilt = Math.cos(a0 + 0.3) * outS >= Math.cos(a0 - 0.3) * outS ? 0.3 : -0.3;
+          if (Math.sin(a0 + tilt) < -0.05 && dy > 0) tilt = -tilt;
+          const elbow = [sh[0] + Math.cos(a0 + tilt) * V.upper, sh[1] + Math.sin(a0 + tilt) * V.upper];
+          const wrist = [sh[0] + dx, sh[1] + dy];
+          return { shoulder: sh, elbow, wrist, ang: Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]), i, handAbs: a.handAbs };
+        }
         let bend;
         if (isSide) bend = -b0;
         else {
           const out = s[0] < V.anchor ? -1 : 1;
           bend = Math.cos(a0 + b0) * out >= Math.cos(a0 - b0) * out ? b0 : -b0;
+          // ...but never a chicken wing: an elbow up above both her shoulder and her hand
+          // (the hand held out low in front of her) hangs down by her side instead
+          const ey = sh[1] + Math.sin(a0 + bend) * V.upper;
+          if (ey < sh[1] - 2 && ey < sh[1] + dy - 2) bend = -bend;
         }
         const elbow = [sh[0] + Math.cos(a0 + bend) * V.upper, sh[1] + Math.sin(a0 + bend) * V.upper];
         const wrist = [sh[0] + dx, sh[1] + dy];
