@@ -54,7 +54,9 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 
 /* ---------- HUD frame ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
-#hud .hud-tl, #hud .hud-tr, #hud #touchUI button { pointer-events: auto; }
+#hud .hud-tr, #hud #touchUI button { pointer-events: auto; }
+/* the left column spans the ring top to bottom; only its boxes take clicks, the space between them is the game's */
+#hud .hud-tl { pointer-events: none; } #hud .hud-tl > * { pointer-events: auto; }
 #hud.ouch::after { content: ""; position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 30px rgba(255, 59, 92, 0.5); animation: fade 0.45s ease-out forwards; }
 @keyframes fade { to { opacity: 0; } }
 
