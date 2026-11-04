@@ -17,7 +17,7 @@ if not os.path.exists('ComfyUI'):
     urllib.request.urlretrieve('https://github.com/Comfy-Org/ComfyUI/archive/refs/heads/master.zip', 'comfy.zip')
     zipfile.ZipFile('comfy.zip').extractall('.'); os.rename('ComfyUI-master', 'ComfyUI')
 os.chdir('/work/ComfyUI')
-# the image's torch lives in its conda env; a Debian system python refuses pip without the flag
+# the image's python is the one on PATH (no conda env in the newer pytorch images); a Debian system python refuses pip without the flag
 def pip(*pkgs):
     base = [sys.executable, '-m', 'pip', 'install', '-q', *pkgs]
     if subprocess.call(base) != 0: subprocess.check_call(base + ['--break-system-packages'])
