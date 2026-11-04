@@ -1,0 +1,53 @@
+{
+ "frame": [
+  256,
+  320
+ ],
+ "views": [
+  "front",
+  "threeq",
+  "side",
+  "back"
+ ],
+ "clips": {
+  "idle": {
+   "frames": 4,
+   "fps": 8
+  },
+  "walk": {
+   "frames": 8,
+   "fps": 8
+  },
+  "run": {
+   "frames": 6,
+   "fps": 10
+  },
+  "jump": {
+   "frames": 3,
+   "fps": 10
+  },
+  "joy": {
+   "frames": 2,
+   "fps": 10
+  },
+  "point": {
+   "frames": 1,
+   "fps": 10
+  },
+  "hurt": {
+   "frames": 1,
+   "fps": 10
+  },
+  "cry": {
+   "frames": 2,
+   "fps": 10
+  }
+ },
+ "feet_y": 309,
+ "bbox_idle_front": [
+  74,
+  11,
+  181,
+  309
+ ]
+}
