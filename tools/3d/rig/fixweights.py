@@ -2,7 +2,7 @@
 # - hair vertices (dark or purple in the texture, after a neighbour vote over the mesh) follow the head bone,
 #   so a swinging arm never tugs the hair and a turning head carries all of it;
 # - everything above the chin follows the head too, so nods and turns never tear the face.
-# usage: fixweights.py <rigged.glb> <out.glb>
+# usage: fixweights.py <rigged.glb> <out.glb> [head_bone neck_bone]
 import numpy as np, io, sys, base64
 from pygltflib import GLTF2
 from PIL import Image
@@ -27,14 +27,15 @@ u = np.clip((uv[:, 0] % 1) * (W - 1), 0, W - 1).astype(int); v = np.clip((uv[:, 
 lum = col.mean(1); purple = (col[:, 0] > 0.3) & (col[:, 2] > 0.35) & (col[:, 1] < 0.6 * col[:, 2])
 hair = (lum < 0.22) | purple
 skin = g.skins[0]; joints = skin.joints; names = [g.nodes[j].name for j in joints]; idx = {n: i for i, n in enumerate(names)}
-head = idx['bone_5']
+head_name, neck_name = (sys.argv[3], sys.argv[4]) if len(sys.argv) > 4 else ('bone_5', 'bone_4')
+head = idx[head_name]
 parent = {c: i for i, nd in enumerate(g.nodes) for c in (nd.children or [])}
 def world_y(name):
     y = 0.0; ni = joints[idx[name]]
     while ni is not None and g.nodes[ni].name != 'Armature':
         y += (g.nodes[ni].translation or [0, 0, 0])[1]; ni = parent.get(ni)
     return y
-neck_y = world_y('bone_4'); print('neck y', round(neck_y, 3), 'hair verts', int(hair.sum()), 'of', len(pos))
+neck_y = world_y(neck_name); print('neck y', round(neck_y, 3), 'hair verts', int(hair.sum()), 'of', len(pos))
 idxs, _, _ = acc(prim.indices); F = idxs.reshape(-1, 3).astype(np.int64)
 nbr_sum = np.zeros(len(pos)); nbr_cnt = np.zeros(len(pos))
 for it in range(2):

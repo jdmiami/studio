@@ -1,8 +1,12 @@
 <!doctype html><html><head><meta charset=utf-8><style>html,body{margin:0;background:#f6efe4}canvas{display:block}</style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script></head><body>
 <script type="module">
-// Pose bench for a rigged GLB: window.pose(spec, bg, lift) sets bone rotations (degrees, XYZ, on top of rest),
-// window.shot(deg, el) renders the camera at that yaw and returns a PNG data URL. Served beside rigged.glb.
+// Pose bench for a rigged GLB served beside it as rigged.glb.
+// window.pose(spec, bg, lift): spec maps bone name -> [rx, ry, rz] degrees on top of the rest pose, or
+//   {aim: [x, y, z], roll: deg} to turn the bone so its child joint points along that world direction.
+//   Entries apply parents first (bone index order). bg false renders on transparency; lift raises the hips.
+// window.shot(deg, el): render from that camera yaw and return a PNG data URL.
+// window.poseQuats(): the posed local quaternions per bone (and the hips position) for baking animations.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -15,18 +19,31 @@ const cam = new THREE.PerspectiveCamera(30, W / H, 0.01, 100);
 const g = await new GLTFLoader().loadAsync('/rigged.glb');
 const root = g.scene; scene.add(root);
 const bones = {}; root.traverse(o => { if (o.isBone) bones[o.name] = o; });
-const rest = {}; for (const [n, b] of Object.entries(bones)) rest[n] = b.quaternion.clone(); const restPos = bones.bone_0.position.clone();
+const rest = {}; for (const [n, b] of Object.entries(bones)) rest[n] = b.quaternion.clone(); const rootBone = bones.bone_0 || Object.values(bones)[0]; const restPos = rootBone ? rootBone.position.clone() : null;
 root.updateMatrixWorld(true);
 const box = new THREE.Box3().setFromObject(root); const size = box.getSize(new THREE.Vector3()); const c = box.getCenter(new THREE.Vector3());
 const R = Math.max(size.x, size.y, size.z); const dist = R * 2.1;
 window.info = { bones: Object.keys(bones), size: size.toArray(), skinned: !!root.getObjectByProperty('isSkinnedMesh', true) };
 window.bonePos = () => { const o = {}; root.updateMatrixWorld(true); for (const [n, b] of Object.entries(bones)) { const p = new THREE.Vector3(); b.getWorldPosition(p); o[n] = p.toArray().map(v => +v.toFixed(3)); } return o; };
 window.pose = (spec, bg, lift = 0) => {
-  for (const [n, b] of Object.entries(bones)) b.quaternion.copy(rest[n]); bones.bone_0.position.copy(restPos); bones.bone_0.position.y += lift;
-  for (const [n, e] of Object.entries(spec || {})) { const b = bones[n]; if (!b) continue; const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...e.map(d => d * Math.PI / 180), 'XYZ')); b.quaternion.multiply(q); }
+  for (const [n, b] of Object.entries(bones)) b.quaternion.copy(rest[n]); if (rootBone) { rootBone.position.copy(restPos); rootBone.position.y += lift; }
+  const order = Object.keys(spec || {}).sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]));
+  for (const n of order) { const b = bones[n], e = spec[n]; if (!b) continue;
+    if (Array.isArray(e)) { const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...e.map(d => d * Math.PI / 180), 'XYZ')); b.quaternion.multiply(q); root.updateMatrixWorld(true); continue; }
+    const child = b.children.find(c => c.isBone); if (!child) continue;
+    root.updateMatrixWorld(true);
+    const bw = new THREE.Vector3(), cw = new THREE.Vector3(); b.getWorldPosition(bw); child.getWorldPosition(cw);
+    const cur = cw.sub(bw).normalize(), want = new THREE.Vector3(...e.aim).normalize();
+    const dq = new THREE.Quaternion().setFromUnitVectors(cur, want);
+    const pw = new THREE.Quaternion(); b.parent.getWorldQuaternion(pw);
+    const pinv = pw.clone().invert(); b.quaternion.copy(pinv.multiply(dq).multiply(pw).multiply(b.quaternion));
+    if (e.roll) { b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), e.roll * Math.PI / 180)); }
+    root.updateMatrixWorld(true);
+  }
   root.updateMatrixWorld(true);
   scene.background = bg === false ? null : new THREE.Color('#f6efe4');
 };
 window.shot = (deg, el = 0.12) => { const a = deg * Math.PI / 180; cam.position.set(c.x + Math.sin(a) * dist, c.y + R * el, c.z + Math.cos(a) * dist); cam.lookAt(c); r.render(scene, cam); return r.domElement.toDataURL('image/png'); };
+window.poseQuats = () => { const o = {}; for (const [n, b] of Object.entries(bones)) o[n] = [b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w]; o.__hips = rootBone ? rootBone.position.toArray() : null; return o; };
 window.ready = true;
 </script></body></html>
