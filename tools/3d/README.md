@@ -14,3 +14,7 @@ ComfyUI's native TRELLIS.2 / Pixal3D workflow, run headless on Hugging Face Jobs
 
 The game does not load these yet; they are the source for the sprite sheets of a
 later release.
+
+## The free path
+
+While the L40S queue is empty of free hardware, `space/` holds a pipeline that runs on ZeroGPU Spaces instead and produced the first 3D Ene (see `space/README.md`).
