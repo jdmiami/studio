@@ -17,8 +17,14 @@ if not os.path.exists('ComfyUI'):
     urllib.request.urlretrieve('https://github.com/Comfy-Org/ComfyUI/archive/refs/heads/master.zip', 'comfy.zip')
     zipfile.ZipFile('comfy.zip').extractall('.'); os.rename('ComfyUI-master', 'ComfyUI')
 os.chdir('/work/ComfyUI')
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', '-r', 'requirements.txt'])
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'huggingface_hub'])
+# the image's torch lives in its conda env; a Debian system python refuses pip without the flag
+def pip(*pkgs):
+    base = [sys.executable, '-m', 'pip', 'install', '-q', *pkgs]
+    if subprocess.call(base) != 0: subprocess.check_call(base + ['--break-system-packages'])
+try:
+    import torch; log('python', sys.executable, 'torch', torch.__version__, 'cuda', torch.cuda.is_available())
+except Exception as e: raise SystemExit(f'no torch in {sys.executable}: {e}')
+pip('-r', 'requirements.txt'); pip('huggingface_hub')
 log('ComfyUI installed', open('comfyui_version.py').read().strip())
 
 # models: symlink the mounted Hub repos into ComfyUI's folders
