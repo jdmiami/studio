@@ -54,7 +54,7 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 
 /* ---------- HUD frame ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
-#hud .hud-tl, #hud .hud-tr, #hud .hud-bottom > *, #hud #touchUI button { pointer-events: auto; }
+#hud .hud-tl, #hud .hud-tr, #hud #touchUI button { pointer-events: auto; }
 #hud.ouch::after { content: ""; position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 30px rgba(255, 59, 92, 0.5); animation: fade 0.45s ease-out forwards; }
 @keyframes fade { to { opacity: 0; } }
 
@@ -62,13 +62,14 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 #hudHide { position: absolute; right: calc(var(--sr) + var(--edge) + var(--rcPad)); bottom: calc(var(--sb) + var(--edge) + var(--rcPad)); pointer-events: auto; z-index: 3; }
 #hudHide svg { transition: transform 0.2s; }
 #hud.hidden-ui #hudHide svg { transform: rotate(180deg); }
-#hud.hidden-ui .hud-tr, #hud.hidden-ui .hud-bottom, #hud.hidden-ui #touchUI { display: none; }
+#hud.hidden-ui .hud-tr, #hud.hidden-ui #hotbarWrap, #hud.hidden-ui #touchUI { display: none; }
 
 /* top-left */
-.hud-tl { position: absolute; top: calc(var(--st) + var(--edge)); left: calc(var(--sl) + var(--edge)); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: min(250px, 46vw); }
+.hud-tl { position: absolute; top: calc(var(--st) + var(--edge)); left: calc(var(--sl) + var(--edge)); bottom: calc(var(--sb) + var(--edge) + var(--rcPad)); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: min(250px, 46vw); pointer-events: none; }
+.hud-tl > * { pointer-events: auto; }
 .vitals { border-radius: 16px; border-top-left-radius: var(--rcIn); padding: 6px 9px 7px 7px; display: flex; flex-direction: column; gap: 4px; width: clamp(150px, 19vw, 220px); }
 .vrow { display: flex; align-items: center; gap: 6px; }
-.vrow img { width: 20px; height: 20px; flex: none; }
+.vrow img { width: 22px; height: 22px; object-fit: contain; flex: none; }
 .vrow .bar { flex: 1; height: 10px; background: var(--ink); border-radius: 999px; overflow: hidden; min-width: 0; }
 .vrow .bar i { display: block; height: 100%; width: 100%; background: var(--berry); border-radius: 999px; transition: width 0.2s; }
 .vrow.food .bar i { background: var(--sun); }
@@ -174,18 +175,15 @@ body.touch .round-btn.desk { display: none; }
   80% { opacity: 1; transform: scale(1) rotate(-2deg); }
   100% { opacity: 0; transform: translateY(-10px) scale(0.92); }
 }
-/* bottom: one row of inventory that scrolls sideways instead of wrapping */
-.hud-bottom {
-  position: absolute; left: 0; right: 0; bottom: calc(var(--sb) + var(--edge));
-  padding-inline: calc(var(--sl) + var(--edge) + var(--rcPad)) calc(var(--sr) + var(--edge) + var(--rcPad));
-  display: flex; justify-content: center; align-items: flex-end; gap: 8px; pointer-events: none;
-}
-#hotbar { display: flex; gap: 6px; overflow-x: auto; overflow-y: visible; padding: 9px 4px 4px; max-width: calc(100vw - 140px); scrollbar-width: none; overscroll-behavior: contain; }
+/* the inventory: a column down the left side under the quests, scrolling when it is long;
+   the Craft button stays at its foot */
+.hud-inv { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 0; flex: 0 1 auto; margin: auto 0 6px 6px; }
+#hotbar { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; overflow-x: visible; padding: 9px 6px 4px 8px; min-height: 0; scrollbar-width: none; overscroll-behavior: contain; }
 #hotbar::-webkit-scrollbar { display: none; }
 .slot { position: relative; width: 48px; height: 48px; border-radius: 14px; padding: 0; display: grid; place-items: center; flex: none; transition: transform 0.15s; }
 .slot img { width: 34px; height: 34px; pointer-events: none; }
 .slot.usable { background: #fff3c4; }
-.slot:hover { transform: translateY(-3px); }
+.slot:hover { transform: translateX(3px); }
 .slot .count { position: absolute; right: -5px; bottom: -5px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 999px; background: var(--ink); color: #fff; border: 2px solid #fff; font-family: var(--display); font-size: 11px; line-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
 .slot kbd { position: absolute; left: -5px; top: -8px; font-size: 9px; padding: 0 4px; border: 2px solid #fff; }
 .slot.bump { animation: bump 0.35s cubic-bezier(.3, 2, .5, 1); }
@@ -321,8 +319,6 @@ body.touch #game { cursor: default; }
 .tbtn.big img { width: 38px; height: 38px; }
 .tbtn.on { background: #c8f0ff; }
 .tbtn.bite { background: #ffd23f; animation: throb 0.35s ease-in-out infinite; }
-body.touch .hud-bottom { justify-content: flex-start; }
-body.touch #hotbar { max-width: calc(100vw - 120px); }
 body.touch .slot kbd, body.touch #craftBtn kbd { display: none; }
 
 /* phones in portrait: everything a notch smaller */
@@ -434,7 +430,7 @@ body.in-cave .rail #rotL, body.in-cave .rail #rotR, body.in-cave #compassBtn, bo
 .vrow.cryrow { all: unset; display: flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 8px; }
 .vrow.cryrow .bar { flex: 1; height: 8px; background: var(--ink); border-radius: 999px; overflow: hidden; min-width: 0; display: block; }
 .vrow.cryrow .bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #e8322a, #f5861f, #f8d81e, #4fb04a, #3a3ad0, #7a35c8); transition: width 0.3s; }
-.vrow.cryrow img { width: 20px; height: 20px; flex: none; }
+.vrow.cryrow img { width: 22px; height: 22px; object-fit: contain; flex: none; }
 .vrow.cryrow.ready { animation: throb 0.8s ease-in-out infinite; }
 .vrow.cryrow:focus-visible { outline: 3px dashed var(--ink); outline-offset: 2px; }
 #enePop {

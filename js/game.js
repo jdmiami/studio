@@ -3416,7 +3416,6 @@
     const a = tl.getBoundingClientRect(), b = tr.offsetParent ? tr.getBoundingClientRect() : { left: W, right: W, bottom: 0 };   // hidden: nothing on the right
     const charTop = curve.yA - 130 * Z, charBottom = curve.yA + 12;
     const gapL = a.right + 10, gapR = b.left - 10;
-    const hot = $('hotbarWrap').getBoundingClientRect();
     let top, left, width, mode;
     const bn = $('banner'), bh = (banner.until || 0) > performance.now() ? bn.offsetHeight + 6 : 0;
     const below = Math.max(a.bottom, b.bottom) + 8;
@@ -3426,11 +3425,11 @@
     else {
       // over the hotbar, and over the touch buttons when those are up
       const tp = document.querySelector('.tpad'), tq = tp ? tp.getBoundingClientRect() : null, tpr = tq && tq.height > 0 ? tq : null;   // (fixed, so offsetParent says nothing)
-      top = Math.max(charBottom + 6, Math.min((hot.top || H) - 56, tpr ? tpr.top - 60 : H)); left = 12; width = W - 24; mode = 'bottom';
+      top = Math.max(charBottom + 6, Math.min(H - edge - 64, tpr ? tpr.top - 60 : H)); left = Math.min(a.right + 10, W * 0.4); width = W - left - edge - 48; mode = 'bottom';
     }
     // the cave's rune pill: between the top corners if there's room, else above the hotbar on the left
     if (gapR - gapL >= 200) { caveHud.x = (gapL + gapR) / 2; caveHud.y = edge + 8; }
-    else { caveHud.x = Math.max(70, (hot.left || 12) + 70); caveHud.y = (hot.top || H) - 44; }
+    else { caveHud.x = Math.max(70, a.right + 70); caveHud.y = H - edge - 44; }
     // while a banner is up, the tip sits just under it (or just over it at the bottom)
     const tops = mode === 'bottom' ? { banner: top - bh, toast: top } : { banner: top, toast: top + bh };
     for (const id of ['toast', 'banner']) {

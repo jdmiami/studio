@@ -36,7 +36,7 @@
         <img data-icon="raft" alt="Raft"><div class="bar"><i id="raftBar"></i></div>
       </div>
       <button class="vrow cryrow" id="cryRow" type="button" title="Rainbow cry: fills as you fight. Press R (or tap here) when it's full.">
-        <img data-icon="playerCry" alt="Rainbow cry"><span class="bar"><i id="cryBar"></i></span>
+        <img data-icon="uiBolt" alt="Rainbow cry"><span class="bar"><i id="cryBar"></i></span>
       </button>
       <div id="toolbelt" aria-label="Tools and gear"></div>
     </div>
@@ -44,6 +44,10 @@
       <button id="questsToggle" class="qhead" type="button" aria-controls="quests"><span>Quests</span><b id="questCount">0</b></button>
       <ol id="quests"></ol>
     </section>
+    <div class="hud-inv" id="hotbarWrap">
+      <div id="hotbar" aria-label="Inventory"></div>
+      <button id="craftBtn"><img data-icon="uiHammer" alt=""><span>Craft</span><kbd>C</kbd></button>
+    </div>
   </div>
 
   <!-- top-right: time, weather, map, camera -->
@@ -95,16 +99,12 @@
   <button id="hudHide" class="round-btn" type="button" title="Hide the buttons and menus (H)" aria-label="Hide the buttons and menus" aria-pressed="false">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
   </button>
-  <div class="hud-bottom" id="hotbarWrap">
-    <div id="hotbar" aria-label="Inventory"></div>
-    <button id="craftBtn"><img data-icon="uiHammer" alt=""><span>Craft</span><kbd>C</kbd></button>
-  </div>
 
   <div id="touchUI">
     <div id="stick"><div id="knob"></div></div>
     <div class="tpad">
       <button id="tFly" class="tbtn" hidden><img data-icon="glider" alt=""><span id="tFlyLbl">Glide</span></button>
-      <button id="tCry" class="tbtn" hidden><img data-icon="playerCry" alt=""><span>Rainbow</span></button>
+      <button id="tCry" class="tbtn" hidden><img data-icon="uiBolt" alt=""><span>Rainbow</span></button>
       <button id="tEat" class="tbtn"><img data-icon="itemBerry" alt=""><span>Eat</span></button>
       <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span id="tActLbl">Use</span></button>
     </div>

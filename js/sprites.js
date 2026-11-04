@@ -656,6 +656,15 @@
     shape(c, (c) => { c.moveTo(13, 22); c.bezierCurveTo(-4, 10, 4, -2, 13, 6); c.bezierCurveTo(22, -2, 30, 10, 13, 22); }, '#ff4d6d');
     flat(c, blobs([[8, 8, 2.4]]), '#ffc2cd');
   }];
+  // the rainbow cry: a rainbow with a lightning bolt through it
+  ART.uiBolt = [30, 28, (c) => {
+    const bands = ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a', '#3a3ad0'];
+    c.lineCap = 'butt';
+    c.beginPath(); c.arc(15, 24, 10, Math.PI, 0); c.lineWidth = 14; c.strokeStyle = INK; c.stroke();
+    bands.forEach((col, i) => { c.beginPath(); c.arc(15, 24, 14.4 - i * 2.4, Math.PI, 0); c.lineWidth = 2.5; c.strokeStyle = col; c.stroke(); });
+    shape(c, P([[19, 1], [7.5, 15.5], [14, 15.5], [10, 27.5], [23, 11.5], [17, 11.5], [22, 1]]), '#ffd23f', 1.6);
+    flat(c, P([[18.4, 4.5], [13.2, 11], [15.6, 11]]), '#fff3a8');
+  }];
   ART.uiSun = [28, 28, (c) => {
     shape(c, (c) => { for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; polyPath(c, [[14 + Math.cos(a) * 13, 14 + Math.sin(a) * 13], [14 + Math.cos(a + 0.3) * 8, 14 + Math.sin(a + 0.3) * 8], [14 + Math.cos(a - 0.3) * 8, 14 + Math.sin(a - 0.3) * 8]]); } circ(c, 14, 14, 8); }, '#ffc93c');
   }];

@@ -130,6 +130,7 @@ The HUD sits in the corners and edges so the middle of the screen, where your ch
 
 - **Top left:** health, food and XP (plus glider energy once you have one), and your tools. Quests fold into a small tab: tap it to open the list.
 - **Top right:** day and moon dial, weather, minimap with region name and danger, then the map, turn, compass, zoom and menu buttons.
+- **Left column:** under the quests, the inventory runs down the left side as a column of slots (it scrolls when it is long) with the Craft button at its foot. The chevron in the bottom-right corner (or H) hides it with the rest of the buttons and menus; the vitals and quests stay.
 - **Bottom:** one row of inventory that scrolls sideways, and Craft. On phones the Use, Eat and Glide buttons sit in the bottom-right corner.
 - **Tips and banners** are placed by the game where there's room: in the gap between the top corners on wide screens, under the top HUD on tall phones, and above the hotbar on short screens. They never cover your character. When a banner and a tip arrive together they stack. Trees and rocks between you and the camera fade so you can always see yourself.
 
