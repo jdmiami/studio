@@ -3322,22 +3322,25 @@
 
   function renderDial() {
     const cv = $('dial');
+    // drawn at the screen's pixel density so the moon's face stays crisp
+    const want = Math.round(96 * SDPR); if (cv.width !== want) { cv.width = cv.height = want; }
     const g = cv.getContext('2d');
-    const s = cv.width, r = s / 2 - 3;
+    const s = cv.width, r = s / 2 - 3 * SDPR;
     g.clearRect(0, 0, s, s);
     g.save(); g.translate(s / 2, s / 2);
     const start = -Math.PI / 2;
     g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, r, start, start + TAU * 0.62); g.closePath(); g.fillStyle = '#8fd3ff'; g.fill();
     g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, r, start + TAU * 0.62, start + TAU); g.closePath(); g.fillStyle = '#2d2a6e'; g.fill();
-    g.lineWidth = 3; g.strokeStyle = '#3b2f4f'; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke();
-    const a = start + TAU * phaseOf(G.time);
-    g.lineCap = 'round'; g.lineWidth = 3.4; g.strokeStyle = '#ffffff';
-    g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * (r - 4), Math.sin(a) * (r - 4)); g.stroke();
-    g.lineWidth = 1.6; g.strokeStyle = '#3b2f4f';
-    g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * (r - 4), Math.sin(a) * (r - 4)); g.stroke();
+    g.lineWidth = 3 * SDPR; g.strokeStyle = '#3b2f4f'; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke();
     g.restore();
+    // the drawn moon fills the dial; the hand runs round its edge as a short pointer
     const m = moonNow();
-    SW.drawMoon(g, s / 2, s / 2, s * 0.17, m.phase, m.ink);
+    SW.drawMoon(g, s / 2, s / 2, s * 0.33, m.phase, m.ink);
+    const a = start + TAU * phaseOf(G.time), r0 = s * 0.33 + 2 * SDPR, r1 = r - 1.5 * SDPR;
+    g.save(); g.translate(s / 2, s / 2); g.lineCap = 'round';
+    g.lineWidth = 4.2 * SDPR; g.strokeStyle = '#ffffff'; g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); g.stroke();
+    g.lineWidth = 2 * SDPR; g.strokeStyle = '#3b2f4f'; g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); g.stroke();
+    g.restore();
   }
 
   function updateHUD(dt) {

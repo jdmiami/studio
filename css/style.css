@@ -118,7 +118,7 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 /* top-right */
 .hud-tr { position: absolute; top: calc(var(--st) + var(--edge) + var(--rcPad)); right: calc(var(--sr) + var(--edge) + var(--rcPad)); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 .status { display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border-radius: 999px; }
-.status canvas { width: 38px; height: 38px; }
+.status canvas { width: 46px; height: 46px; }
 .status-text { display: flex; flex-direction: column; line-height: 1.05; }
 .status-text > span:first-child { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .status-text b { font-family: var(--display); font-weight: 400; font-size: 16px; font-variant-numeric: tabular-nums; }
