@@ -6,6 +6,10 @@ IN = os.environ.get('IN_DIR', 'https://stickerwild.vercel.app/tools/3d'); OUT_RE
 IMAGE = os.environ.get('IMAGE', 'ene_front.png'); TAG = os.environ.get('TAG', 'ene')
 TEX = int(os.environ.get('TEX_RES', '2048')); USE_TRELLIS = os.environ.get('USE_TRELLIS', '1') == '1'
 T0 = time.time(); log = lambda *a: print(f'[{time.time()-T0:7.1f}s]', *a, flush=True)
+# the Hub token for the upload: HF_TOKEN, or a 'HF_TOKEN=...' value under any other name
+TOKEN = os.environ.get('HF_TOKEN') or next((v.split('=', 1)[1] for v in os.environ.values() if v.startswith('HF_TOKEN=')), None)
+if not TOKEN: raise SystemExit('no HF_TOKEN in the job environment: stopping before any GPU work')
+log('token found, length', len(TOKEN))
 
 os.makedirs('/work', exist_ok=True); os.chdir('/work')
 if not os.path.exists('ComfyUI'):
@@ -105,7 +109,7 @@ outs = [f for f in outs if os.path.isfile(f)]
 log('outputs', [(f, os.path.getsize(f)) for f in outs])
 print(open('/work/server.log').read()[-3000:])
 from huggingface_hub import HfApi
-api = HfApi()
+api = HfApi(token=TOKEN)
 up = [f for f in outs if f.endswith(('.glb', '.png', '.jpg'))]
 for f in up:
     api.upload_file(path_or_fileobj=f, path_in_repo=f'out/{TAG}/{os.path.basename(f)}', repo_id=OUT_REPO, repo_type='dataset')
