@@ -16,7 +16,10 @@
   --display: "Bagel Fat One", "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
   --body: "Sniglet", ui-rounded, "Trebuchet MS", system-ui, sans-serif;
   --ring: 4px;                        /* the sunflower radar's ring inset, set by the game */
+  --rc: 22px;                         /* the ring's corner radius, set by the game */
   --edge: calc(var(--ring) + 6px);     /* the HUD sits snug inside the ring */
+  --rcIn: max(16px, calc(var(--rc) - 6px));   /* a corner box's outer radius: nested 6px inside the ring's corner */
+  --rcPad: calc(var(--rcIn) * 0.3);           /* how far a round thing moves in to clear the corner's curve */
   --st: env(safe-area-inset-top, 0px);
   --sb: env(safe-area-inset-bottom, 0px);
   --sl: env(safe-area-inset-left, 0px);
@@ -55,9 +58,15 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 #hud.ouch::after { content: ""; position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 30px rgba(255, 59, 92, 0.5); animation: fade 0.45s ease-out forwards; }
 @keyframes fade { to { opacity: 0; } }
 
+/* hide everything but the top-left: a small button in the bottom-right corner, or H */
+#hudHide { position: absolute; right: calc(var(--sr) + var(--edge) + var(--rcPad)); bottom: calc(var(--sb) + var(--edge) + var(--rcPad)); pointer-events: auto; z-index: 3; }
+#hudHide svg { transition: transform 0.2s; }
+#hud.hidden-ui #hudHide svg { transform: rotate(180deg); }
+#hud.hidden-ui .hud-tr, #hud.hidden-ui .hud-bottom, #hud.hidden-ui #touchUI { display: none; }
+
 /* top-left */
 .hud-tl { position: absolute; top: calc(var(--st) + var(--edge)); left: calc(var(--sl) + var(--edge)); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; max-width: min(250px, 46vw); }
-.vitals { border-radius: 16px; padding: 6px 9px 7px 7px; display: flex; flex-direction: column; gap: 4px; width: clamp(150px, 19vw, 220px); }
+.vitals { border-radius: 16px; border-top-left-radius: var(--rcIn); padding: 6px 9px 7px 7px; display: flex; flex-direction: column; gap: 4px; width: clamp(150px, 19vw, 220px); }
 .vrow { display: flex; align-items: center; gap: 6px; }
 .vrow img { width: 20px; height: 20px; flex: none; }
 .vrow .bar { flex: 1; height: 10px; background: var(--ink); border-radius: 999px; overflow: hidden; min-width: 0; }
@@ -107,7 +116,7 @@ kbd { font-family: var(--body); font-weight: 800; font-size: 0.72em; background:
 #quests li.done .qp { color: var(--leaf); }
 
 /* top-right */
-.hud-tr { position: absolute; top: calc(var(--st) + var(--edge)); right: calc(var(--sr) + var(--edge)); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.hud-tr { position: absolute; top: calc(var(--st) + var(--edge) + var(--rcPad)); right: calc(var(--sr) + var(--edge) + var(--rcPad)); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 .status { display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border-radius: 999px; }
 .status canvas { width: 38px; height: 38px; }
 .status-text { display: flex; flex-direction: column; line-height: 1.05; }
@@ -168,7 +177,7 @@ body.touch .round-btn.desk { display: none; }
 /* bottom: one row of inventory that scrolls sideways instead of wrapping */
 .hud-bottom {
   position: absolute; left: 0; right: 0; bottom: calc(var(--sb) + var(--edge));
-  padding-inline: calc(var(--sl) + var(--edge)) calc(var(--sr) + var(--edge));
+  padding-inline: calc(var(--sl) + var(--edge) + var(--rcPad)) calc(var(--sr) + var(--edge) + var(--rcPad));
   display: flex; justify-content: center; align-items: flex-end; gap: 8px; pointer-events: none;
 }
 #hotbar { display: flex; gap: 6px; overflow-x: auto; overflow-y: visible; padding: 9px 4px 4px; max-width: calc(100vw - 140px); scrollbar-width: none; overscroll-behavior: contain; }

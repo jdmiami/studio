@@ -3410,7 +3410,7 @@
   function layoutHUD() {
     const tl = $('hudTL'), tr = $('hudTR');
     if (!tl || !tr || $('hud').hidden) return;
-    const a = tl.getBoundingClientRect(), b = tr.getBoundingClientRect();
+    const a = tl.getBoundingClientRect(), b = tr.offsetParent ? tr.getBoundingClientRect() : { left: W, right: W, bottom: 0 };   // hidden: nothing on the right
     const charTop = curve.yA - 130 * Z, charBottom = curve.yA + 12;
     const gapL = a.right + 10, gapR = b.left - 10;
     const hot = $('hotbarWrap').getBoundingClientRect();
@@ -3420,7 +3420,11 @@
     const edge = radar.ring ? radar.ring.inset + 6 : 10;
     if (gapR - gapL >= 230) { top = edge; left = gapL; width = gapR - gapL; mode = 'gap'; }
     else if (below + 50 + bh < charTop) { top = below; left = 12; width = W - 24; mode = 'below'; }
-    else { top = Math.max(charBottom + 6, (hot.top || H) - 56); left = 12; width = W - 24; mode = 'bottom'; }
+    else {
+      // over the hotbar, and over the touch buttons when those are up
+      const tp = document.querySelector('.tpad'), tq = tp ? tp.getBoundingClientRect() : null, tpr = tq && tq.height > 0 ? tq : null;   // (fixed, so offsetParent says nothing)
+      top = Math.max(charBottom + 6, Math.min((hot.top || H) - 56, tpr ? tpr.top - 60 : H)); left = 12; width = W - 24; mode = 'bottom';
+    }
     // the cave's rune pill: between the top corners if there's room, else above the hotbar on the left
     if (gapR - gapL >= 200) { caveHud.x = (gapL + gapR) / 2; caveHud.y = edge + 8; }
     else { caveHud.x = Math.max(70, (hot.left || 12) + 70); caveHud.y = (hot.top || H) - 44; }
@@ -3725,6 +3729,7 @@
         if (e.code === 'KeyC' || e.code === 'Tab') toggleCraft();
         else if (e.code === 'KeyF') eatBest();
         else if (e.code === 'KeyM') toggleMap();
+        else if (e.code === 'KeyH') setHudHidden(!$('hud').classList.contains('hidden-ui'));
         else if (e.code === 'KeyL') toggleQuests();
         else if (e.code === 'KeyG') toggleFly();
         else if (e.code === 'KeyN') camGoal = 0;
@@ -3807,6 +3812,7 @@
     $('worldMap').addEventListener('click', mapClick);
     $('menuBtn').addEventListener('click', () => pause(true));
     $('questsToggle').addEventListener('click', toggleQuests);
+    $('hudHide').addEventListener('click', () => setHudHidden(!$('hud').classList.contains('hidden-ui')));
     $('quests').addEventListener('click', (e) => { const li = e.target.closest('li[data-pick]'); if (li && G) pickQuest(li.dataset.pick); });
     $('compassBtn').addEventListener('click', () => { camGoal = 0; });
     const holdSpin = (el, dir) => {
@@ -3906,6 +3912,14 @@
     window.addEventListener('orientationchange', () => setTimeout(() => { resize(); rescale(); prebuild(); }, 250));
   }
 
+  // everything but the top-left (vitals and quests) can be tucked away
+  function setHudHidden(on) {
+    $('hud').classList.toggle('hidden-ui', on);
+    $('hudHide').setAttribute('aria-pressed', String(on));
+    $('hudHide').title = on ? 'Show the buttons and menus (H)' : 'Hide the buttons and menus (H)';
+    SW.store.set('hudHidden', on);
+    requestAnimationFrame(layoutHUD);
+  }
   function toggleQuests() { const box = $('questBox'); box.classList.toggle('open'); SW.store.set('questsOpen', box.classList.contains('open')); requestAnimationFrame(layoutHUD); }
   function setMute(m) {
     SW.audio.setMuted(m);
@@ -3984,6 +3998,7 @@
     radar.ring = { x0, y0, x1, y1, rc, per, inset, step, plen: inset * 0.5, pwid: Math.min(step * 0.3, 8.5) };
     // the HUD sits snug inside the ring
     document.documentElement.style.setProperty('--ring', inset + 'px');
+    document.documentElement.style.setProperty('--rc', rc + 'px');
     requestAnimationFrame(layoutHUD);
     // the quiet frame, drawn once
     const b = radar.base || (radar.base = document.createElement('canvas'));
@@ -4260,6 +4275,7 @@
     document.querySelectorAll('img[data-icon]').forEach((img) => { img.src = SW.spriteURL(img.dataset.icon); });
     bindInput();
     buildSkinPicker();
+    if (SW.store.get('hudHidden', false)) setHudHidden(true);
     setMute(SW.audio.muted);
     if (SW.store.get('questsOpen', window.innerWidth > 700 && window.innerHeight > 520)) $('questBox').classList.add('open');
     window.addEventListener('resize', onResize);
@@ -4284,7 +4300,7 @@
 
   SW.game = {
     get G() { return G; }, newGame, startGame, act, useItem, craft, restore, serialize, toast, saveName, validSave,
-    radar: () => ({ pick: G && G.radarPick, target: radar.found, ring: radar.ring, lit: radar.lastLit, star: radar.star, skin: starSkin }), pickQuest, setStarSkin,
+    radar: () => ({ pick: G && G.radarPick, target: radar.found, ring: radar.ring, lit: radar.lastLit, star: radar.star, skin: starSkin }), pickQuest, setStarSkin, setHudHidden,
     pause, goTitle, showScreen, closeSavePanel, dayOf, gainXP, pointerOrder, setOrder, startFishing, reel, toggleFly,
     setPhase(ph) { G.time = (dayOf(G.time) - 1) * DAY_LEN + ph * DAY_LEN; },
     setAngle(a) { setAngle(a); }, get angle() { return camA; },
