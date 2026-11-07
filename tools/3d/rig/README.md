@@ -17,14 +17,19 @@ any single angle, and UniRig found all of them, fingers included.
 | 4 | `rig_space.py out/mv/model.glb out/rig` | UniRig on ZeroGPU (Faisal786U/unirig-api): a 46-bone skeleton with fingers, and skin weights | 105 s |
 | 5 | `fixweights.py out/rig/rigged.glb ene_rigged.glb bone_5 bone_4` | hair follows the head and the face is rigid | 2 s |
 | 5b | `fixlegs.py ene_rigged.glb ene_rigged.glb` | re-skins the legs: UniRig left most of each leg on the static hip bones, so bent knees fanned the feet out | 1 s |
+| 5c | `fixarms.py ene_rigged.glb ene_rigged.glb` | re-skins the arms: a few hundred arm vertices sat on bones that never move (the head, after step 5, since in a T-pose the arms are at neck height), so the arms hung in an A with stretched lines | 3 s |
 | 6 | `clips.py clips.json` | idle, walk, run, jump, joy, point, hurt, cry as poses (arm directions plus joint rotations) | |
 | 7 | `sprites.py ene_rigged.glb clips.json out/sprites` | every clip in the four game views as transparent strips, 256×320 a frame, plus `meta.json` | 180 s |
 | 8 | `bake.py ene_rigged.glb clips.json ene_rigged_anim.glb` | the same clips as glTF animations, read back off the pose bench so arm aims bake exactly | 30 s |
 | 9 | `animcheck.py ene_rigged_anim.glb animcheck.png` | plays the baked animations with three.js and renders a proof sheet | 40 s |
 
+`run_arms.sh` runs steps 5c to 9 as one detached Hugging Face Job from copies of these scripts in the dataset,
+so a long render does not depend on a live session.
+
 `pose.html` is the bench behind steps 6 to 8: `window.pose(spec)` takes `bone: [rx, ry, rz]` degrees or
 `bone: {aim: [x, y, z]}` (point the bone at a world direction), `window.shot(deg)` renders, `window.poseQuats()`
-returns the posed quaternions. `render_pose.py model.glb poses.json sheet.png` renders any list of poses to a
+returns the posed quaternions. Its probes (`skinInfo`, `vertInfo`, `skinned`, `cpuShot`) compare the GPU skinning
+with a CPU pass; that is how the arm problem was traced to frozen vertices rather than to the aim maths. `render_pose.py model.glb poses.json sheet.png` renders any list of poses to a
 labelled sheet; it is how the axes below were found.
 
 ## The skeleton UniRig produced from the T-pose
@@ -42,14 +47,14 @@ with `aim` directions instead, which read the same from either side.
 
 - Arms swing freely from the shoulder and bend at the elbow; both hands are clear of the body in every clip.
 - Fingers curl (fists in `run`, a straight index in `point`, open hands in `joy`).
-- Knees bend without tearing after `fixlegs.py`; the proof is `animcheck3.png` in the dataset.
+- Knees bend without tearing after `fixlegs.py`, and the arms hang beside the body and bend at the elbow after
+  `fixarms.py`; the proof is `animcheck4.png` in the dataset.
 - Head turns and nods up to about 20° are clean; beyond that the neck stretches.
-- Arm directions land within about 20° of the asked direction; the shoulder bones carry some of the rotation.
 
 ## Outputs
 
 - `art/3d/ene/`: the sprite strips (`ene_<clip>_<view>.png`) and `meta.json` (frame size, fps, the feet line).
   The game does not load them yet.
 - Dataset `Jdmiami/stickerwild-3d`, `out/ene_tpose/`: `ene.glb` (the T-pose model), `ene_rigged_unirig.glb`
-  (raw UniRig), `ene_rigged3.glb` (weights fixed), `ene_rigged_anim3.glb` (with the eight clips as animations),
-  `sprites3/`, the T-pose references under `in/apose/`, and the proof sheets.
+  (raw UniRig), `ene_rigged4.glb` (weights fixed), `ene_rigged_anim4.glb` (with the eight clips as animations),
+  `sprites4/`, the T-pose references under `in/apose/`, and the proof sheets.
