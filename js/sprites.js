@@ -1,0 +1,1143 @@
+// Stickerwild — sticker sprite factory.
+// Every sprite is drawn once as flat vector art, then given a die-cut white
+// border and a soft drop shadow, so the whole world reads like stickers.
+'use strict';
+(function () {
+  const TAU = Math.PI * 2;
+  const INK = '#17121c';   // near-black pen ink, like the hand-drawn sheets
+  const LW = 2.5;
+
+  function mkCanvas(w, h) {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.ceil(w));
+    c.height = Math.max(1, Math.ceil(h));
+    return c;
+  }
+
+  // ---------- drawing helpers (art units, before sticker scaling) ----------
+  function circ(c, x, y, r) { c.moveTo(x + r, y); c.arc(x, y, r, 0, TAU); }
+  function ell(c, x, y, rx, ry, rot = 0) { c.moveTo(x + rx * Math.cos(rot), y + rx * Math.sin(rot)); c.ellipse(x, y, rx, ry, rot, 0, TAU); }
+  function polyPath(c, pts) { c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); }
+  function rrect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  // Ink outline drawn first at double width, then filled: overlapping
+  // pieces merge into one outlined silhouette.
+  function shape(c, build, fill, lw = LW) {
+    c.beginPath(); build(c);
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    c.lineWidth = lw * 2; c.strokeStyle = INK; c.stroke();
+    // a second pass, nudged down and right, makes the line a little heavier on
+    // one side, like a pen stroke rather than a vector outline
+    c.save(); c.translate(lw * 0.22, lw * 0.3); c.lineWidth = lw * 1.5; c.stroke(); c.restore();
+    c.fillStyle = fill; c.fill();
+  }
+  function flat(c, build, fill) { c.beginPath(); build(c); c.fillStyle = fill; c.fill(); }
+  function line(c, pts, color = INK, lw = LW) {
+    c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+    c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = lw; c.strokeStyle = color; c.stroke();
+  }
+  const blobs = (circles) => (c) => circles.forEach(([x, y, r]) => circ(c, x, y, r));
+  const P = (pts) => (c) => polyPath(c, pts);
+
+  // ---------- sticker builder ----------
+  function makeSticker(w, h, draw, opts = {}) {
+    const S = opts.S || SW.SPR;
+    const border = opts.border ?? 3.6;
+    const pad = border + 5;
+    const cw = (w + pad * 2) * S, ch = (h + pad * 2) * S;
+
+    const base = mkCanvas(cw, ch);
+    const b = base.getContext('2d');
+    b.scale(S, S); b.translate(pad, pad);
+    if (opts.flip) { b.translate(w, 0); b.scale(-1, 1); }
+    draw(b);
+
+    // die-cut silhouette: the art stamped in a ring, flooded white
+    const out = mkCanvas(cw, ch);
+    const o = out.getContext('2d');
+    const steps = 20;
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * TAU;
+      o.drawImage(base, Math.cos(a) * border * S, Math.sin(a) * border * S);
+    }
+    o.drawImage(base, 0, 0);
+    o.globalCompositeOperation = 'source-in';
+    o.fillStyle = '#ffffff'; o.fillRect(0, 0, cw, ch);
+
+    const shadow = mkCanvas(cw, ch);
+    const sh = shadow.getContext('2d');
+    sh.drawImage(out, 0, 0);
+    sh.globalCompositeOperation = 'source-in';
+    sh.fillStyle = 'rgba(52, 38, 84, 0.34)'; sh.fillRect(0, 0, cw, ch);
+
+    const fin = mkCanvas(cw, ch);
+    const f = fin.getContext('2d');
+    f.drawImage(shadow, 1.2 * S, 2.4 * S);
+    f.drawImage(out, 0, 0);
+    // hairline so white borders still read on pale ground
+    f.globalAlpha = 0.18; f.drawImage(shadow, 0, 0.4 * S); f.globalAlpha = 1;
+    f.drawImage(out, 0, 0);
+    f.drawImage(base, 0, 0);
+    // a faint gloss band across the top, like a vinyl sticker
+    f.globalCompositeOperation = 'source-atop';
+    const g = f.createLinearGradient(0, 0, cw * 0.4, ch);
+    g.addColorStop(0, 'rgba(255,255,255,0.22)');
+    g.addColorStop(0.35, 'rgba(255,255,255,0.0)');
+    f.fillStyle = g; f.fillRect(0, 0, cw, ch);
+
+    // back side (for peel flips and hurt flashes)
+    const back = mkCanvas(cw, ch);
+    const bk = back.getContext('2d');
+    bk.drawImage(shadow, 1.2 * S, 2.4 * S);
+    bk.drawImage(out, 0, 0);
+    bk.globalCompositeOperation = 'source-atop';
+    bk.fillStyle = 'rgba(230, 226, 240, 1)'; bk.fillRect(0, 0, cw, ch);
+    bk.globalCompositeOperation = 'source-over';
+
+    const ay = opts.anchorY ?? h;
+    // raw: the art alone, with no outline, for stickers that share one outline (Ene and her gear)
+    return { img: fin, back, flash: out, raw: base, w: cw / S, h: ch / S, ax: pad + w / 2, ay: pad + ay, S };
+  }
+
+  // ---------- cartoon kit ----------
+  // A shared face for creatures and props, drawn like the hand-drawn sheets:
+  // big white eyes with small pupils and a glint, thin brows, a mouth that
+  // says how they feel. (x, y) is between the eyes; s scales it.
+  function face(c, x, y, s, mood = 'happy', o = {}) {
+    const gap = (o.gap || 5) * s, ew = (o.ew || 3) * s, eh = (o.eh || 3.8) * s;
+    const look = (o.look || 0.5) * s;
+    for (const side of o.one ? [1] : [-1, 1]) {
+      const ex = x + side * gap;
+      shape(c, (c) => ell(c, ex, y, ew, eh), '#ffffff', 1.1 * s);
+      flat(c, blobs([[ex + look, y + 0.6 * s, (mood === 'surprised' ? 1.1 : 1.5) * s]]), INK);
+      flat(c, blobs([[ex + look + 0.6 * s, y - 0.2 * s, 0.55 * s]]), '#ffffff');
+      // brows
+      const by = y - eh - 1.4 * s;
+      if (mood === 'angry') line(c, [[ex - side * 3.2 * s, by + 1.6 * s], [ex + side * 2.4 * s, by - 1.2 * s]], INK, 1.6 * s);
+      else if (mood === 'worried' || mood === 'sad') line(c, [[ex - side * 3 * s, by - 1.2 * s], [ex + side * 2.4 * s, by + 0.8 * s]], INK, 1.3 * s);
+      else line(c, [[ex - 2.6 * s, by + 0.4 * s], [ex, by - 0.8 * s], [ex + 2.6 * s, by + 0.4 * s]], INK, 1.2 * s);
+    }
+    const my = y + eh + 2.6 * s;
+    if (mood === 'angry') {
+      shape(c, (c) => rrect(c, x - 3.6 * s, my - 1.4 * s, 7.2 * s, 3.2 * s, 1.2 * s), '#ffffff', 1.1 * s);
+      line(c, [[x - 3.4 * s, my + 0.2 * s], [x + 3.4 * s, my + 0.2 * s]], INK, 0.7 * s);
+    } else if (mood === 'surprised' || mood === 'worried') {
+      shape(c, (c) => ell(c, x, my + 0.6 * s, 2.2 * s, (mood === 'surprised' ? 2.8 : 2) * s), '#3b1a2a', 1.1 * s);
+      flat(c, (c) => ell(c, x, my + 1.6 * s, 1.2 * s, 0.9 * s), '#ff5a6a');
+    } else if (mood === 'sad') line(c, [[x - 2.6 * s, my + 1 * s], [x, my - 0.4 * s], [x + 2.6 * s, my + 1 * s]], INK, 1.2 * s);
+    else if (mood === 'grin') {
+      shape(c, (c) => { c.moveTo(x - 4 * s, my - 1 * s); c.quadraticCurveTo(x, my + 5 * s, x + 4 * s, my - 1 * s); c.closePath(); }, '#3b1a2a', 1.1 * s);
+      flat(c, (c) => ell(c, x, my + 1.8 * s, 1.8 * s, 1 * s), '#ff5a6a');
+    } else line(c, [[x - 2.4 * s, my - 0.4 * s], [x, my + 1.4 * s], [x + 2.4 * s, my - 0.4 * s]], INK, 1.2 * s);
+  }
+  // little curls and ticks, like pen strokes on foliage
+  const curl = (c, x, y, r, col, w = 1.5) => { c.beginPath(); c.arc(x, y, r, Math.PI * 0.15, Math.PI * 1.05); c.lineWidth = w; c.lineCap = 'round'; c.strokeStyle = col; c.stroke(); };
+  // a puffy cartoon cloud of leaves: a ring of bumps around a body
+  function cloudPath(cx, cy, rx, ry, bumps, seed) {
+    return (c) => {
+      const r = SW.rng(seed);
+      for (let i = 0; i < bumps; i++) {
+        const a = (i / bumps) * TAU - Math.PI / 2, br = Math.min(rx, ry) * (0.42 + r() * 0.12);
+        circ(c, cx + Math.cos(a) * (rx - br * 0.75), cy + Math.sin(a) * (ry - br * 0.75), br);
+      }
+      ell(c, cx, cy, rx * 0.8, ry * 0.8);
+    };
+  }
+
+  // ---------- the art ----------
+  const ART = {};
+
+  // the leafy tree from the drawings: a puffy cloud of leaves with pen curls,
+  // on a forked trunk with bark lines and flared roots
+  function treeRound(canopy, light, dark, seed = 3) {
+    return (c) => {
+      shape(c, (c) => {
+        c.moveTo(27, 91); c.quadraticCurveTo(31, 84, 30.5, 74); c.lineTo(30, 52); c.lineTo(40, 52); c.lineTo(39.5, 74); c.quadraticCurveTo(39, 84, 44, 91); c.closePath();
+        c.moveTo(34, 64); c.quadraticCurveTo(26, 58, 22, 50); c.lineTo(26, 48); c.quadraticCurveTo(29, 55, 35, 58); c.closePath();
+      }, '#9a6a3f');
+      line(c, [[33, 62], [33.5, 72]], '#6e4626', 1.4); line(c, [[37, 70], [36.5, 80]], '#6e4626', 1.4);
+      flat(c, (c) => ell(c, 36.5, 66, 1.4, 2.2), '#6e4626');
+      shape(c, cloudPath(35, 34, 31, 26, 9, seed), canopy);
+      flat(c, cloudPath(29, 26, 15, 11, 6, seed + 1), light);
+      [[46, 44, 4], [22, 46, 3.6], [38, 30, 3.4], [52, 30, 3], [16, 32, 3]].forEach(([x, y, r]) => curl(c, x, y, r, dark, 1.6));
+    };
+  }
+  ART.treeRound = [70, 92, treeRound('#5bb04f', '#86d062', '#357e36')];
+  ART.treeBlossom = [70, 92, (c) => {
+    treeRound('#f7a6c4', '#ffd3e3', '#cf6f97', 7)(c);
+    [[20, 30], [50, 28], [30, 50], [56, 44], [12, 42], [40, 16], [44, 50]].forEach(([x, y]) => { flat(c, blobs([[x, y, 2.2]]), '#ffffff'); flat(c, blobs([[x, y, 0.9]]), '#ffd23f'); });
+  }];
+  // the pine: three scalloped tiers with pen ticks
+  function pineArt(c) {
+    shape(c, (c) => { c.moveTo(25, 101); c.quadraticCurveTo(27, 92, 26.5, 80); c.lineTo(31.5, 80); c.quadraticCurveTo(31, 92, 33, 101); c.closePath(); }, '#8a5a33');
+    line(c, [[29, 84], [29, 94]], '#5e3a1e', 1.2);
+    const tier = (top, bot, half) => (c) => {
+      c.moveTo(29, top);
+      c.quadraticCurveTo(29 + half * 0.5, top + (bot - top) * 0.5, 29 + half, bot);
+      for (let i = 0; i < 4; i++) { const x0 = 29 + half - (i * half) / 2, x1 = x0 - half / 2; c.quadraticCurveTo((x0 + x1) / 2, bot + 4, x1, bot); }
+      c.quadraticCurveTo(29 - half * 0.5, top + (bot - top) * 0.5, 29, top);
+    };
+    shape(c, (c) => { tier(40, 82, 27)(c); tier(20, 60, 23)(c); tier(3, 38, 18)(c); }, '#2f8f5b');
+    flat(c, (c) => { c.moveTo(29, 8); c.quadraticCurveTo(22, 22, 15, 35); c.lineTo(22, 34); c.closePath(); c.moveTo(29, 25); c.quadraticCurveTo(20, 42, 10, 57); c.lineTo(18, 56); c.closePath(); c.moveTo(29, 45); c.quadraticCurveTo(18, 62, 6, 79); c.lineTo(15, 78); c.closePath(); }, '#4fb377');
+    [[38, 30], [42, 52], [46, 74], [34, 64], [24, 46]].forEach(([x, y]) => line(c, [[x - 2.5, y - 2], [x, y], [x + 2.5, y - 2]], '#1f6b42', 1.4));
+  }
+  ART.treePine = [58, 102, pineArt];
+  ART.treePineSnow = [58, 102, (c) => {
+    pineArt(c);
+    shape(c, (c) => { c.moveTo(29, 3); c.quadraticCurveTo(35, 10, 39, 17); c.quadraticCurveTo(35, 19, 32, 16); c.quadraticCurveTo(29, 20, 26, 16); c.quadraticCurveTo(22, 19, 19, 17); c.quadraticCurveTo(23, 10, 29, 3); c.closePath(); }, '#ffffff', 1.6);
+    shape(c, (c) => { c.moveTo(14, 38); c.quadraticCurveTo(20, 34, 24, 37); c.quadraticCurveTo(29, 33, 34, 37); c.quadraticCurveTo(39, 34, 45, 38); c.quadraticCurveTo(29, 42, 14, 38); c.closePath(); }, '#ffffff', 1.4);
+  }];
+
+  // boulders: soft and round, a light top, a dark belly, a crack and some speckles
+  function rockArt(w, h, fill, light, dark, cracks = true) {
+    return (c) => {
+      // lumpy: a high left shoulder, a little dip, a lower right shoulder
+      shape(c, (c) => {
+        c.moveTo(4, h - 2); c.bezierCurveTo(0, h * 0.55, w * 0.06, h * 0.12, w * 0.36, h * 0.06);
+        c.quadraticCurveTo(w * 0.5, h * 0.12, w * 0.6, h * 0.1); c.bezierCurveTo(w * 0.9, h * 0.06, w, h * 0.45, w - 3, h - 2);
+        c.quadraticCurveTo(w * 0.5, h + 1, 4, h - 2); c.closePath();
+      }, fill);
+      flat(c, (c) => { c.moveTo(w * 0.18, h * 0.42); c.bezierCurveTo(w * 0.2, h * 0.14, w * 0.5, h * 0.08, w * 0.64, h * 0.18); c.quadraticCurveTo(w * 0.4, h * 0.22, w * 0.18, h * 0.42); c.closePath(); }, light);
+      flat(c, (c) => { c.moveTo(w * 0.14, h - 4); c.quadraticCurveTo(w * 0.5, h * 0.78, w * 0.88, h - 5); c.quadraticCurveTo(w * 0.5, h - 1, w * 0.14, h - 4); c.closePath(); }, dark);
+      if (cracks) line(c, [[w * 0.6, h * 0.36], [w * 0.66, h * 0.5], [w * 0.62, h * 0.62]], dark, 1.5);
+      [[0.32, 0.6], [0.78, 0.46], [0.46, 0.72]].forEach(([fx, fy]) => flat(c, blobs([[w * fx, h * fy, 0.9]]), dark));
+    };
+  }
+  ART.rock = [50, 38, rockArt(50, 38, '#a7a4b8', '#d2d0e0', '#7f7c94')];
+  ART.rock2 = [44, 30, rockArt(44, 30, '#b5b0a3', '#dcd8cc', '#8e897d')];
+  // the little worried rock from the meadow drawing
+  ART.rockBuddy = [44, 30, (c) => { rockArt(44, 30, '#a9a7b4', '#d4d2de', '#82808e', false)(c); face(c, 22, 15, 0.95, 'worried', { gap: 4.6 }); }];
+
+  // berry bushes: a scalloped cloud with pen curls
+  function bushArt(fill, light, berries) {
+    return (c) => {
+      shape(c, cloudPath(26, 23, 24, 15, 8, 11), fill);
+      flat(c, cloudPath(20, 17, 10, 6, 5, 12), light);
+      [[38, 26, 3], [14, 28, 2.6]].forEach(([x, y, r]) => curl(c, x, y, r, '#2f7a33', 1.4));
+      if (berries) {
+        [[14, 24], [26, 20], [36, 27], [22, 30], [31, 13], [41, 19]].forEach(([x, y]) => {
+          shape(c, blobs([[x, y, 3.6]]), '#e8354a', 1.4);
+          flat(c, blobs([[x - 1.2, y - 1.3, 1.1]]), '#ffd9de');
+        });
+      }
+    };
+  }
+  ART.bush = [52, 40, bushArt('#4fa64a', '#7ac85e', true)];
+  ART.bushEmpty = [52, 40, bushArt('#6a9f4c', '#8dbb67', false)];
+
+  ART.crystal = [42, 50, (c) => {
+    shape(c, P([[6, 18], [12, 22], [13, 46], [7, 48], [2, 44], [2, 22]]), '#a78bfa');
+    shape(c, P([[33, 14], [39, 20], [39, 46], [34, 49], [29, 46], [29, 20]]), '#5cc8e8');
+    shape(c, P([[21, 2], [29, 12], [29, 44], [21, 50], [13, 44], [13, 12]]), '#8fe8f6');
+    flat(c, P([[21, 4], [26, 12], [21, 30], [16, 12]]), '#e6fbff');
+    flat(c, P([[4, 22], [8, 24], [6, 38]]), '#cbb9ff');
+  }];
+
+  function flowerArt(petal) {
+    return (c) => {
+      line(c, [[11, 30], [11, 13]], INK, 4.6); line(c, [[11, 30], [11, 13]], '#4fa64a', 2.2);
+      shape(c, (c) => ell(c, 16, 23, 5, 2.6, -0.5), '#5bb04f', 1.6);
+      shape(c, (c) => { for (let i = 0; i < 5; i++) { const a = (i / 5) * TAU - Math.PI / 2; circ(c, 11 + Math.cos(a) * 5.2, 10 + Math.sin(a) * 5.2, 4.4); } }, petal, 1.8);
+      shape(c, blobs([[11, 10, 3.3]]), '#ffd23f', 1.4);
+    };
+  }
+  ART.flowerPink = [22, 31, flowerArt('#ff7aa8')];
+  ART.flowerGold = [22, 31, flowerArt('#ffb13b')];
+  ART.flowerLilac = [22, 31, flowerArt('#b69cff')];
+  // the sunflower from the drawings: tall stem, two leaves, a big seeded face
+  ART.sunflower = [34, 64, (c) => {
+    line(c, [[17, 62], [17, 22]], INK, 5); line(c, [[17, 62], [17, 22]], '#4fa64a', 2.6);
+    shape(c, (c) => { ell(c, 24, 44, 7.5, 3, -0.5); ell(c, 10, 52, 7, 2.8, 0.55); }, '#5bb04f', 1.6);
+    shape(c, (c) => { for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; ell(c, 17 + Math.cos(a) * 9.5, 15 + Math.sin(a) * 9.5, 5.2, 2.6, a); } }, '#ffd83a', 1.5);
+    shape(c, blobs([[17, 15, 6.4]]), '#8a5a2e', 1.4);
+    for (let i = 0; i < 9; i++) flat(c, blobs([[14 + (i % 3) * 3, 12 + Math.floor(i / 3) * 3, 0.8]]), '#4a2e14');
+  }];
+  ART.daisy = [20, 26, (c) => {
+    line(c, [[10, 25], [10, 12]], INK, 4); line(c, [[10, 25], [10, 12]], '#4fa64a', 2);
+    shape(c, (c) => { for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; ell(c, 10 + Math.cos(a) * 4.8, 9 + Math.sin(a) * 4.8, 3.2, 1.6, a); } }, '#ffffff', 1.3);
+    shape(c, blobs([[10, 9, 2.4]]), '#ffd23f', 1.2);
+  }];
+  // the worried snail from the drawings
+  function snailArt(f) {
+    return (c) => {
+      const st = f ? 1.5 : 0;
+      shape(c, (c) => { c.moveTo(4, 30); c.quadraticCurveTo(20 + st, 34, 42, 30); c.quadraticCurveTo(46, 26, 40, 24); c.lineTo(8, 24); c.quadraticCurveTo(2, 26, 4, 30); c.closePath(); }, '#e8c08a', 1.8);
+      line(c, [[38, 24], [39, 10 - st]], INK, 3.2); line(c, [[38, 24], [39, 10 - st]], '#e8c08a', 1.6);
+      line(c, [[42, 24], [45, 11 - st]], INK, 3.2); line(c, [[42, 24], [45, 11 - st]], '#e8c08a', 1.6);
+      shape(c, (c) => { ell(c, 39, 9 - st, 3.6, 4.2); ell(c, 45.5, 10 - st, 3.6, 4.2); }, '#ffffff', 1.3);
+      flat(c, blobs([[39.6, 9.6 - st, 1.5], [46, 10.6 - st, 1.5]]), INK);
+      shape(c, (c) => ell(c, 43, 21, 2.4, 1.6), '#3b1a2a', 1);
+      shape(c, blobs([[20, 17, 13]]), '#b97a3e', 2);
+      c.beginPath(); for (let t = 0; t < 5.5 * Math.PI; t += 0.2) { const r = 1 + t * 0.62; const x = 20 + Math.cos(t) * r, y = 17 + Math.sin(t) * r; t === 0 ? c.moveTo(x, y) : c.lineTo(x, y); }
+      c.lineWidth = 1.8; c.strokeStyle = '#7a4a22'; c.stroke();
+    };
+  }
+  ART.snail0 = [48, 34, snailArt(0)];
+  ART.snail1 = [48, 34, snailArt(1)];
+
+  ART.tuft = [26, 16, (c) => {
+    shape(c, (c) => {
+      polyPath(c, [[4, 15], [3, 5], [9, 15]]);
+      polyPath(c, [[8, 15], [11, 1], [15, 15]]);
+      polyPath(c, [[14, 15], [19, 4], [20, 15]]);
+      polyPath(c, [[18, 15], [24, 8], [23, 15]]);
+    }, '#6bbf4a', 1.6);
+  }];
+
+  ART.stump = [32, 22, (c) => {
+    shape(c, (c) => { rrect(c, 4, 7, 24, 13, 4); }, '#9a6a3f');
+    shape(c, (c) => ell(c, 16, 8, 12, 5), '#e2b47a');
+    c.beginPath(); ell(c, 16, 8, 6.5, 2.6); c.lineWidth = 1.3; c.strokeStyle = '#b0804a'; c.stroke();
+  }];
+
+  ART.driftwood = [48, 18, (c) => {
+    shape(c, (c) => { rrect(c, 3, 5, 40, 10, 5); polyPath(c, [[30, 6], [38, 1], [40, 4], [34, 8]]); }, '#c4a684');
+    shape(c, (c) => ell(c, 40, 10, 3.4, 5), '#e6cfae', 1.5);
+    line(c, [[10, 9], [22, 10]], '#9b7d5c', 1.4);
+  }];
+
+  ART.campfire = [48, 30, (c) => {
+    shape(c, (c) => { rrect(c, 6, 12, 36, 8, 4); }, '#8a5a33');
+    shape(c, (c) => { polyPath(c, [[10, 22], [38, 8], [42, 13], [14, 27]]); }, '#a8743f');
+    [[6, 24], [14, 27], [24, 28], [34, 27], [42, 24], [3, 18], [45, 18]].forEach(([x, y]) => shape(c, blobs([[x, y, 4]]), '#a3a1b5', 1.6));
+  }];
+  ART.campfireOut = [48, 30, (c) => {
+    shape(c, (c) => { rrect(c, 6, 12, 36, 8, 4); }, '#4b3a33');
+    shape(c, (c) => { polyPath(c, [[10, 22], [38, 8], [42, 13], [14, 27]]); }, '#5b4840');
+    [[6, 24], [14, 27], [24, 28], [34, 27], [42, 24], [3, 18], [45, 18]].forEach(([x, y]) => shape(c, blobs([[x, y, 4]]), '#8d8ba1', 1.6));
+  }];
+  function flameArt(k) {
+    return (c) => {
+      const s = [0, 1.5, -1.5][k];
+      shape(c, (c) => {
+        c.moveTo(15, 40);
+        c.bezierCurveTo(2, 38, 2, 22, 10 + s, 6);
+        c.bezierCurveTo(12, 16, 16, 14, 17 - s, 2);
+        c.bezierCurveTo(28, 14, 30, 36, 15, 40);
+      }, '#ff7a2a', 2);
+      flat(c, (c) => {
+        c.moveTo(15, 37); c.bezierCurveTo(8, 36, 8, 26, 13 + s, 18);
+        c.bezierCurveTo(15, 24, 19, 22, 19 - s, 15); c.bezierCurveTo(24, 26, 23, 36, 15, 37);
+      }, '#ffd23f');
+    };
+  }
+  ART.flame0 = [30, 42, flameArt(0)];
+  ART.flame1 = [30, 42, flameArt(1)];
+  ART.flame2 = [30, 42, flameArt(2)];
+
+  ART.wall = [46, 52, (c) => {
+    shape(c, (c) => {
+      [[4, 14], [17, 6], [30, 12]].forEach(([x, top]) => polyPath(c, [[x, 50], [x, top + 8], [x + 6, top], [x + 12, top + 8], [x + 12, 50]]));
+    }, '#b07a46');
+    flat(c, (c) => { [[6, 22], [19, 14], [32, 20]].forEach(([x, y]) => rrect(c, x, y, 3, 26, 1.5)); }, '#cf9a62');
+    shape(c, (c) => rrect(c, 1, 30, 44, 5, 2.5), '#e6c98d', 1.6);
+  }];
+
+  // ---- characters ----
+  // Ene in Pink, drawn to the character sheet: a tall egg-shaped pink face
+  // (about a third of her height) with big wide-set eyes and high brows; long
+  // black wavy hair with a centre parting, falling behind her to the waist,
+  // with a rainbow streak on her right and a blue-violet one on her left; a
+  // long thin neck; a crumpled yellow tube dress to the knee, one hand pressed
+  // to her chest; thin legs and big bare feet. Canvas 40 x 108, feet at the bottom.
+  const ENE = { skin: '#f27ef0', shade: '#c53fc8', hair: '#141016', dress: '#f8d81e', dressShade: '#ddaa0c' };
+  const RAINBOW = ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a'];
+  const VIOLET = ['#2f3ed0', '#6a34c8', '#a73ec6'];
+  function limb(c, pts, w = 2.2) { line(c, pts, INK, w + 2); line(c, pts, ENE.skin, w); }
+  function eneLegs(c, frame) {
+    const st = frame === 1 ? 2.6 : 0;
+    limb(c, [[17.4, 84], [16.6 - st, 94], [16.2 - st, 101]], 2);
+    limb(c, [[22.6, 84], [23.4 + st, 94], [23.8 + st, 101]], 2);
+    // big bare feet with toes
+    shape(c, (c) => { ell(c, 13.8 - st, 103.4, 5.4, 2.6, -0.06); ell(c, 26.2 + st, 103.4, 5.4, 2.6, 0.06); }, ENE.skin, 1.4);
+    [[10.2, 102.6], [12, 101.9], [13.8, 101.7]].forEach(([x, y]) => line(c, [[x - st, y], [x - st + 0.2, y + 1.4]], ENE.shade, 0.7));
+    [[29.8, 102.6], [28, 101.9], [26.2, 101.7]].forEach(([x, y]) => line(c, [[x + st, y], [x + st - 0.2, y + 1.4]], ENE.shade, 0.7));
+  }
+  function eneDress(c, back) {
+    // the tube dress, gathered and crumpled at the top
+    shape(c, (c) => {
+      c.moveTo(13.4, 50); c.quadraticCurveTo(15, 48.4, 16.6, 49.6); c.quadraticCurveTo(18.4, 48, 20, 49.4); c.quadraticCurveTo(21.8, 48, 23.4, 49.6); c.quadraticCurveTo(25, 48.4, 26.6, 50);
+      c.lineTo(27.6, 82); c.quadraticCurveTo(20, 85.4, 12.4, 82); c.closePath();
+    }, ENE.dress, 1.9);
+    flat(c, (c) => { c.moveTo(24.6, 51); c.lineTo(26.6, 51); c.lineTo(27.6, 81.6); c.lineTo(25.4, 82.4); c.closePath(); }, ENE.dressShade);
+    if (!back) [[15.4, 52], [18.6, 53], [21.8, 52]].forEach(([x, y]) => line(c, [[x, y], [x + 2.6, y + 0.4]], ENE.dressShade, 0.9));
+    line(c, [[17, 66], [16.4, 80]], ENE.dressShade, 0.8);
+  }
+  function eneHairBack(c, back) {
+    // the long mass of hair behind her, wavy at the edges, to her waist
+    shape(c, (c) => {
+      c.moveTo(20, 1.4);
+      c.bezierCurveTo(31, 1, 37, 9, 36, 22);
+      c.bezierCurveTo(38.6, 30, 34.6, 36, 37.4, 44); c.bezierCurveTo(39.6, 52, 35, 58, 36.6, 66); c.quadraticCurveTo(33, 63.4, 31, 67); c.quadraticCurveTo(29.6, 60, 29, 54);
+      c.lineTo(11, 54);
+      c.quadraticCurveTo(10.4, 60, 9, 67); c.quadraticCurveTo(7, 63.4, 3.4, 66); c.bezierCurveTo(5, 58, 0.4, 52, 2.6, 44); c.bezierCurveTo(5.4, 36, 1.4, 30, 4, 22);
+      c.bezierCurveTo(3, 9, 9, 1, 20, 1.4); c.closePath();
+    }, ENE.hair, 1.6);
+    // streaks running down the hair: rainbow on her right (the viewer's left), blue-violet on her left
+    const L = back ? 1 : 0;
+    RAINBOW.forEach((col, i) => line(c, [[9.4 + i * 1.3, 34], [8.4 + i * 1.3, 46], [9.6 + i * 1.3, 58]], col, 1.4));
+    VIOLET.forEach((col, i) => line(c, [[27.4 + i * 1.4, 34], [29 + i * 1.4, 46], [27.8 + i * 1.4, 58]], col, 1.45));
+    if (!L) { line(c, [[8, 14], [6.4, 30]], '#ffffff', 0.9); line(c, [[32, 14], [33.6, 30]], '#ffffff', 0.9); }
+  }
+  function eneFace(c, mood) {
+    // the tall egg of a face with a magenta shade down one side
+    shape(c, (c) => { c.moveTo(20, 4.6); c.bezierCurveTo(29.6, 4.6, 32.4, 15, 31, 24); c.bezierCurveTo(29.6, 32.4, 25, 39, 21, 40); c.bezierCurveTo(16.4, 40, 10.6, 33, 9.2, 24.6); c.bezierCurveTo(7.8, 15, 10.6, 4.6, 20, 4.6); c.closePath(); }, ENE.skin, 1.8);
+    flat(c, (c) => { c.moveTo(11, 12); c.bezierCurveTo(9, 20, 10.6, 30, 16.6, 37.4); c.bezierCurveTo(12.4, 33, 11, 25, 12.2, 16); c.closePath(); }, ENE.shade);
+    // the hair frames it: a centre parting and two wavy sides over the cheeks
+    shape(c, (c) => {
+      c.moveTo(20, 2.4); c.bezierCurveTo(13, 2, 7.6, 7, 8, 16); c.quadraticCurveTo(8.6, 24, 7.6, 31); c.quadraticCurveTo(10.4, 24, 10.8, 16); c.bezierCurveTo(11.6, 9, 15.6, 6.4, 20, 5.4); c.closePath();
+      c.moveTo(20, 2.4); c.bezierCurveTo(27, 2, 32.4, 7, 32, 16); c.quadraticCurveTo(31.4, 24, 32.4, 31); c.quadraticCurveTo(29.6, 24, 29.2, 16); c.bezierCurveTo(28.4, 9, 24.4, 6.4, 20, 5.4); c.closePath();
+    }, ENE.hair, 1.3);
+    // ears: plain on one side, pierced on the other
+    shape(c, (c) => { ell(c, 8.6, 23, 1.9, 2.9); ell(c, 31.4, 22.6, 1.9, 2.9); }, ENE.skin, 1.2);
+    flat(c, blobs([[32.2, 21.2, 0.6], [32.4, 23, 0.6], [31.8, 24.8, 0.6]]), '#d8d8e4');
+    if (mood === 'cry') {
+      flat(c, (c) => { ell(c, 15.6, 19, 3.4, 1.7); ell(c, 24.4, 19, 3.4, 1.7); }, '#6d4a7a');
+      line(c, [[12.6, 18.2], [18.4, 20]], INK, 1.4); line(c, [[21.6, 20], [27.4, 18.2]], INK, 1.4);
+      line(c, [[15, 31.6], [17.6, 30.6], [20.4, 32], [23, 30.8], [25.4, 31.6]], INK, 1.3);
+      flat(c, (c) => rrect(c, 19, 31.4, 2.2, 1.6, 0.4), '#ffffff');
+      return;
+    }
+    // big, wide-set eyes with lashes, small pupils
+    const big = mood === 'ay' ? 1.16 : 1;
+    shape(c, (c) => { ell(c, 15.4, 18.6, 3.1 * big, 4.1 * big); ell(c, 24.6, 18.6, 3.1 * big, 4.1 * big); }, '#ffffff', 1.2);
+    if (mood === 'joy') { flat(c, blobs([[15.6, 19.4, 1.8], [24.8, 19.4, 1.8]]), '#7a4ab8'); flat(c, blobs([[15.6, 19.4, 0.9], [24.8, 19.4, 0.9]]), INK); flat(c, blobs([[16.2, 18.4, 0.6], [25.4, 18.4, 0.6]]), '#ffffff'); }
+    else { flat(c, blobs([[15.6, 19.2, 1.2 * big], [24.8, 19.2, 1.2 * big]]), INK); flat(c, blobs([[16, 18.6, 0.45], [25.2, 18.6, 0.45]]), '#ffffff'); }
+    [[13, 14.8, 12.4, 13.6], [15.4, 14.4, 15.4, 13], [17.8, 14.8, 18.4, 13.6], [22.2, 14.8, 21.6, 13.6], [24.6, 14.4, 24.6, 13], [27, 14.8, 27.6, 13.6]].forEach(([a, b2, x, y]) => line(c, [[a, b2 + (big - 1) * -4], [x, y + (big - 1) * -4]], INK, 0.8));
+    // high, thin brows; worried tilt for joy (like the sheet)
+    if (mood === 'joy') { line(c, [[12, 11.4], [17.6, 10.2]], INK, 1.1); line(c, [[22.4, 10.2], [28, 11.4]], INK, 1.1); }
+    else { line(c, [[12.4, 11], [15.6, 9.8], [18, 10.6]], INK, 1); line(c, [[22, 10.6], [24.4, 9.8], [27.6, 11]], INK, 1); }
+    line(c, [[20.6, 22], [21.4, 25.6], [20, 26]], INK, 0.9);
+    if (mood === 'ay') { shape(c, (c) => ell(c, 20.4, 32, 2.2, 5), '#2b0f1e', 1.3); flat(c, (c) => ell(c, 20.6, 35, 1.3, 1.4), '#ff5a6a'); }
+    else if (mood === 'joy') { shape(c, (c) => { c.moveTo(14.8, 28.6); c.quadraticCurveTo(20.6, 38, 26.4, 28.6); c.closePath(); }, '#2b0f1e', 1.3); flat(c, (c) => rrect(c, 16.4, 28.8, 8.2, 1.8, 0.6), '#ffffff'); flat(c, (c) => ell(c, 20.8, 32.6, 2.4, 1.4), '#ff5a6a'); }
+    else shape(c, (c) => ell(c, 20.4, 30.6, 1.6, 2.6), '#2b0f1e', 1.1);
+  }
+  function eneArms(c, back) {
+    if (back) { limb(c, [[13.6, 51], [11.4, 62], [12, 70]], 1.9); limb(c, [[26.4, 51], [28.6, 62], [28, 70]], 1.9); return; }
+    // her right hand pressed to her chest, her left hanging with curled fingers
+    limb(c, [[13.6, 51], [10.6, 59], [16.4, 54.6]], 1.9);
+    shape(c, (c) => ell(c, 17.4, 54, 2.2, 1.8, 0.4), ENE.skin, 1.1);
+    limb(c, [[26.4, 51], [28.8, 61], [29.6, 69]], 1.9);
+    [[28.4, 71.2], [29.8, 71.8], [31.2, 71]].forEach(([x, y]) => line(c, [[29.6, 69.4], [x, y]], INK, 1.4));
+  }
+  const slim = (c, kx, ky = 1, oy = 0) => { c.translate(20, oy); c.scale(kx, ky); c.translate(-20, -oy); };
+  function eneArt(frame, mood) {
+    return (c) => {
+      c.save(); slim(c, 0.84, 0.86, 2); eneHairBack(c, false); c.restore();
+      eneLegs(c, frame);
+      c.save(); slim(c, 0.86, 1, 50); eneDress(c, false); c.restore();
+      limb(c, [[20, 38], [20, 49]], 2);           // the long neck
+      c.save(); slim(c, 0.88, 1, 50); eneArms(c, false); c.restore();
+      c.save(); slim(c, 0.86, 1.02, 4); eneFace(c, mood || 'calm'); c.restore();
+    };
+  }
+  function eneBackArt(frame) {
+    return (c) => {
+      eneLegs(c, frame);
+      c.save(); slim(c, 0.86, 1, 50); eneDress(c, true); c.restore();
+      c.save(); slim(c, 0.88, 1, 50); eneArms(c, true); c.restore();
+      c.save(); slim(c, 0.84, 0.86, 2); eneHairBack(c, true); c.restore();
+      line(c, [[14, 6], [10.4, 30]], '#ffffff', 1); line(c, [[26, 6], [29.6, 30]], '#ffffff', 1);
+      line(c, [[20, 2], [20, 14]], '#2a2430', 1);
+    };
+  }
+  ART.player0 = [40, 108, eneArt(0)];
+  ART.player1 = [40, 108, eneArt(1)];
+  ART.playerAy = [40, 108, eneArt(0, 'ay')];
+  ART.playerJoy = [40, 108, eneArt(0, 'joy')];
+  ART.playerCry = [40, 108, eneArt(0, 'cry')];
+  ART.playerBack0 = [40, 108, eneBackArt(0)];
+  ART.playerBack1 = [40, 108, eneBackArt(1)];
+  // Ene from her character sheet: the puppet rig (js/ene.js) posed once for each sticker,
+  // so the HUD icon, the story intro and the peel effect show her real drawing. Until
+  // her drawing has loaded, the vector stand-ins above are used.
+  function eneRigArt(st, fallback) {
+    return (c) => {
+      if (!SW.ene || !SW.ene.ready()) return fallback(c);
+      const m = c.getTransform(), S = Math.hypot(m.a, m.b);
+      SW.ene.draw(c, 20, 107, 106 / SW.ene.height, SW.ene.pose(Object.assign({ t: 1 }, st)), { dpr: S, raw: true });
+    };
+  }
+  for (const [n, st] of [
+    ['player0', { view: 'front' }], ['player1', { view: 'front', speed: 0.8, phase: 0.25 }],
+    ['playerAy', { view: 'front', face: 'ay', faceT: 1, action: 'hurt', actionT: 0.22 }],
+    ['playerJoy', { view: 'front', face: 'joy', faceT: 1, action: 'joy', actionT: 0.45 }],
+    ['playerCry', { view: 'front', face: 'cry', faceT: 1, action: 'cry', actionT: 0 }],
+    ['playerBack0', { view: 'back' }], ['playerBack1', { view: 'back', speed: 0.8, phase: 0.25 }],
+  ]) ART[n] = [40, 108, eneRigArt(st, ART[n][2])];
+
+  // Star, Ene's companion: a yellow star with stubby legs and a lot of feelings
+  function starArt(mood, frame) {
+    return (c) => {
+      const k = frame ? 3 : 0;
+      const pts = [];
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 8.5 : 18; pts.push([20 + Math.cos(a) * r, 21 + Math.sin(a) * r]); }
+      shape(c, (c) => polyPath(c, pts), '#ffd83a', 1.9);
+      flat(c, (c) => polyPath(c, [[20, 21], pts[3], pts[4], pts[5], pts[6]]), '#f0b52a');
+      flat(c, blobs([[14, 14, 2.4]]), '#fff3a8');
+      const eye = (x, y, s) => { shape(c, (c) => ell(c, x, y, 2.6 * s, 3.4 * s), '#ffffff', 1.2); flat(c, blobs([[x + 0.5, y + 0.6, 1.3 * s]]), INK); };
+      if (mood === 'laugh') {
+        line(c, [[14.5, 18], [16.8, 16.4], [19, 18]], INK, 1.5); line(c, [[21.5, 18], [23.8, 16.4], [26, 18]], INK, 1.5);
+        shape(c, (c) => { c.moveTo(15.5, 22); c.quadraticCurveTo(20.5, 30, 25.5, 22); c.closePath(); }, '#3b1a2a', 1.3);
+        flat(c, (c) => ell(c, 20.5, 25.6, 2.2, 1.2), '#ff5a6a');
+      } else if (mood === 'surprised') {
+        eye(16.5, 17, 1.25); eye(24, 17, 1.25);
+        shape(c, (c) => ell(c, 20.3, 25.5, 2.2, 2.8), '#3b1a2a', 1.2);
+      } else if (mood === 'sad') {
+        eye(16.5, 18, 1); eye(24, 18, 1);
+        line(c, [[14, 13.5], [18, 14.8]], INK, 1.3); line(c, [[22.5, 14.8], [26.5, 13.5]], INK, 1.3);
+        line(c, [[17.5, 25.5], [20.3, 23.8], [23, 25.5]], INK, 1.4);
+        flat(c, (c) => ell(c, 15, 22.5, 1, 1.6), '#8fe8f6');
+      } else if (mood === 'angry') {
+        eye(16.5, 18.5, 0.9); eye(24, 18.5, 0.9);
+        line(c, [[13.5, 13.5], [18.8, 16]], INK, 1.7); line(c, [[21.8, 16], [27, 13.5]], INK, 1.7);
+        shape(c, (c) => rrect(c, 16.5, 22.5, 7.6, 3.6, 1.2), '#ffffff', 1.2); line(c, [[16.8, 24.3], [23.8, 24.3]], INK, 0.8);
+      } else {
+        eye(16.5, 17.5, 1); eye(24, 17.5, 1);
+        line(c, [[16.5, 23], [20.3, 26], [24, 23]], INK, 1.5);
+      }
+    };
+  }
+  for (const m of ['happy', 'surprised', 'sad', 'angry', 'laugh']) for (const f of [0, 1]) ART['star_' + m + f] = [40, 44, starArt(m, f)];
+  // Star's other looks, with the same feelings and the same two frames (wings up, wings down)
+  const starFace = (mood) => (mood === 'laugh' ? 'grin' : mood);
+  // a flying Caticorn: a round cat with a golden horn, a rainbow fringe and little wings
+  function caticornArt(mood, frame) {
+    return (c) => {
+      const w = frame ? -4 : 3;
+      shape(c, (c) => { ell(c, 7.5, 23 + w, 7, 3.6, -0.35 - w * 0.06); ell(c, 32.5, 23 + w, 7, 3.6, 0.35 + w * 0.06); }, '#eadcff', 1.5);
+      line(c, [[12, 33], [6.5, 36.5], [4.5, 31]], INK, 3.8); line(c, [[12, 33], [6.5, 36.5], [4.5, 31]], '#ffd6e3', 1.9);
+      shape(c, (c) => { ell(c, 20, 32, 9, 6.5); circ(c, 20, 21, 11); polyPath(c, [[11, 15], [9, 5], [16.5, 11]]); polyPath(c, [[29, 15], [31, 5], [23.5, 11]]); }, '#fff3f7', 1.9);
+      flat(c, P([[11.8, 12.8], [10.6, 7.6], [15.2, 11.6]]), '#ffb3c6'); flat(c, P([[28.2, 12.8], [29.4, 7.6], [24.8, 11.6]]), '#ffb3c6');
+      shape(c, P([[17.6, 11.5], [20, 1.5], [22.4, 11.5]]), '#ffd83a', 1.3);
+      line(c, [[18.5, 9], [21.6, 7.8]], '#e0a400', 0.9); line(c, [[19.1, 6.2], [21.3, 5.3]], '#e0a400', 0.9);
+      [['#ff6b6b', 14.6], ['#ffb347', 16.8], ['#8bd96b', 19], ['#6bb6ff', 21.2], ['#c58bff', 23.4]].forEach(([col, x]) => line(c, [[x, 12.6], [x - 1.3, 16.4]], col, 1.6));
+      flat(c, blobs([[15.5, 37, 2.2], [24.5, 37, 2.2]]), '#ffe0ea');
+      face(c, 20, 20.5, 0.8, starFace(mood), { gap: 4.6 });
+      flat(c, P([[18.9, 23.6], [21.1, 23.6], [20, 24.9]]), '#ff8fa8');
+      line(c, [[9.5, 24], [14.3, 25]], INK, 0.7); line(c, [[9.5, 27.2], [14.3, 26.5]], INK, 0.7);
+      line(c, [[30.5, 24], [25.7, 25]], INK, 0.7); line(c, [[30.5, 27.2], [25.7, 26.5]], INK, 0.7);
+      flat(c, blobs([[13, 24.6, 1.6], [27, 24.6, 1.6]]), 'rgba(255,140,170,0.45)');
+    };
+  }
+  // a bumblebee: striped, with see-through wings and a stinger
+  function beeArt(mood, frame) {
+    return (c) => {
+      const w = frame ? 2 : -3;
+      shape(c, (c) => { ell(c, 11.5, 16 + w, 7.5, 4, -0.5 - w * 0.08); ell(c, 28.5, 16 + w, 7.5, 4, 0.5 + w * 0.08); }, '#e9f5ff', 1.4);
+      line(c, [[16.5, 14], [13.5, 8]], INK, 1.3); line(c, [[23.5, 14], [26.5, 8]], INK, 1.3); flat(c, blobs([[13.1, 7.4, 1.4], [26.9, 7.4, 1.4]]), INK);
+      shape(c, (c) => { ell(c, 20, 29.5, 11, 9); circ(c, 20, 19, 9); polyPath(c, [[18, 37.5], [20, 42.5], [22, 37.5]]); }, '#ffd83a', 1.9);
+      line(c, [[11, 27.5], [29, 27.5]], INK, 3); line(c, [[12, 33], [28, 33]], INK, 3);
+      face(c, 20, 18.5, 0.78, starFace(mood), { gap: 4.4 });
+      flat(c, blobs([[13.6, 22, 1.5], [26.4, 22, 1.5]]), 'rgba(255,120,120,0.4)');
+    };
+  }
+  for (const m of ['happy', 'surprised', 'sad', 'angry', 'laugh']) for (const f of [0, 1]) { ART['caticorn_' + m + f] = [40, 44, caticornArt(m, f)]; ART['bee_' + m + f] = [40, 44, beeArt(m, f)]; }
+  SW.STAR_SKINS = [{ id: 'star', name: 'Star' }, { id: 'caticorn', name: 'Caticorn' }, { id: 'bee', name: 'Bumble' }];
+
+  function scribbleArt(seed) {
+    return (c) => {
+      const r = SW.rng(seed);
+      const pts = [];
+      const n = 17;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * TAU;
+        const rad = (i % 2 ? 13 : 19) + r() * 4;
+        pts.push([23 + Math.cos(a) * rad, 25 + Math.sin(a) * rad * 0.92]);
+      }
+      shape(c, P(pts), '#2b2340');
+      // drips
+      shape(c, (c) => { ell(c, 12, 43, 2, 3); ell(c, 33, 44, 1.6, 2.6); }, '#2b2340', 1.2);
+      const z = [];
+      for (let i = 0; i < 7; i++) z.push([10 + i * 4.2, 36 + (i % 2 ? -4 : 2) + r() * 2]);
+      line(c, z, '#5b4f78', 1.8);
+      // glaring red eyes under heavy brows
+      shape(c, (c) => { ell(c, 17, 20, 4.6, 5.2); ell(c, 29, 20, 4.6, 5.2); }, '#ffffff', 1.2);
+      flat(c, blobs([[18.4, 21.4, 2.4], [30.4, 21.4, 2.4]]), '#ff3b5c');
+      flat(c, blobs([[18.9, 20.6, 0.8], [30.9, 20.6, 0.8]]), '#ffffff');
+      line(c, [[11, 13], [20.5, 16.5]], '#ffffff', 2.2); line(c, [[35, 13], [25.5, 16.5]], '#ffffff', 2.2);
+      shape(c, (c) => { c.moveTo(15, 29); for (let i = 0; i <= 6; i++) c.lineTo(15 + i * 2.7, 29 + (i % 2 ? 3 : 0)); c.lineTo(31, 29); c.quadraticCurveTo(23, 34, 15, 29); c.closePath(); }, '#ffffff', 1);
+    };
+  }
+  ART.scribble0 = [46, 48, scribbleArt(11)];
+  ART.scribble1 = [46, 48, scribbleArt(29)];
+
+  function puffArt(frame) {
+    return (c) => {
+      const sq = frame ? 2 : 0;
+      shape(c, (c) => { ell(c, 13, 10 + sq, 3.8, 9.5, -0.25); ell(c, 22, 9 + sq, 3.8, 9.5, 0.2); }, '#f4ecff', 2);
+      flat(c, (c) => { ell(c, 13, 11 + sq, 1.6, 6.4, -0.25); ell(c, 22, 10 + sq, 1.6, 6.4, 0.2); }, '#ffb3c8');
+      shape(c, (c) => ell(c, 18, 25 + sq * 0.5, 13 + sq, 10 - sq * 0.5), '#f4ecff');
+      shape(c, blobs([[5, 27, 3.4]]), '#ffffff', 1.4);
+      face(c, 24.5, 21.5 + sq * 0.5, 0.75, 'happy', { one: true, gap: 0, ew: 3.4, eh: 4.2, look: 1 });
+      flat(c, blobs([[30.5, 26.5, 1.6]]), '#ff8fae');
+      line(c, [[27.5, 28], [29.5, 29.2], [31.2, 28]], INK, 1.2);
+    };
+  }
+  ART.puff0 = [34, 36, puffArt(0)];
+  ART.puff1 = [34, 36, puffArt(1)];
+
+  // ---- tools (handle points down; pivot is the handle end) ----
+  const handle = (c) => { shape(c, (c) => rrect(c, 11, 8, 5, 22, 2), '#a8743f', 1.8); };
+  ART.toolAxe = [28, 32, (c) => {
+    handle(c);
+    shape(c, (c) => { c.moveTo(14, 4); c.lineTo(25, 2); c.quadraticCurveTo(29, 9, 25, 16); c.lineTo(14, 13); c.closePath(); }, '#c7c9d6', 1.8);
+    flat(c, P([[24, 4], [26.5, 9], [24, 14], [22, 9]]), '#eef0f7');
+  }];
+  ART.toolPick = [28, 32, (c) => {
+    handle(c);
+    shape(c, (c) => { c.moveTo(1, 12); c.quadraticCurveTo(13, -2, 27, 12); c.quadraticCurveTo(13, 4, 1, 12); c.closePath(); }, '#b8bacb', 1.8);
+  }];
+  ART.toolSword = [28, 34, (c) => {
+    shape(c, (c) => rrect(c, 11, 22, 5, 10, 2), '#7a4f2c', 1.8);
+    shape(c, (c) => rrect(c, 5, 19, 17, 4, 2), '#c9973f', 1.8);
+    shape(c, P([[10.5, 19], [10.5, 5], [13.5, 0], [16.5, 5], [16.5, 19]]), '#e3e7f2', 1.8);
+    flat(c, P([[12.4, 18], [12.4, 5], [13.5, 3], [13.5, 18]]), '#ffffff');
+  }];
+  ART.toolGemSword = [28, 34, (c) => {
+    shape(c, (c) => rrect(c, 11, 22, 5, 10, 2), '#5b3f8a', 1.8);
+    shape(c, (c) => rrect(c, 5, 19, 17, 4, 2), '#a78bfa', 1.8);
+    shape(c, P([[10, 19], [10, 6], [13.5, 0], [17, 6], [17, 19]]), '#8fe8f6', 1.8);
+    flat(c, P([[12.2, 18], [12.2, 6], [13.5, 3], [13.5, 18]]), '#e6fbff');
+  }];
+  ART.toolHand = [14, 14, (c) => { shape(c, blobs([[7, 8, 4.5]]), '#ffcf5a', 1.6); }];
+
+  // ---- item icons ----
+  ART.itemWood = [30, 22, (c) => {
+    shape(c, (c) => rrect(c, 3, 5, 22, 13, 6), '#a8743f');
+    shape(c, (c) => ell(c, 24, 11.5, 4.6, 6.5), '#e2b47a', 1.8);
+    c.beginPath(); ell(c, 24, 11.5, 2, 3); c.lineWidth = 1.2; c.strokeStyle = '#b0804a'; c.stroke();
+    line(c, [[8, 9], [17, 9]], '#7a4f2c', 1.4);
+  }];
+  ART.itemStone = [26, 22, (c) => {
+    shape(c, P([[3, 18], [4, 9], [12, 3], [21, 5], [24, 14], [19, 20]]), '#a3a1b5');
+    flat(c, P([[6, 9], [12, 5], [15, 9], [8, 12]]), '#c9c7da');
+  }];
+  ART.itemBerry = [26, 24, (c) => {
+    line(c, [[13, 3], [13, 9]], '#3f8f3d', 2.4);
+    shape(c, (c) => ell(c, 17, 5, 5, 2.4, -0.4), '#5bb04f', 1.6);
+    [[8, 15], [18, 15], [13, 19]].forEach(([x, y]) => { shape(c, blobs([[x, y, 5]]), '#e8354a', 1.8); flat(c, blobs([[x - 1.6, y - 1.8, 1.4]]), '#ffd9de'); });
+  }];
+  ART.itemPetal = [22, 24, (c) => {
+    shape(c, (c) => { c.moveTo(11, 22); c.bezierCurveTo(0, 16, 2, 4, 11, 2); c.bezierCurveTo(20, 4, 22, 16, 11, 22); }, '#ff7aa8');
+    line(c, [[11, 19], [11, 7]], '#ffc0d6', 1.6);
+  }];
+  function meatArt(fill, light) {
+    return (c) => {
+      shape(c, (c) => { rrect(c, 17, 15, 9, 4, 2); circ(c, 26, 14.5, 3); circ(c, 26, 19.5, 3); }, '#fff6e6', 1.6);
+      shape(c, (c) => ell(c, 11, 11, 10, 8.5, -0.6), fill);
+      flat(c, (c) => ell(c, 8, 8, 4, 2.5, -0.6), light);
+    };
+  }
+  ART.itemMeat = [32, 24, meatArt('#e46a5c', '#f6a49a')];
+  ART.itemCooked = [32, 24, meatArt('#b4602f', '#d98c55')];
+  ART.itemGem = [24, 24, (c) => {
+    shape(c, P([[12, 22], [2, 9], [7, 2], [17, 2], [22, 9]]), '#8fe8f6');
+    flat(c, P([[7, 3], [12, 9], [3, 9]]), '#e6fbff');
+    line(c, [[2.5, 9], [21.5, 9]], '#5cc8e8', 1.2);
+  }];
+  ART.itemSalve = [24, 26, (c) => {
+    shape(c, (c) => rrect(c, 4, 8, 16, 16, 5), '#7fd18b');
+    shape(c, (c) => rrect(c, 3, 3, 18, 6, 2.5), '#ff7aa8', 1.8);
+    flat(c, (c) => rrect(c, 7, 12, 4, 8, 2), '#c9f2cf');
+  }];
+  ART.itemLantern = [24, 30, (c) => {
+    line(c, [[12, 2], [12, 6]], INK, 2);
+    shape(c, (c) => rrect(c, 4, 6, 16, 5, 2), '#5b4f78', 1.8);
+    shape(c, (c) => rrect(c, 5, 10, 14, 15, 4), '#ffe08f', 1.8);
+    flat(c, blobs([[12, 17, 4]]), '#ffb13b');
+    shape(c, (c) => rrect(c, 4, 24, 16, 4, 2), '#5b4f78', 1.8);
+  }];
+  ART.uiHeart = [26, 24, (c) => {
+    shape(c, (c) => { c.moveTo(13, 22); c.bezierCurveTo(-4, 10, 4, -2, 13, 6); c.bezierCurveTo(22, -2, 30, 10, 13, 22); }, '#ff4d6d');
+    flat(c, blobs([[8, 8, 2.4]]), '#ffc2cd');
+  }];
+  // the rainbow cry: a rainbow with a lightning bolt through it
+  ART.uiBolt = [30, 28, (c) => {
+    const bands = ['#e8322a', '#f5861f', '#f8d81e', '#4fb04a', '#3a3ad0'];
+    c.lineCap = 'butt';
+    c.beginPath(); c.arc(15, 24, 10, Math.PI, 0); c.lineWidth = 14; c.strokeStyle = INK; c.stroke();
+    bands.forEach((col, i) => { c.beginPath(); c.arc(15, 24, 14.4 - i * 2.4, Math.PI, 0); c.lineWidth = 2.5; c.strokeStyle = col; c.stroke(); });
+    shape(c, P([[19, 1], [7.5, 15.5], [14, 15.5], [10, 27.5], [23, 11.5], [17, 11.5], [22, 1]]), '#ffd23f', 1.6);
+    flat(c, P([[18.4, 4.5], [13.2, 11], [15.6, 11]]), '#fff3a8');
+  }];
+  ART.uiSun = [28, 28, (c) => {
+    shape(c, (c) => { for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; polyPath(c, [[14 + Math.cos(a) * 13, 14 + Math.sin(a) * 13], [14 + Math.cos(a + 0.3) * 8, 14 + Math.sin(a + 0.3) * 8], [14 + Math.cos(a - 0.3) * 8, 14 + Math.sin(a - 0.3) * 8]]); } circ(c, 14, 14, 8); }, '#ffc93c');
+  }];
+  ART.uiMoon = [26, 26, (c) => {
+    shape(c, (c) => { c.moveTo(16, 2); c.arc(13, 13, 11, -1.3, 1.9, true); c.arc(17, 11, 8.5, 1.65, -1.05); }, '#e4e1ff');
+  }];
+  ART.uiHammer = [28, 28, (c) => {
+    shape(c, (c) => { c.moveTo(11, 26); c.lineTo(15, 26); c.lineTo(15, 11); c.lineTo(11, 11); c.closePath(); }, '#a8743f', 1.8);
+    shape(c, (c) => rrect(c, 4, 3, 20, 9, 3), '#b8bacb', 1.8);
+  }];
+
+
+  // ---- RPG creatures, in the cartoon style: big eyes, brows, a mouth that means it ----
+  // creatures face right; FLIP makes the left-facing copies
+  function thornArt(k) {
+    return (c) => {
+      const st = k ? 3 : 0;
+      shape(c, (c) => { ell(c, 15 - st, 36, 4.5, 3); ell(c, 32 + st, 36, 4.5, 3); }, '#5a3f2e', 1.6);
+      // a fan of cream spikes over the back
+      shape(c, (c) => {
+        for (let i = 0; i < 8; i++) {
+          const a = Math.PI * 1.02 + ((i + 0.5) / 8) * Math.PI * 0.92;
+          const bx = 22 + Math.cos(a) * 14, by = 27 + Math.sin(a) * 11;
+          const tx = 22 + Math.cos(a) * (24 + (i % 2) * 3), ty = 27 + Math.sin(a) * (20 + (i % 2) * 3);
+          const px = -Math.sin(a) * 4.2, py = Math.cos(a) * 4.2;
+          polyPath(c, [[bx + px, by + py], [tx, ty], [bx - px, by - py]]);
+        }
+      }, '#efd08a', 1.8);
+      shape(c, (c) => ell(c, 22, 27, 17, 11.5), '#8a5a33');
+      flat(c, (c) => ell(c, 17, 21, 7, 3.4), '#a8743f');
+      [[12, 28], [20, 31], [16, 24]].forEach(([x, y]) => curl(c, x, y, 2.2, '#6a4224', 1.2));
+      // the snout and the cross little face
+      shape(c, (c) => ell(c, 40, 29, 8, 6.4), '#f0c9a0', 1.8);
+      shape(c, blobs([[47.5, 28.5, 2.4]]), '#2b1f24', 1);
+      face(c, 37, 23.5, 0.8, k ? 'angry' : 'angry', { gap: 3.4, look: 1 });
+    };
+  }
+  ART.thornback0 = [54, 42, thornArt(0)];
+  ART.thornback1 = [54, 42, thornArt(1)];
+
+  function crabArt(k) {
+    return (c) => {
+      const up = k ? -3 : 0;
+      [[14, 30, 6, 37], [20, 32, 15, 39], [30, 32, 35, 39], [36, 30, 44, 37]].forEach(([a, b, x, y]) => { line(c, [[a, b], [(a + x) / 2, b + 2], [x, y]], INK, 4); line(c, [[a, b], [(a + x) / 2, b + 2], [x, y]], '#e2553a', 2); });
+      // claws, snapping
+      shape(c, (c) => { circ(c, 7, 17 + up, 7); circ(c, 43, 17 - up, 7); }, '#ff6b4a');
+      c.save(); c.globalCompositeOperation = 'destination-out';
+      c.beginPath(); polyPath(c, [[2, 9 + up], [8, 16 + up], [0, 15 + up]]); polyPath(c, [[48, 9 - up], [42, 16 - up], [50, 15 - up]]); c.fill(); c.restore();
+      shape(c, (c) => ell(c, 25, 26, 15, 9.5), '#ff7a52');
+      flat(c, (c) => ell(c, 20, 22, 7, 3), '#ffab8f');
+      // eyes on stalks, with angry brows, and a toothy grin
+      line(c, [[21, 19], [20, 10]], INK, 3.6); line(c, [[29, 19], [30, 10]], INK, 3.6);
+      line(c, [[21, 19], [20, 10]], '#e2553a', 1.6); line(c, [[29, 19], [30, 10]], '#e2553a', 1.6);
+      face(c, 25, 8.5, 0.82, 'angry', { gap: 5.6, ew: 3.2, eh: 3.4 });
+      shape(c, (c) => { c.moveTo(19.5, 27); c.quadraticCurveTo(25, 33, 30.5, 27); c.closePath(); }, '#ffffff', 1.2);
+      line(c, [[22.5, 27.5], [22.8, 29.8]], INK, 0.8); line(c, [[25, 27.8], [25, 30.6]], INK, 0.8); line(c, [[27.5, 27.5], [27.2, 29.8]], INK, 0.8);
+    };
+  }
+  ART.snapjaw0 = [50, 42, crabArt(0)];
+  ART.snapjaw1 = [50, 42, crabArt(1)];
+
+  function gloopArt(k) {
+    return (c) => {
+      const sq = k ? 3 : 0;
+      shape(c, (c) => { c.moveTo(3 - sq, 33); c.bezierCurveTo(1 - sq, 13 + sq, 11, 4 + sq * 1.4, 20, 4 + sq * 1.4); c.bezierCurveTo(29, 4 + sq * 1.4, 39 + sq, 13 + sq, 37 + sq, 33); c.quadraticCurveTo(33, 35, 30, 32); c.quadraticCurveTo(26, 35, 22, 32); c.quadraticCurveTo(17, 35, 13, 32); c.quadraticCurveTo(8, 35, 3 - sq, 33); c.closePath(); }, '#5fd3a0');
+      flat(c, (c) => ell(c, 12, 13 + sq, 5, 3, -0.5), '#c4f7dd');
+      flat(c, blobs([[32, 14 + sq, 1.6], [8, 26, 1.2]]), '#c4f7dd');
+      face(c, 20, 18 + sq, 1, k ? 'surprised' : 'grin', { gap: 5.2, ew: 3.4, eh: 4.2 });
+    };
+  }
+  ART.gloop0 = [40, 36, gloopArt(0)];
+  ART.gloop1 = [40, 36, gloopArt(1)];
+
+  function golemArt(k) {
+    return (c) => {
+      const a = k ? -4 : 0;
+      shape(c, (c) => { rrect(c, 14, 50, 11, 8, 3); rrect(c, 33, 50, 11, 8, 3); }, '#7d786d');
+      // boulder arms
+      shape(c, (c) => { ell(c, 7, 33 + a, 6, 9, -0.3); ell(c, 51, 33 - a, 6, 9, 0.3); }, '#8d887c');
+      // body: a lumpy boulder with moss on top
+      shape(c, (c) => { c.moveTo(12, 53); c.bezierCurveTo(6, 40, 8, 22, 18, 18); c.quadraticCurveTo(29, 13, 40, 18); c.bezierCurveTo(50, 22, 52, 40, 46, 53); c.quadraticCurveTo(29, 56, 12, 53); c.closePath(); }, '#9b968a');
+      flat(c, (c) => { c.moveTo(14, 30); c.bezierCurveTo(14, 21, 24, 18, 32, 19); c.quadraticCurveTo(22, 24, 14, 30); c.closePath(); }, '#bdb8ab');
+      line(c, [[36, 40], [39, 45], [36, 50]], '#6f6a60', 1.6);
+      [[20, 46], [42, 30]].forEach(([x, y]) => flat(c, blobs([[x, y, 1]]), '#6f6a60'));
+      shape(c, cloudPath(29, 17, 12, 4.5, 6, 31), '#6bbf4a', 1.4);
+      face(c, 29, 29, 1.15, k ? 'angry' : 'angry', { gap: 5.6 });
+    };
+  }
+  ART.pebblor0 = [58, 60, golemArt(0)];
+  ART.pebblor1 = [58, 60, golemArt(1)];
+
+  // ---- new world objects ----
+  ART.chest = [42, 34, (c) => {
+    shape(c, (c) => rrect(c, 4, 13, 34, 19, 3), '#b07a46');
+    shape(c, (c) => { c.moveTo(3, 15); c.lineTo(3, 9); c.quadraticCurveTo(21, -1, 39, 9); c.lineTo(39, 15); c.closePath(); }, '#c98a4b');
+    flat(c, (c) => { rrect(c, 9, 6, 4, 26, 1); rrect(c, 29, 6, 4, 26, 1); }, '#ffc93c');
+    shape(c, (c) => rrect(c, 17.5, 12, 7, 8, 2), '#ffc93c', 1.6);
+    flat(c, blobs([[21, 16, 1.4]]), INK);
+  }];
+  ART.reeds = [28, 38, (c) => {
+    [[7, 36, 5, 10], [13, 36, 14, 4], [19, 36, 22, 9]].forEach(([x, y, tx, ty]) => { line(c, [[x, y], [tx, ty]], INK, 4.2); line(c, [[x, y], [tx, ty]], '#6b9a43', 2); });
+    shape(c, (c) => { rrect(c, 3, 9, 4.5, 11, 2.2); rrect(c, 12, 3, 4.5, 11, 2.2); rrect(c, 20, 8, 4.5, 11, 2.2); }, '#8a5a33', 1.6);
+    shape(c, (c) => ell(c, 23, 30, 5, 2, -0.6), '#7fb04f', 1.4);
+  }];
+  ART.mushroom = [26, 28, (c) => {
+    shape(c, (c) => { c.moveTo(9, 26); c.quadraticCurveTo(10, 18, 9.5, 13); c.lineTo(16.5, 13); c.quadraticCurveTo(16, 18, 17, 26); c.closePath(); }, '#f6ead2');
+    line(c, [[11, 15], [11.5, 23]], '#d9c6a2', 1.1);
+    shape(c, (c) => { c.moveTo(1, 15); c.quadraticCurveTo(1, 1, 13, 1); c.quadraticCurveTo(25, 1, 25, 15); c.quadraticCurveTo(13, 18, 1, 15); c.closePath(); }, '#b8533a');
+    flat(c, (c) => ell(c, 8, 7, 4, 2, -0.5), '#d9785a');
+    flat(c, blobs([[7, 10, 2.4], [14, 5, 2], [19.5, 10, 2.2], [13, 12, 1.4]]), '#fff3df');
+  }];
+  ART.swampTree = [70, 94, (c) => {
+    shape(c, (c) => { c.moveTo(26, 93); c.quadraticCurveTo(31, 86, 30.5, 74); c.lineTo(30, 50); c.lineTo(40, 50); c.lineTo(39.5, 74); c.quadraticCurveTo(39, 86, 45, 93); c.closePath(); }, '#6b5a4a');
+    line(c, [[33, 60], [33.5, 72]], '#4a3c30', 1.4);
+    shape(c, cloudPath(35, 32, 31, 24, 9, 21), '#4f8a6f');
+    flat(c, cloudPath(28, 24, 13, 9, 6, 22), '#6aa587');
+    [[10, 44, 66], [18, 50, 72], [52, 50, 70], [61, 44, 64], [30, 54, 68], [42, 54, 70]].forEach(([x, y, b]) => { line(c, [[x, y], [x + 1.5, (y + b) / 2], [x, b]], INK, 3.4); line(c, [[x, y], [x + 1.5, (y + b) / 2], [x, b]], '#3f7a5f', 1.7); });
+  }];
+
+  // ---- new items & gear ----
+  ART.itemFiber = [28, 24, (c) => {
+    shape(c, (c) => { polyPath(c, [[4, 22], [9, 2], [12, 22]]); polyPath(c, [[10, 22], [15, 1], [18, 22]]); polyPath(c, [[16, 22], [23, 4], [24, 22]]); }, '#8cc152', 1.6);
+    shape(c, (c) => rrect(c, 5, 13, 18, 4, 2), '#e6c98d', 1.4);
+  }];
+  function fishArt(body, fin, light) {
+    return (c) => {
+      shape(c, P([[26, 10], [33, 3], [33, 17]]), fin, 1.8);
+      shape(c, (c) => ell(c, 15, 10, 13, 7.5), body);
+      flat(c, (c) => ell(c, 13, 13, 8, 2.6), light);
+      shape(c, P([[13, 4], [19, 0], [20, 5]]), fin, 1.4);
+      flat(c, blobs([[7, 8.5, 1.8]]), INK);
+    };
+  }
+  ART.itemFish = [35, 20, fishArt('#5fa8e8', '#3f7fc2', '#bfe2ff')];
+  ART.itemKoi = [35, 20, fishArt('#8fe8f6', '#a78bfa', '#e6fbff')];
+  ART.itemGrilledFish = [35, 20, (c) => {
+    fishArt('#c98a4b', '#9b6236', '#e6b27a')(c);
+    [[10, 4], [16, 4], [22, 5]].forEach(([x, y]) => line(c, [[x, y], [x - 4, y + 12]], '#7a4f2c', 1.6));
+  }];
+  ART.itemInk = [22, 28, (c) => {
+    shape(c, (c) => { c.moveTo(11, 2); c.bezierCurveTo(16, 10, 20, 15, 20, 19); c.arc(11, 19, 9, 0, Math.PI); c.bezierCurveTo(2, 15, 6, 10, 11, 2); }, '#2b2340');
+    flat(c, (c) => ell(c, 7.5, 19, 2, 3.5, 0.3), '#6b5f8a');
+  }];
+  ART.toolRod = [32, 36, (c) => {
+    line(c, [[6, 34], [26, 3]], INK, 5); line(c, [[6, 34], [26, 3]], '#a8743f', 2.6);
+    shape(c, blobs([[11, 26, 4]]), '#c7c9d6', 1.6);
+    c.beginPath(); c.moveTo(26, 3); c.quadraticCurveTo(31, 16, 29, 28); c.lineWidth = 1.2; c.strokeStyle = '#ffffff'; c.stroke();
+  }];
+  ART.toolInkBlade = [28, 34, (c) => {
+    shape(c, (c) => rrect(c, 11, 22, 5, 10, 2), '#2b2340', 1.8);
+    shape(c, (c) => rrect(c, 4, 19, 19, 4, 2), '#a78bfa', 1.8);
+    shape(c, P([[9.5, 19], [9.5, 6], [13.5, 0], [17.5, 6], [17.5, 19]]), '#3b2f4f', 1.8);
+    flat(c, P([[15.5, 18], [15.5, 6], [13.5, 2.5], [14.2, 18]]), '#b69cff');
+  }];
+  function armorArt(fill, light) {
+    return (c) => {
+      shape(c, (c) => { c.moveTo(6, 4); c.lineTo(11, 2); c.quadraticCurveTo(15, 7, 19, 2); c.lineTo(24, 4); c.lineTo(28, 12); c.lineTo(23, 14); c.lineTo(23, 28); c.lineTo(7, 28); c.lineTo(7, 14); c.lineTo(2, 12); c.closePath(); }, fill);
+      flat(c, (c) => rrect(c, 9, 9, 4, 16, 2), light);
+      line(c, [[15, 8], [15, 27]], INK, 1.3);
+    };
+  }
+  ART.armorBark = [30, 30, armorArt('#a8743f', '#c99a62')];
+  ART.armorStone = [30, 30, armorArt('#a3a1b5', '#c9c7da')];
+  ART.armorCrystal = [30, 30, armorArt('#8fe8f6', '#e6fbff')];
+  ART.bobber = [14, 16, (c) => {
+    shape(c, (c) => circ(c, 7, 9, 5.5), '#ffffff', 1.6);
+    flat(c, (c) => { c.moveTo(1.5, 9); c.arc(7, 9, 5.5, Math.PI, 0); c.closePath(); }, '#ff4d6d');
+    line(c, [[7, 3.5], [7, 0.5]], INK, 1.6);
+  }];
+  ART.uiBang = [24, 28, (c) => {
+    shape(c, blobs([[12, 14, 11]]), '#ffd23f');
+    flat(c, (c) => { rrect(c, 10, 5, 4, 12, 2); circ(c, 12, 21, 2.3); }, INK);
+  }];
+  ART.uiArrow = [30, 22, (c) => {
+    shape(c, P([[2, 7], [17, 7], [17, 1], [29, 11], [17, 21], [17, 15], [2, 15]]), '#ffd23f');
+  }];
+  ART.uiPin = [22, 30, (c) => {
+    shape(c, (c) => { c.moveTo(11, 29); c.bezierCurveTo(2, 18, 1, 13, 1, 11); c.arc(11, 11, 10, Math.PI, 0); c.bezierCurveTo(21, 13, 20, 18, 11, 29); }, '#ff4d6d');
+    flat(c, blobs([[11, 11, 4]]), '#ffffff');
+  }];
+
+
+  // ---- biome plants & props ----
+  ART.treeAutumn = [70, 92, treeRound('#f0903a', '#ffb866', '#b85e18', 13)];
+  ART.treeAutumnRed = [70, 92, treeRound('#e2553a', '#ff8a6a', '#9a2e18', 17)];
+  ART.cactus = [40, 62, (c) => {
+    shape(c, (c) => { rrect(c, 14, 6, 13, 54, 6.5); rrect(c, 2, 22, 9, 20, 4.5); rrect(c, 2, 34, 14, 8, 4); rrect(c, 29, 14, 9, 20, 4.5); rrect(c, 24, 26, 14, 8, 4); }, '#5bb04f');
+    flat(c, (c) => { rrect(c, 17, 9, 3, 46, 1.5); rrect(c, 4, 25, 2.5, 13, 1.2); }, '#83cf5f');
+    [[20, 14], [20, 30], [20, 46], [6, 30], [33, 20]].forEach(([x, y]) => line(c, [[x - 2, y], [x + 2, y - 2]], '#ffffff', 1.4));
+    shape(c, blobs([[20.5, 6, 3.4]]), '#ff7aa8', 1.4);
+  }];
+  ART.deadBush = [36, 26, (c) => {
+    [[18, 25, 6, 6], [18, 25, 30, 4], [18, 25, 12, 2], [18, 25, 26, 10], [18, 25, 18, 1], [12, 14, 4, 12], [24, 12, 32, 14]].forEach(([a, b, x, y]) => { line(c, [[a, b], [x, y]], INK, 4); line(c, [[a, b], [x, y]], '#b08a5a', 2); });
+  }];
+  ART.giantMushroom = [64, 76, (c) => {
+    shape(c, (c) => { rrect(c, 24, 34, 16, 40, 7); }, '#f4ecdc');
+    flat(c, (c) => rrect(c, 27, 38, 4, 32, 2), '#ffffff');
+    shape(c, (c) => { c.moveTo(2, 38); c.quadraticCurveTo(4, 2, 32, 2); c.quadraticCurveTo(60, 2, 62, 38); c.quadraticCurveTo(32, 46, 2, 38); c.closePath(); }, '#6f7fd8');
+    flat(c, (c) => ell(c, 22, 14, 10, 5, -0.3), '#9eabf0');
+    flat(c, blobs([[16, 26, 4], [32, 12, 3.5], [46, 24, 4.5], [30, 30, 3], [52, 34, 2.5]]), '#d6f6ff');
+  }];
+  ART.snowRock = [44, 32, (c) => {
+    rockArt(44, 30, '#b5b0a3', '#dcd8cc', '#8e897d')(c);
+    shape(c, (c) => { c.moveTo(6, 12); c.bezierCurveTo(8, 2, 34, 0, 39, 12); c.quadraticCurveTo(33, 15, 28, 12); c.quadraticCurveTo(22, 16, 16, 12); c.quadraticCurveTo(11, 15, 6, 12); c.closePath(); }, '#ffffff', 1.6);
+  }];
+  // ---- transport & adventure ----
+  ART.raft = [64, 30, (c) => {
+    shape(c, (c) => { for (let i = 0; i < 5; i++) rrect(c, 4 + i * 11.5, 6, 11, 20, 5); }, '#b07a46');
+    flat(c, (c) => { for (let i = 0; i < 5; i++) rrect(c, 7 + i * 11.5, 8, 3, 15, 1.5); }, '#cf9a62');
+    shape(c, (c) => { rrect(c, 2, 9, 60, 4, 2); rrect(c, 2, 19, 60, 4, 2); }, '#e6c98d', 1.4);
+  }];
+  ART.glider = [92, 40, (c) => {
+    shape(c, (c) => { c.moveTo(46, 30); c.quadraticCurveTo(14, 30, 2, 12); c.quadraticCurveTo(26, 4, 46, 14); c.quadraticCurveTo(66, 4, 90, 12); c.quadraticCurveTo(78, 30, 46, 30); c.closePath(); }, '#6bbf4a');
+    line(c, [[46, 30], [46, 14]], '#3f8f3d', 2);
+    [[20, 20, 10, 14], [30, 22, 22, 12], [62, 22, 70, 12], [72, 20, 82, 14]].forEach(([a, b, x, y]) => line(c, [[a, b], [x, y]], '#3f8f3d', 1.6));
+    line(c, [[30, 28], [46, 38], [62, 28]], INK, 1.4);
+  }];
+  ART.lostPage = [34, 40, (c) => {
+    shape(c, (c) => { c.moveTo(4, 4); c.lineTo(24, 4); c.lineTo(30, 10); c.lineTo(30, 36); c.lineTo(4, 36); c.closePath(); }, '#fff8e6');
+    shape(c, P([[24, 4], [24, 10], [30, 10]]), '#e8dcc0', 1.6);
+    [12, 18, 24].forEach((y) => line(c, [[9, y], [25, y]], '#c9bba0', 1.6));
+    shape(c, (c) => { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 3 : 7; c.lineTo(17 + Math.cos(a) * r, 29 + Math.sin(a) * r); } c.closePath(); }, '#ffd23f', 1.4);
+  }];
+  ART.digX = [40, 24, (c) => {
+    shape(c, (c) => { polyPath(c, [[4, 4], [10, 2], [36, 18], [30, 22]]); polyPath(c, [[30, 2], [36, 4], [10, 22], [4, 18]]); }, '#ff4d6d', 1.8);
+  }];
+  ART.itemRaft = ART.raft;
+  ART.itemGlider = ART.glider;
+  ART.itemMap = [28, 26, (c) => {
+    shape(c, (c) => { c.moveTo(2, 5); c.lineTo(10, 2); c.lineTo(18, 5); c.lineTo(26, 2); c.lineTo(26, 21); c.lineTo(18, 24); c.lineTo(10, 21); c.lineTo(2, 24); c.closePath(); }, '#f6e4b8');
+    line(c, [[6, 16], [11, 12], [16, 15], [20, 9]], '#a8743f', 1.4);
+    shape(c, (c) => { polyPath(c, [[18, 7], [20, 7], [23, 11], [21, 11]]); polyPath(c, [[21, 7], [23, 7], [20, 11], [18, 11]]); }, '#ff4d6d', 1);
+  }];
+
+  // ---- the realm: tribe folk, buildings, cave mountains, cave creatures, treasures ----
+  const STYLE = {
+    reed: { robe: '#7fb069', trim: '#d9c27a', skin: '#f2c99a', hat: 'cone' },
+    stone: { robe: '#8a8fa3', trim: '#c97b4a', skin: '#e8b98d', hat: 'cap' },
+    city: { robe: '#4f7fd9', trim: '#ffd23f', skin: '#f5cfa8', hat: 'tall' },
+    snow: { robe: '#b8c6e8', trim: '#ffffff', skin: '#f0c4a0', hat: 'hood' },
+    temple: { robe: '#d9534f', trim: '#ffd23f', skin: '#f3d1b0', hat: 'quill' },
+  };
+  function folkArt(st, role) {
+    return (c) => {
+      const S = STYLE[st];
+      if (role === 'elder') { line(c, [[37, 12], [37, 50]], INK, 4.4); line(c, [[37, 12], [37, 50]], '#a8743f', 2.2); shape(c, blobs([[37, 11, 4]]), S.trim, 1.6); }
+      if (role === 'trader') shape(c, (c) => rrect(c, 2, 22, 11, 18, 4), '#c98f4a');
+      shape(c, P([[10, 50], [14, 26], [30, 26], [34, 50]]), S.robe);
+      flat(c, P([[13, 50], [16, 32], [19, 50]]), S.trim);
+      shape(c, blobs([[22, 20, 10]]), S.skin);
+      flat(c, blobs([[19, 21, 1.6], [26, 21, 1.6]]), INK);
+      flat(c, (c) => ell(c, 28, 24, 2, 1.2), '#ff9a8a');
+      if (role === 'elder') shape(c, P([[15, 24], [29, 24], [22, 38]]), '#f4f4f4', 1.6);
+      if (S.hat === 'cone') shape(c, P([[8, 15], [36, 15], [22, 1]]), '#e6cf7d');
+      else if (S.hat === 'cap') shape(c, (c) => { c.moveTo(11, 15); c.arc(22, 15, 11, Math.PI, 0); c.closePath(); }, S.trim);
+      else if (S.hat === 'tall') { shape(c, (c) => rrect(c, 14, 0, 16, 13, 2), '#3b2f4f'); shape(c, (c) => rrect(c, 10, 11, 24, 4, 2), '#3b2f4f'); flat(c, (c) => rrect(c, 14, 7, 16, 3, 1), S.trim); }
+      else if (S.hat === 'hood') shape(c, (c) => { c.moveTo(10, 22); c.arc(22, 17, 13, Math.PI * 0.9, Math.PI * 2.1); c.closePath(); }, '#f4f4f4');
+      else { line(c, [[22, 10], [30, 0]], INK, 3); line(c, [[22, 10], [30, 0]], S.trim, 1.6); }
+    };
+  }
+  for (const st in STYLE) { ART['elder_' + st] = [44, 52, folkArt(st, 'elder')]; ART['trader_' + st] = [44, 52, folkArt(st, 'trader')]; }
+
+  ART.hutReed = [90, 86, (c) => {
+    shape(c, (c) => { rrect(c, 14, 44, 62, 38, 4); }, '#c9a66b');
+    [22, 34, 46, 58, 70].forEach((x) => line(c, [[x, 46], [x, 80]], '#a88752', 1.6));
+    shape(c, P([[4, 50], [45, 6], [86, 50]]), '#e6cf7d');
+    [[20, 40], [32, 30], [45, 20], [58, 30], [70, 40]].forEach(([x, y]) => line(c, [[x - 8, y + 8], [x, y], [x + 8, y + 8]], '#c9ae5d', 1.6));
+    shape(c, (c) => rrect(c, 38, 58, 16, 24, 7), '#5a3f2e');
+  }];
+  ART.totem = [34, 96, (c) => {
+    shape(c, (c) => rrect(c, 9, 10, 16, 84, 4), '#b07a46');
+    [[17, 22, '#ff4d6d'], [17, 46, '#ffd23f'], [17, 70, '#4fb3e8']].forEach(([x, y, col]) => { shape(c, blobs([[x, y, 9]]), col, 1.8); flat(c, blobs([[x - 3, y - 1, 1.6], [x + 3, y - 1, 1.6]]), INK); });
+    shape(c, P([[2, 12], [17, 0], [32, 12]]), '#6bbf4a');
+  }];
+  ART.houseStone = [96, 92, (c) => {
+    shape(c, (c) => rrect(c, 10, 34, 76, 54, 4), '#a3a1b5');
+    [[14, 40, 20], [36, 40, 24], [62, 40, 20], [20, 56, 24], [48, 56, 30], [14, 72, 26], [44, 72, 22], [68, 72, 16]].forEach(([x, y, w]) => line(c, [[x, y + 12], [x + w, y + 12]], '#8a8fa3', 1.4));
+    shape(c, P([[2, 38], [48, 6], [94, 38]]), '#c97b4a');
+    shape(c, (c) => rrect(c, 40, 60, 16, 28, 3), '#5a3f2e');
+    shape(c, (c) => rrect(c, 64, 48, 12, 12, 2), '#ffe08f', 1.6);
+  }];
+  ART.forge = [96, 84, (c) => {
+    shape(c, (c) => rrect(c, 8, 30, 80, 50, 6), '#8a8fa3');
+    shape(c, (c) => rrect(c, 62, 4, 16, 30, 3), '#6b6f82');
+    shape(c, (c) => { c.moveTo(30, 80); c.arc(48, 62, 18, Math.PI, 0); c.lineTo(66, 80); c.closePath(); }, '#3b2f4f');
+    flat(c, blobs([[48, 70, 9]]), '#ff7a2a'); flat(c, blobs([[48, 72, 5]]), '#ffd23f');
+    shape(c, (c) => rrect(c, 14, 54, 14, 10, 3), '#5a5e70', 1.6);
+  }];
+  ART.tower = [60, 130, (c) => {
+    shape(c, P([[14, 126], [20, 30], [40, 30], [46, 126]]), '#e8dcc0');
+    [50, 72, 94].forEach((y) => line(c, [[18, y], [42, y]], '#c9bba0', 1.6));
+    shape(c, (c) => rrect(c, 12, 16, 36, 18, 4), '#4f7fd9');
+    flat(c, (c) => rrect(c, 20, 20, 20, 10, 3), '#ffe08f');
+    shape(c, P([[8, 18], [30, 0], [52, 18]]), '#3b2f4f');
+    shape(c, (c) => rrect(c, 24, 104, 12, 22, 5), '#5a3f2e');
+  }];
+  ART.houseCity = [92, 100, (c) => {
+    shape(c, (c) => rrect(c, 10, 26, 72, 70, 4), '#f4d6a0');
+    [[18, 36], [42, 36], [64, 36], [18, 60], [64, 60]].forEach(([x, y]) => { shape(c, (c) => rrect(c, x, y, 12, 14, 2), '#ffe08f', 1.6); });
+    shape(c, P([[4, 30], [46, 2], [88, 30]]), '#4f7fd9');
+    shape(c, (c) => rrect(c, 38, 66, 16, 30, 7), '#5a3f2e');
+    flat(c, (c) => rrect(c, 10, 26, 72, 5, 2), '#e0b870');
+  }];
+  ART.market = [110, 84, (c) => {
+    shape(c, (c) => rrect(c, 10, 40, 90, 40, 4), '#c98f4a');
+    shape(c, P([[4, 42], [20, 14], [90, 14], [106, 42]]), '#ff4d6d');
+    [20, 44, 68, 92].forEach((x) => flat(c, P([[x - 6, 16], [x + 6, 16], [x + 10, 42], [x - 2, 42]]), '#ffffff'));
+    [[28, 52, '#ff4d6d'], [48, 50, '#ffd23f'], [68, 52, '#6bbf4a'], [86, 50, '#4fb3e8']].forEach(([x, y, col]) => shape(c, blobs([[x, y, 6]]), col, 1.4));
+  }];
+  ART.igloo = [96, 64, (c) => {
+    shape(c, (c) => { c.moveTo(4, 60); c.arc(48, 60, 44, Math.PI, 0); c.closePath(); }, '#eef6ff');
+    [[20, 46], [48, 30], [74, 46], [34, 22], [62, 22]].forEach(([x, y]) => line(c, [[x - 10, y], [x + 10, y]], '#b8c6e8', 1.6));
+    shape(c, (c) => { c.moveTo(34, 60); c.arc(48, 60, 14, Math.PI, 0); c.closePath(); }, '#3b2f4f');
+  }];
+  ART.hearth = [70, 70, (c) => {
+    shape(c, (c) => { c.moveTo(6, 66); c.lineTo(10, 36); c.lineTo(60, 36); c.lineTo(64, 66); c.closePath(); }, '#8a8fa3');
+    flat(c, blobs([[35, 30, 14]]), '#ff7a2a'); flat(c, blobs([[35, 28, 8]]), '#ffd23f');
+    shape(c, P([[22, 34], [35, 4], [48, 34]]), '#ff7a2a', 1.6);
+  }];
+  ART.pagoda = [100, 120, (c) => {
+    shape(c, (c) => rrect(c, 26, 70, 48, 46, 3), '#f4d6a0');
+    shape(c, P([[6, 74], [50, 52], [94, 74]]), '#d9534f');
+    shape(c, (c) => rrect(c, 32, 34, 36, 24, 3), '#f4d6a0');
+    shape(c, P([[14, 40], [50, 18], [86, 40]]), '#d9534f');
+    shape(c, P([[40, 20], [50, 0], [60, 20]]), '#ffd23f');
+    shape(c, (c) => rrect(c, 42, 90, 16, 26, 7), '#5a3f2e');
+  }];
+  ART.shrine = [64, 70, (c) => {
+    shape(c, (c) => { rrect(c, 8, 18, 8, 50, 2); rrect(c, 48, 18, 8, 50, 2); }, '#d9534f');
+    shape(c, (c) => { rrect(c, 2, 10, 60, 8, 3); rrect(c, 8, 26, 48, 6, 2); }, '#d9534f');
+    shape(c, (c) => { c.moveTo(24, 66); c.lineTo(28, 40); c.lineTo(36, 40); c.lineTo(40, 66); c.closePath(); }, '#2b2340');
+  }];
+
+  function mountainArt(rock, light, cap, door) {
+    return (c) => {
+      shape(c, P([[2, 150], [52, 46], [84, 70], [120, 8], [168, 64], [196, 150]]), rock);
+      flat(c, P([[52, 46], [64, 64], [44, 74]]), light);
+      flat(c, P([[120, 8], [136, 34], [112, 40], [100, 30]]), light);
+      shape(c, P([[100, 30], [120, 8], [142, 38], [130, 34], [120, 44], [110, 34]]), cap, 1.8);
+      // the cave door: a dark arch with timber posts
+      shape(c, (c) => { c.moveTo(76, 150); c.lineTo(76, 112); c.arc(100, 112, 24, Math.PI, 0); c.lineTo(124, 150); c.closePath(); }, '#16121f');
+      shape(c, (c) => { rrect(c, 70, 104, 8, 46, 2); rrect(c, 122, 104, 8, 46, 2); rrect(c, 68, 98, 64, 8, 3); }, '#9a6a3f', 1.8);
+      flat(c, blobs([[100, 128, 5]]), door);
+      [[40, 120], [160, 118], [150, 96], [56, 100]].forEach(([x, y]) => line(c, [[x - 8, y], [x + 8, y]], 'rgba(59,47,79,0.35)', 2));
+    };
+  }
+  ART.caveMount0 = [198, 152, mountainArt('#6b8f4e', '#8fb36a', '#a6d17a', '#ffd23f')];
+  ART.caveMount1 = [198, 152, mountainArt('#8a8fa3', '#a9adbd', '#d9dbe6', '#ff4d6d')];
+  ART.caveMount2 = [198, 152, mountainArt('#4f7f8f', '#6fa0ae', '#9fd6e0', '#8fe8f6')];
+  ART.caveMount3 = [198, 152, mountainArt('#7f93b8', '#a3b4d4', '#ffffff', '#c8f0ff')];
+  ART.caveMount4 = [198, 152, mountainArt('#3e3352', '#5b4f78', '#2b2340', '#ff3b5c')];
+
+  function batArt(f) {
+    return (c) => {
+      const up = f ? -8 : 6;
+      shape(c, (c) => { c.moveTo(18, 16); c.lineTo(2, 10 + up); c.quadraticCurveTo(5, 16, 3, 20 + up * 0.3); c.quadraticCurveTo(8, 17, 9, 22); c.quadraticCurveTo(12, 18, 16, 21); c.closePath(); c.moveTo(26, 16); c.lineTo(42, 10 + up); c.quadraticCurveTo(39, 16, 41, 20 + up * 0.3); c.quadraticCurveTo(36, 17, 35, 22); c.quadraticCurveTo(32, 18, 28, 21); c.closePath(); }, '#5b4f78', 1.8);
+      shape(c, P([[16, 12], [18, 3], [21, 11]]), '#3e3352', 1.4); shape(c, P([[23, 11], [26, 3], [28, 12]]), '#3e3352', 1.4);
+      shape(c, blobs([[22, 19, 8.5]]), '#3e3352');
+      face(c, 22, 17.5, 0.7, 'grin', { gap: 3.6 });
+      flat(c, (c) => { polyPath(c, [[19.5, 24.4], [20.5, 26.6], [21.4, 24.4]]); polyPath(c, [[22.6, 24.4], [23.5, 26.6], [24.5, 24.4]]); }, '#ffffff');
+    };
+  }
+  ART.bat0 = [44, 30, batArt(0)]; ART.bat1 = [44, 30, batArt(1)];
+  function grubArt(f) {
+    return (c) => {
+      const sq = f ? 2 : 0;
+      shape(c, blobs([[9, 19 + sq * 0.3, 7.5], [19, 17 - sq * 0.3, 8.6], [31, 17, 9.6 - sq * 0.3]]), '#c98fd9');
+      [[9, 19], [19, 17]].forEach(([x, y]) => line(c, [[x + 4, y - 6.5], [x + 4, y + 6.5]], '#a06fb5', 1.4));
+      line(c, [[34, 8], [38, 1]], INK, 1.6); line(c, [[29, 8], [28, 1]], INK, 1.6);
+      flat(c, blobs([[38, 1, 1.4], [28, 1, 1.4]]), INK);
+      face(c, 32, 15.5, 0.62, 'worried', { gap: 3.6 });
+    };
+  }
+  ART.grub0 = [44, 28, grubArt(0)]; ART.grub1 = [44, 28, grubArt(1)];
+
+  function gemArt(col, light, dark, pts) {
+    return (c) => {
+      shape(c, P(pts), col);
+      flat(c, P([pts[0], pts[1], [14, 13]]), light);
+      flat(c, P([[14, 13], pts[pts.length - 2], pts[pts.length - 1]]), dark);
+    };
+  }
+  const GEM = [[14, 3], [24, 10], [20, 25], [8, 25], [4, 10]];
+  ART.itemRuby = [28, 28, gemArt('#ff3b5c', '#ff9aac', '#b5162f', GEM)];
+  ART.itemAmber = [28, 28, (c) => { shape(c, (c) => ell(c, 14, 15, 10, 11, 0.3), '#ffb13b'); flat(c, (c) => ell(c, 11, 11, 4, 3, 0.4), '#ffe08f'); flat(c, blobs([[16, 18, 2]]), '#9a5a1a'); }];
+  ART.itemOpal = [28, 28, (c) => { shape(c, (c) => ell(c, 14, 14, 10, 11), '#dfe8ff'); flat(c, blobs([[10, 11, 3.5]]), '#ffc9f0'); flat(c, blobs([[17, 17, 3]]), '#a6f0e6'); flat(c, blobs([[16, 9, 2]]), '#fff6b0'); }];
+  ART.itemStar = [28, 28, (c) => { shape(c, (c) => { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 5 : 12; c.lineTo(14 + Math.cos(a) * r, 15 + Math.sin(a) * r); } c.closePath(); }, '#fff27a'); flat(c, blobs([[12, 12, 2.5]]), '#ffffff'); }];
+  ART.itemShell = [28, 26, (c) => {
+    shape(c, (c) => { c.moveTo(3, 20); c.quadraticCurveTo(14, -6, 25, 20); c.lineTo(17, 24); c.lineTo(11, 24); c.closePath(); }, '#ffc9b5');
+    [[8, 20], [14, 21], [20, 20]].forEach(([x, y]) => line(c, [[14, 6], [x, y]], '#e08f7a', 1.4));
+  }];
+  ART.relicSun = [32, 32, (c) => {
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; line(c, [[16 + Math.cos(a) * 9, 16 + Math.sin(a) * 9], [16 + Math.cos(a) * 15, 16 + Math.sin(a) * 15]], '#ffb13b', 3); }
+    shape(c, blobs([[16, 16, 9]]), '#ffd23f'); flat(c, blobs([[13, 13, 3]]), '#fff6b0');
+  }];
+  ART.relicEcho = [30, 34, (c) => { shape(c, P([[15, 2], [26, 12], [22, 32], [8, 32], [4, 12]]), '#a78bfa'); flat(c, P([[15, 2], [26, 12], [15, 14]]), '#d6c8ff'); line(c, [[10, 18], [15, 24], [20, 18]], '#ffffff', 1.6); }];
+  ART.relicPearl = [30, 30, (c) => { shape(c, (c) => ell(c, 15, 22, 13, 6), '#4fb3e8'); shape(c, blobs([[15, 15, 8]]), '#f6fbff'); flat(c, blobs([[12, 12, 2.6]]), '#ffffff'); flat(c, blobs([[18, 18, 2]]), '#d6e8ff'); }];
+  ART.relicFrost = [30, 32, (c) => { shape(c, (c) => { c.moveTo(15, 30); c.bezierCurveTo(-2, 16, 4, 2, 15, 10); c.bezierCurveTo(26, 2, 32, 16, 15, 30); }, '#8fe8f6'); flat(c, blobs([[10, 12, 3]]), '#ffffff'); line(c, [[15, 14], [15, 24]], '#4fb3e8', 1.6); line(c, [[11, 19], [19, 19]], '#4fb3e8', 1.6); }];
+  ART.relicCrown = [36, 28, (c) => { shape(c, P([[3, 24], [3, 8], [11, 16], [18, 4], [25, 16], [33, 8], [33, 24]]), '#3e3352'); [[3, 8], [18, 4], [33, 8]].forEach(([x, y]) => shape(c, blobs([[x, y, 3]]), '#ff3b5c', 1.4)); flat(c, (c) => rrect(c, 6, 19, 24, 3, 1.5), '#a78bfa'); }];
+  function runeArt(col, glyph) {
+    return (c) => {
+      shape(c, (c) => rrect(c, 4, 3, 22, 24, 6), '#8a8fa3');
+      flat(c, (c) => rrect(c, 7, 6, 16, 4, 2), '#a9adbd');
+      line(c, glyph, INK, 4.2); line(c, glyph, col, 2.2);
+    };
+  }
+  ART.runeKeen = [30, 30, runeArt('#ff4d6d', [[10, 22], [20, 10], [16, 10], [20, 10], [20, 14]])];
+  ART.runeSwift = [30, 30, runeArt('#4fb3e8', [[9, 20], [14, 13], [16, 18], [21, 11]])];
+  ART.runeLucky = [30, 30, runeArt('#6bbf4a', [[15, 10], [15, 22], [10, 15], [20, 15]])];
+  ART.runeWard = [30, 30, runeArt('#ffd23f', [[10, 11], [15, 9], [20, 11], [19, 19], [15, 23], [11, 19], [10, 11]])];
+  ART.modFeather = [30, 30, (c) => { shape(c, (c) => { c.moveTo(6, 26); c.quadraticCurveTo(6, 6, 25, 3); c.quadraticCurveTo(22, 20, 6, 26); }, '#ffffff'); line(c, [[6, 26], [22, 6]], '#c9bba0', 1.6); }];
+  ART.modTar = [28, 30, (c) => { shape(c, (c) => { rrect(c, 4, 10, 20, 18, 6); rrect(c, 8, 6, 12, 6, 2); }, '#5a3f2e'); flat(c, (c) => ell(c, 14, 10, 6, 2.2), '#2b2340'); flat(c, (c) => ell(c, 10, 16, 2, 4), '#7a5a40'); }];
+  ART.modPepper = [30, 30, (c) => { shape(c, (c) => { c.moveTo(9, 9); c.quadraticCurveTo(28, 10, 22, 28); c.quadraticCurveTo(8, 22, 9, 9); }, '#ff3b2a'); shape(c, (c) => rrect(c, 5, 4, 8, 7, 3), '#4fa64a', 1.6); flat(c, (c) => ell(c, 15, 14, 2, 4, -0.5), '#ff9a8a'); }];
+  ART.toolCloak = [30, 30, (c) => { shape(c, P([[8, 6], [22, 6], [27, 27], [3, 27]]), '#b8c6e8'); shape(c, (c) => rrect(c, 6, 3, 18, 7, 3), '#ffffff', 1.6); flat(c, blobs([[15, 12, 2]]), '#ffd23f'); }];
+  ART.greatBook = [36, 30, (c) => { shape(c, (c) => rrect(c, 3, 4, 30, 23, 3), '#8a63e8'); flat(c, (c) => rrect(c, 3, 22, 30, 4, 2), '#fff8e6'); shape(c, (c) => { for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 3 : 7; c.lineTo(18 + Math.cos(a) * r, 13 + Math.sin(a) * r); } c.closePath(); }, '#ffd23f', 1.4); }];
+
+  SW.sprites = {};
+  const FLIP = ['snail0', 'snail1', 'bat0', 'bat1', 'grub0', 'grub1', 'player0', 'player1', 'playerAy', 'playerJoy', 'scribble0', 'scribble1', 'puff0', 'puff1', 'thornback0', 'thornback1', 'snapjaw0', 'snapjaw1', 'gloop0', 'gloop1', 'pebblor0', 'pebblor1'];
+  const ALIAS = { itemCampfire: 'campfire', itemWall: 'wall', itemAxe: 'toolAxe', itemPick: 'toolPick', itemSword: 'toolSword', itemGemSword: 'toolGemSword', itemMushroom: 'mushroom' };
+  const border = (name) => (name.startsWith('item') || name.startsWith('ui') ? 3 : 3.6);
+  // World stickers are rendered at the exact on-screen scale so most of them
+  // can be copied 1:1 every frame; rebuilt when the zoom changes.
+  SW.buildSprites = function (S) {
+    SW.SPR = S;
+    for (const name in ART) {
+      const [w, h, fn] = ART[name];
+      SW.sprites[name] = makeSticker(w, h, fn, { border: border(name), S });
+      if (FLIP.includes(name)) SW.sprites[name + 'L'] = makeSticker(w, h, fn, { flip: true, S });
+    }
+    for (const a in ALIAS) SW.sprites[a] = SW.sprites[ALIAS[a]];
+  };
+  // Big stickers for the story intro. gray=true flattens them into four
+  // ink tones, like a printed manga page.
+  const bigCache = {};
+  SW.bigSprite = function (name, S, gray) {
+    const key = name + '|' + S + '|' + (gray ? 1 : 0);
+    if (bigCache[key]) return bigCache[key];
+    const art = ART[ALIAS[name] || name];
+    if (!art) return null;
+    const st = makeSticker(art[0], art[1], art[2], { border: border(name), S });
+    if (gray) {
+      const c = st.img, g = c.getContext('2d');
+      const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+      for (let i = 0; i < d.length; i += 4) {
+        if (!d[i + 3]) continue;
+        const l = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+        const v = l < 70 ? 22 : l < 150 ? 118 : l < 215 ? 196 : 252;
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+      g.putImageData(im, 0, 0);
+    }
+    bigCache[key] = st;
+    return st;
+  };
+  // HUD icons get their own crisp 2x stickers, made once.
+  const urls = {};
+  // when Ene's drawing finishes loading, remake every sticker of her
+  SW.refreshEne = function () {
+    for (const k in bigCache) if (k.startsWith('player')) delete bigCache[k];
+    for (const k in urls) if (k.startsWith('player')) delete urls[k];
+    if (SW.SPR) for (const name in ART) if (name.startsWith('player')) {
+      const [w, h, fn] = ART[name];
+      SW.sprites[name] = makeSticker(w, h, fn, { border: border(name), S: SW.SPR });
+      if (FLIP.includes(name)) SW.sprites[name + 'L'] = makeSticker(w, h, fn, { flip: true, S: SW.SPR });
+    }
+    document.querySelectorAll('img[data-icon^="player"]').forEach((img) => { img.src = SW.spriteURL(img.dataset.icon); });
+  };
+  SW.spriteURL = function (name) {
+    if (urls[name]) return urls[name];
+    const art = ART[ALIAS[name] || name];
+    if (!art) return '';
+    const [w, h, fn] = art;
+    urls[name] = makeSticker(w, h, fn, { border: border(name), S: 2 }).img.toDataURL('image/png');
+    return urls[name];
+  };
+})();

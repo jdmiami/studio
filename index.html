@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Stickerwild</title>
+<meta name="description" content="A procedural 2.5D survival RPG on a huge island where everything is a sticker.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Sniglet:wght@400;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&text=%21%E3%82%AD%E3%82%B4%E3%82%B6%E3%83%83%E3%83%89%E3%83%9A%E3%83%9C%E3%83%AA%E3%83%B3&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!--GAME-BODY-START-->
+<canvas id="game" aria-label="Stickerwild game world"></canvas>
+
+<canvas id="radar" aria-hidden="true" hidden></canvas>
+<div id="hud" hidden>
+  <!-- top-left: vitals, gear, quests -->
+  <div class="hud-tl" id="hudTL">
+    <div class="vitals">
+      <div class="vrow" id="hpStat" title="Health">
+        <img data-icon="uiHeart" alt="Health"><div class="bar"><i id="hpBar"></i></div><b id="hpNum">100</b>
+      </div>
+      <div class="vrow food" id="foodStat" title="Food">
+        <img data-icon="itemCooked" alt="Food"><div class="bar"><i id="foodBar"></i></div><b id="foodNum">100</b>
+      </div>
+      <div class="vrow xp" title="Level and experience">
+        <span class="lvl"><small>Lv</small><b id="lvlNum">1</b></span><div class="bar"><i id="xpBar"></i></div><span id="xpNum" class="xpnum">0/20</span>
+      </div>
+      <div class="vrow energy" id="energyRow" title="Leaf glider: height while gliding, dryness on the ground" hidden>
+        <img data-icon="glider" alt="Glider"><div class="bar"><i id="energyBar"></i></div>
+      </div>
+      <div class="vrow raftrow" id="raftRow" title="Raft dryness: it soaks up water while you sail and dries on land" hidden>
+        <img data-icon="raft" alt="Raft"><div class="bar"><i id="raftBar"></i></div>
+      </div>
+      <button class="vrow cryrow" id="cryRow" type="button" title="Rainbow cry: fills as you fight. Press R (or tap here) when it's full.">
+        <img data-icon="uiBolt" alt="Rainbow cry"><span class="bar"><i id="cryBar"></i></span>
+      </button>
+      <div id="toolbelt" aria-label="Tools and gear"></div>
+    </div>
+    <section class="questbox" id="questBox" aria-label="Quests">
+      <button id="questsToggle" class="qhead" type="button" aria-controls="quests"><span>Quests</span><b id="questCount">0</b></button>
+      <ol id="quests"></ol>
+    </section>
+    <div class="hud-inv" id="hotbarWrap">
+      <div id="hotbar" aria-label="Inventory"></div>
+      <button id="craftBtn"><img data-icon="uiHammer" alt=""><span>Craft</span><kbd>C</kbd></button>
+    </div>
+  </div>
+
+  <!-- top-right: time, weather, map, camera -->
+  <div class="hud-tr" id="hudTR">
+    <div class="status">
+      <canvas id="dial" width="88" height="88"></canvas>
+      <div class="status-text">
+        <span id="dayLabel">Day</span><b>Day <span id="dayNum">1</span></b>
+        <span class="weather"><i id="weatherIcon" data-kind="clear" aria-hidden="true"></i><span id="weatherName">Clear</span><span class="wind" title="Wind"><i id="windArrow" aria-hidden="true"></i></span></span>
+      </div>
+    </div>
+    <div class="mini">
+      <canvas id="minimap" width="64" height="64" aria-label="Nearby map"></canvas>
+      <div id="region"><b id="regionName">Somewhere</b><em id="regionDanger">Danger 1</em></div>
+    </div>
+    <div class="rail">
+      <button id="mapBtn" class="round-btn" title="Island map (M)" aria-label="Island map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" /><path d="M9 4v14M15 6v14" /></svg>
+      </button>
+      <button id="rotL" class="round-btn" title="Turn view left (Q)" aria-label="Turn view left">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7a7 7 0 1 1-2 6" /><path d="M8 2v5H3" /></svg>
+      </button>
+      <button id="compassBtn" class="round-btn compass" title="Face north (N)" aria-label="Face north">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><g id="compassNeedle"><path class="n" d="M12 3l3 9h-6z" /><path d="M12 21l-3-9h6z" /></g></svg>
+      </button>
+      <button id="rotR" class="round-btn" title="Turn view right (E)" aria-label="Turn view right">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 7a7 7 0 1 0 2 6" /><path d="M16 2v5h5" /></svg>
+      </button>
+      <button id="zoomIn" class="round-btn desk" title="Zoom in (+)" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
+      </button>
+      <button id="zoomOut" class="round-btn desk" title="Zoom out (-)" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+      </button>
+      <button id="viewBtn" class="round-btn" title="Change view: 2.5D, third person, first person (V)" aria-label="Change view">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" /><circle cx="12" cy="12" r="2.8" /></svg>
+      </button>
+      <button id="menuBtn" class="round-btn" title="Menu and saves (Esc)" aria-label="Menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" /></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- tips and banners: placed by the game so they never cover the character -->
+  <div id="toast" role="status"><span></span></div>
+  <div id="enePop" aria-hidden="true"><img id="enePopImg" alt=""><b id="enePopWord"></b></div>
+  <div id="banner"><span class="big"></span><span class="small"></span></div>
+
+  <button id="hudHide" class="round-btn" type="button" title="Hide the buttons and menus (H)" aria-label="Hide the buttons and menus" aria-pressed="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+  </button>
+
+  <div id="touchUI">
+    <div id="stick"><div id="knob"></div></div>
+    <div class="tpad">
+      <button id="tFly" class="tbtn" hidden><img data-icon="glider" alt=""><span id="tFlyLbl">Glide</span></button>
+      <button id="tCry" class="tbtn" hidden><img data-icon="uiBolt" alt=""><span>Rainbow</span></button>
+      <button id="tEat" class="tbtn"><img data-icon="itemBerry" alt=""><span>Eat</span></button>
+      <button id="tAct" class="tbtn big"><img data-icon="toolAxe" alt=""><span id="tActLbl">Use</span></button>
+    </div>
+  </div>
+</div>
+
+<section id="talkPanel" class="talk" hidden aria-live="polite" aria-label="Conversation">
+  <header>
+    <img id="talkFace" alt="">
+    <div><h2 id="talkName"></h2><p id="talkRole"></p></div>
+    <button id="talkClose" class="round-btn" type="button" aria-label="Close">×</button>
+  </header>
+  <div id="talkBody"></div>
+  <div id="talkActions" class="talk-actions"></div>
+</section>
+
+<section id="craftPanel" hidden aria-label="Crafting">
+  <header>
+    <h2>Craft</h2>
+    <p>Turn what you peel off the island into tools, gear and food.</p>
+    <button id="craftClose" class="round-btn" aria-label="Close crafting">&times;</button>
+  </header>
+  <nav id="craftTabs" aria-label="Recipe groups"></nav>
+  <div id="craftList"></div>
+</section>
+
+<section id="mapScreen" class="screen" hidden aria-label="World map">
+  <div class="card map-card">
+    <header class="map-head">
+      <h2>Island map</h2>
+      <button id="mapClose" class="round-btn" aria-label="Close map">&times;</button>
+    </header>
+    <canvas id="worldMap" width="480" height="480"></canvas>
+    <p id="mapInfo" class="map-info"></p>
+    <ul class="legend">
+      <li><i class="dot you"></i>You</li>
+      <li><i class="dot fire"></i>Campfire (click to travel)</li>
+      <li><i class="dot quest"></i>Quest target</li>
+      <li><i class="dot village"></i>Settlement</li>
+      <li><i class="dot cave"></i>Cave (green when finished)</li>
+      <li><i class="ring"></i>Zone border (needs a level)</li>
+    </ul>
+  </div>
+</section>
+
+<section id="titleScreen" class="screen" hidden>
+  <div class="card title-card">
+    <h1 class="logo" aria-label="Stickerwild">
+      <span style="--r:-8deg;--c:var(--leaf)">S</span><span style="--r:5deg;--c:var(--sun)">t</span><span style="--r:-3deg;--c:var(--berry)">i</span><span style="--r:7deg;--c:var(--sea)">c</span><span style="--r:-6deg;--c:var(--leaf)">k</span><span style="--r:4deg;--c:var(--sun)">e</span><span style="--r:-4deg;--c:var(--berry)">r</span><span class="gap"></span><span style="--r:6deg;--c:var(--gem)">w</span><span style="--r:-7deg;--c:var(--leaf)">i</span><span style="--r:3deg;--c:var(--sea)">l</span><span style="--r:-5deg;--c:var(--berry)">d</span>
+    </h1>
+    <p class="tagline">Ene in Pink and her friend Star wash up on a huge sticker island. Chop, fish, fight, cry a rainbow, find the Lost Pages and bring the colours back.</p>
+
+    <label class="seed" for="seedInput">
+      <span>Island seed</span>
+      <span class="seed-row">
+        <input id="seedInput" type="text" autocomplete="off" spellcheck="false" maxlength="40">
+        <button id="diceBtn" type="button" class="round-btn" title="Random seed" aria-label="Random seed">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><circle cx="8.5" cy="8.5" r="1.4" class="pip" /><circle cx="15.5" cy="15.5" r="1.4" class="pip" /><circle cx="12" cy="12" r="1.4" class="pip" /><circle cx="15.5" cy="8.5" r="1.4" class="pip" /><circle cx="8.5" cy="15.5" r="1.4" class="pip" /></svg>
+        </button>
+      </span>
+    </label>
+
+    <label class="density" for="densitySel"><span>World density</span>
+      <select id="densitySel">
+        <option value="sparse">Sparse: open land, fewer plants</option>
+        <option value="normal" selected>Normal</option>
+        <option value="lush">Lush: thick forests, more of everything</option>
+      </select>
+    </label>
+
+    <div class="actions">
+      <button id="startBtn" class="big-btn">Peel in</button>
+      <button id="continueBtn" class="big-btn alt" hidden><span>Continue</span></button>
+      <button id="cloudResumeBtn" class="big-btn gem" hidden><span>Cloud save</span></button>
+    </div>
+    <p class="small-actions"><button id="storyBtn" class="link-btn" type="button">Watch the story</button> · <button id="saveBtnTitle" class="link-btn" type="button">Load a save file or code</button></p>
+
+    <ul class="keys" aria-label="Controls">
+      <li><b>Click</b> walk, chop, mine, fish, fight</li>
+      <li><kbd>WASD</kbd> move <kbd>Shift</kbd> run</li>
+      <li><kbd>Q</kbd><kbd>E</kbd> turn view</li>
+      <li><kbd>F</kbd> eat</li>
+      <li><kbd>C</kbd> craft</li>
+      <li><kbd>M</kbd> map</li>
+      <li><kbd>G</kbd> glide</li>
+      <li><kbd>R</kbd> rainbow cry</li>
+      <li><kbd>V</kbd> change view</li>
+    </ul>
+  </div>
+</section>
+
+<section id="deathScreen" class="screen" hidden>
+  <div class="card">
+    <h2 class="peeled">Peeled off!</h2>
+    <p class="days"><b id="deathDays">Level 1</b><span id="deathSub">Day 1</span></p>
+    <ul id="deathStats" class="stats"></ul>
+    <div class="actions">
+      <button id="retryBtn" class="big-btn">Get back up</button>
+      <button id="newBtn" class="big-btn alt">New island</button>
+    </div>
+    <p class="seed-note">You wake at your nearest campfire and drop half your materials. Seed <code id="deathSeed"></code></p>
+  </div>
+</section>
+
+<section id="pauseScreen" class="screen" hidden>
+  <div class="card small">
+    <h2>Paused</h2>
+    <p id="pauseInfo" class="pause-info"></p>
+    <div class="actions stack">
+      <button id="resumeBtn" class="big-btn">Resume</button>
+      <button id="saveBtnPause" class="big-btn gem">Save &amp; load</button>
+      <button id="pauseMapBtn" class="big-btn alt">Island map</button>
+      <div class="toggles">
+        <button id="muteBtn" class="chip-btn" type="button"><span>Sound: on</span></button>
+        <button id="fullBtn" class="chip-btn" type="button">Fullscreen</button>
+      </div>
+      <div class="skins" id="starSkins" role="group" aria-label="Star's look"><span>Star's look</span></div>
+      <button id="quitBtn" class="big-btn plain">Save &amp; quit</button>
+    </div>
+  </div>
+</section>
+
+<section id="savePanel" class="screen" hidden aria-label="Save and load">
+  <div class="card save-card">
+    <header class="map-head">
+      <h2>Save &amp; load</h2>
+      <button id="saveClose" class="round-btn" aria-label="Close">&times;</button>
+    </header>
+    <p class="save-summary"><span id="saveSummary"></span></p>
+    <div class="save-row">
+      <span class="lbl">Seed</span><code id="saveSeed"></code>
+      <button id="seedCopy" class="chip-btn" type="button">Copy seed</button>
+    </div>
+    <div class="save-grid">
+      <button id="dlBtn" class="big-btn">Download save file</button>
+      <button id="loadFileBtn" class="big-btn alt">Load save file</button>
+    </div>
+    <input id="fileInput" type="file" accept=".json,application/json" hidden>
+    <div id="cloudRow" class="save-grid" hidden>
+      <button id="cloudUpBtn" class="big-btn gem">Upload to cloud</button>
+      <button id="cloudDownBtn" class="big-btn plain">Resume from cloud</button>
+    </div>
+    <p id="saveStatus" class="save-status" role="status"></p>
+    <details class="code-box">
+      <summary>Save codes (copy and paste between devices)</summary>
+      <div class="code-actions">
+        <button id="copyCodeBtn" class="chip-btn" type="button">Copy save code</button>
+        <button id="loadCodeBtn" class="chip-btn" type="button">Load pasted code</button>
+      </div>
+      <label for="codeBox" class="sr">Save code</label>
+      <textarea id="codeBox" rows="3" placeholder="Paste a save code here"></textarea>
+    </details>
+    <p class="save-note">The file holds your island seed and all your progress. Load it here on any device to pick up where you left off. The game also autosaves in this browser.</p>
+  </div>
+</section>
+<section id="intro" hidden aria-label="Story intro">
+  <canvas id="introCv"></canvas>
+  <button id="introSkip" type="button">Skip</button>
+  <p class="intro-hint">Tap to turn the page</p>
+</section>
+<!--GAME-BODY-END-->
+
+<script src="js/util.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/world.js"></script>
+<script src="js/rpg.js"></script>
+<script src="js/realm.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/globe.js"></script>
+<script src="js/save.js"></script>
+<script src="js/intro.js"></script>
+<script src="js/ene-rig.js"></script>
+<script src="js/ene.js"></script>
+<script src="js/cave.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
